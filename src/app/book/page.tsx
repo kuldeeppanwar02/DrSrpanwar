@@ -19,10 +19,21 @@ const slotMap: Record<ClinicId, Record<"Aaj" | "Kal", string[]>> = {
     Kal: ["09:30 AM", "10:15 AM", "11:45 AM", "01:15 PM", "04:00 PM", "05:30 PM"],
   },
   pharmacy: {
-    Aaj: ["09:15 AM", "10:45 AM", "12:30 PM", "02:30 PM", "04:00 PM", "05:30 PM"],
-    Kal: ["09:00 AM", "11:00 AM", "01:00 PM", "03:00 PM", "04:30 PM", "05:45 PM"],
+    Aaj: [],
+    Kal: [],
   },
 };
+
+function buildWhatsAppUrl(clinic: string, token: string, day: string, slot: string): string {
+  const msg = encodeURIComponent(
+    `🏥 मेरा अपॉइंटमेंट बुक हो गया!\n\n` +
+    `📋 टोकन: ${token}\n` +
+    `🏥 क्लिनिक: ${clinic}\n` +
+    `📅 ${day} · ${slot}\n\n` +
+    `Panwar SmartCare Hub`
+  );
+  return `https://wa.me/?text=${msg}`;
+}
 
 type BookingConfirmation = {
   bookingId: string;
@@ -35,11 +46,50 @@ type BookingConfirmation = {
 export default function BookPage() {
   const { activeClinic, activeClinicId, createBooking, isOnline, syncInFlight } = useClinic();
   const { t } = useLang();
+
+  // Block pharmacy from booking
+  if (!activeClinic.hasBooking) {
+    return (
+      <div className="page-shell">
+        <div className="section-shell flex min-h-[50vh] items-center justify-center py-10">
+          <div className="mx-auto max-w-md text-center">
+            <p className="text-4xl">💊</p>
+            <h1 className="display-type mt-4 text-xl text-[var(--accent-strong)]">
+              {t("pharmacy", "infoTitle")}
+            </h1>
+            <p className="mt-3 text-sm text-[rgba(19,49,58,0.65)]">
+              {t("pharmacy", "noBookingNeeded")}
+            </p>
+            <div className="mt-4 rounded-xl border border-[var(--line)] bg-white/70 p-4 text-left text-sm text-[rgba(19,49,58,0.7)]">
+              <p>📍 {activeClinic.locationLabel}</p>
+              <p>🕐 {activeClinic.hoursLabel}</p>
+              <p>📞 {activeClinic.phone}</p>
+            </div>
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <Link
+                href={buildClinicHref("/walkin", activeClinicId)}
+                className="rounded-full bg-[var(--warm)] px-5 py-2.5 text-sm font-semibold text-white"
+              >
+                {t("pharmacy", "pickupToken")}
+              </Link>
+              <Link
+                href={buildClinicHref("/", activeClinicId)}
+                className="rounded-full border border-[var(--line-strong)] px-5 py-2.5 text-sm font-semibold"
+              >
+                {t("common", "back")}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const [dayLabel, setDayLabel] = useState<"Aaj" | "Kal">("Aaj");
   const [slotLabel, setSlotLabel] = useState(slotMap[activeClinicId].Aaj[0]);
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
-  const [requiresPharmacyFollowUp, setRequiresPharmacyFollowUp] = useState(activeClinicId === "pharmacy");
+  const [requiresPharmacyFollowUp, setRequiresPharmacyFollowUp] = useState(false);
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState<BookingConfirmation | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -112,6 +162,20 @@ export default function BookPage() {
                 {t("booking", "screenshotNote")}
               </p>
               <div className="mt-5 flex flex-wrap justify-center gap-3">
+                {/* WhatsApp Share */}
+                <a
+                  href={buildWhatsAppUrl(
+                    activeClinic.shortName,
+                    confirmation.token,
+                    confirmation.dayLabel === "Aaj" ? t("booking", "today") : t("booking", "tomorrow"),
+                    confirmation.slotLabel,
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1da851]"
+                >
+                  {t("whatsapp", "shareBtn")}
+                </a>
                 <Link
                   href={buildClinicHref("/status", activeClinicId)}
                   className="rounded-full border border-[var(--line-strong)] px-4 py-2 text-sm font-semibold transition hover:border-[var(--accent)]"
@@ -225,17 +289,15 @@ export default function BookPage() {
                   </label>
                 </div>
 
-                {activeClinicId !== "pharmacy" && (
-                  <label className="flex items-center gap-2 rounded-lg border border-[var(--line)] bg-white/60 px-3 py-2.5 text-sm text-[rgba(19,49,58,0.7)]">
-                    <input
-                      type="checkbox"
-                      checked={requiresPharmacyFollowUp}
-                      onChange={(e) => setRequiresPharmacyFollowUp(e.target.checked)}
-                      className="h-4 w-4"
-                    />
-                    {t("booking", "pharmacyFollowUp")}
-                  </label>
-                )}
+                <label className="flex items-center gap-2 rounded-lg border border-[var(--line)] bg-white/60 px-3 py-2.5 text-sm text-[rgba(19,49,58,0.7)]">
+                  <input
+                    type="checkbox"
+                    checked={requiresPharmacyFollowUp}
+                    onChange={(e) => setRequiresPharmacyFollowUp(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  {t("booking", "pharmacyFollowUp")}
+                </label>
 
                 {error && (
                   <p className="rounded-lg bg-[rgba(182,93,54,0.1)] px-3 py-2 text-sm font-semibold text-[#8b4626]">

@@ -42,7 +42,7 @@ export function clearStaffSession() {
 }
 
 export function Navbar() {
-  const { activeClinicId, isOnline } = useClinic();
+  const { activeClinicId, activeClinic, isOnline } = useClinic();
   const { lang, toggleLang, t } = useLang();
   const [menuOpen, setMenuOpen] = useState(false);
   const [session, setSession] = useState<StaffSession>(null);
@@ -67,7 +67,9 @@ export function Navbar() {
 
   const patientLinks = [
     { href: "/", label: t("nav", "home"), icon: "🏠" },
-    { href: "/book", label: t("nav", "booking"), icon: "📋" },
+    ...(activeClinic?.hasBooking
+      ? [{ href: "/book", label: t("nav", "booking"), icon: "📋" }]
+      : []),
     { href: "/walkin", label: t("nav", "walkin"), icon: "🎫" },
     { href: "/status", label: t("nav", "myToken"), icon: "🔍" },
     { href: "/live", label: t("nav", "live"), icon: "📺" },

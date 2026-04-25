@@ -12,6 +12,7 @@ export const CLINICS: ClinicDefinition[] = [
     locationLabel: "Qtr No. 1, Behind Poonam Stadium, Jaisalmer",
     hoursLabel: "9:00 AM - 6:00 PM",
     accentColor: "#0f6b63",
+    hasBooking: true,
   },
   {
     id: "dental",
@@ -24,6 +25,7 @@ export const CLINICS: ClinicDefinition[] = [
     locationLabel: "Family healthcare hub, Jaisalmer",
     hoursLabel: "10:00 AM - 5:30 PM",
     accentColor: "#a35d2f",
+    hasBooking: true,
   },
   {
     id: "pharmacy",
@@ -36,6 +38,7 @@ export const CLINICS: ClinicDefinition[] = [
     locationLabel: "Same healthcare hub campus, Jaisalmer",
     hoursLabel: "9:00 AM - 8:00 PM",
     accentColor: "#3459a6",
+    hasBooking: false,
   },
 ];
 

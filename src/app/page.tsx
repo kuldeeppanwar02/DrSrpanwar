@@ -14,6 +14,20 @@ export default function HomePage() {
 
   return (
     <div className="page-shell">
+      {/* Emergency Banner */}
+      {state.emergencyClosed && (
+        <div className="bg-[rgba(182,93,54,0.12)] border-b border-[rgba(182,93,54,0.2)]">
+          <div className="section-shell py-3 text-center">
+            <p className="text-sm font-semibold text-[#8b4626]">
+              ⚠️ {t("emergency", "closedTitle")} — {activeClinic.shortName}
+            </p>
+            <p className="mt-1 text-xs text-[rgba(139,70,38,0.8)]">
+              {state.emergencyMessage || t("emergency", "defaultMessage")}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Hero */}
       <section className="section-shell pt-8 pb-6">
         <div className="fade-up text-center">
@@ -25,17 +39,19 @@ export default function HomePage() {
           </p>
 
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Link
-              href={buildClinicHref("/book", activeClinicId)}
-              className="focus-ring rounded-full bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-            >
-              {t("home", "bookBtn")}
-            </Link>
+            {activeClinic.hasBooking && (
+              <Link
+                href={buildClinicHref("/book", activeClinicId)}
+                className="focus-ring rounded-full bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+              >
+                {t("home", "bookBtn")}
+              </Link>
+            )}
             <Link
               href={buildClinicHref("/walkin", activeClinicId)}
               className="focus-ring rounded-full bg-[var(--warm)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8b4626]"
             >
-              {t("home", "walkinBtn")}
+              {activeClinic.hasBooking ? t("home", "walkinBtn") : t("pharmacy", "pickupToken")}
             </Link>
             <Link
               href={buildClinicHref("/status", activeClinicId)}
@@ -47,9 +63,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Live Queue Snapshot + Clinic Selector */}
+      {/* Clinics + Queue */}
       <section className="section-shell grid gap-6 pb-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        {/* Left — Clinics */}
+        {/* Left — Clinic Cards */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
             {t("home", "threeClinicPortal")}
@@ -74,21 +90,34 @@ export default function HomePage() {
                   {clinic.subtitle}
                 </p>
                 <p className="mt-1 text-xs text-[rgba(19,49,58,0.55)]">
-                  {clinic.hoursLabel}
+                  🕐 {clinic.hoursLabel}
                 </p>
+                <p className="text-xs text-[rgba(19,49,58,0.55)]">
+                  📍 {clinic.locationLabel}
+                </p>
+
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  <Link
-                    href={buildClinicHref("/book", clinic.id)}
-                    className="rounded-full bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-white"
-                  >
-                    {t("nav", "booking")}
-                  </Link>
-                  <Link
-                    href={buildClinicHref("/walkin", clinic.id)}
-                    className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold"
-                  >
-                    {t("nav", "walkin")}
-                  </Link>
+                  {clinic.hasBooking ? (
+                    <>
+                      <Link
+                        href={buildClinicHref("/book", clinic.id)}
+                        className="rounded-full bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-white"
+                      >
+                        {t("nav", "booking")}
+                      </Link>
+                      <Link
+                        href={buildClinicHref("/walkin", clinic.id)}
+                        className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold"
+                      >
+                        {t("nav", "walkin")}
+                      </Link>
+                    </>
+                  ) : (
+                    /* Pharmacy — info-only card */
+                    <span className="rounded-full bg-[rgba(52,89,166,0.08)] px-3 py-1 text-xs font-semibold text-[#3459a6]">
+                      {t("pharmacy", "noBookingNeeded")}
+                    </span>
+                  )}
                 </div>
               </article>
             ))}
@@ -109,7 +138,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl border border-[var(--line)] bg-white/70 p-3">
               <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">
                 {t("home", "nextToken")}
@@ -121,6 +150,14 @@ export default function HomePage() {
                 {t("home", "waiting")}
               </p>
               <p className="mt-1 text-2xl font-semibold">{summary.waiting.length}</p>
+            </div>
+            <div className="rounded-xl border border-[var(--line)] bg-white/70 p-3">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">
+                {t("queue", "completedCount")}
+              </p>
+              <p className="mt-1 text-2xl font-semibold">
+                {state.queue.filter((e) => e.status === "done").length}
+              </p>
             </div>
           </div>
 

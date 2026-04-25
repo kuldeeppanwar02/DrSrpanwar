@@ -153,12 +153,24 @@ export default function WalkInPage() {
                 <p className="mt-4 rounded-lg bg-[rgba(235,193,125,0.15)] px-3 py-2 text-xs font-semibold">
                   {t("walkin", "noteToken")}
                 </p>
-                <Link
-                  href={buildClinicHref("/status", activeClinicId)}
-                  className="mt-4 inline-flex rounded-full border border-[rgba(255,255,255,0.2)] px-4 py-2 text-sm font-semibold"
-                >
-                  {t("walkin", "checkQueue")}
-                </Link>
+                <div className="mt-4 flex flex-wrap justify-center gap-3">
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(
+                      `🏥 मेरा वॉक-इन टोकन!\n\n📋 टोकन: ${confirmation.token}\n🏥 क्लिनिक: ${activeClinic.shortName}\n⏱️ Wait: ~${confirmation.waitMinutes} min\n\nPanwar SmartCare Hub`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    {t("whatsapp", "shareBtn")}
+                  </a>
+                  <Link
+                    href={buildClinicHref("/status", activeClinicId)}
+                    className="rounded-full border border-[rgba(255,255,255,0.2)] px-4 py-2 text-sm font-semibold"
+                  >
+                    {t("walkin", "checkQueue")}
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-[var(--line-strong)] bg-white/40 p-5 text-center text-sm text-[rgba(19,49,58,0.55)]">

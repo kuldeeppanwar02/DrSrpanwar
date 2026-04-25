@@ -46,7 +46,10 @@ export default function StaffManagePage() {
   const fetchMembers = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/staff");
+      // Doctor sees only their clinic's staff
+      const clinicParam = session?.clinicAccess?.[0] || "";
+      const url = clinicParam ? `/api/staff?clinic=${clinicParam}` : "/api/staff";
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setMembers(data.members || []);
@@ -69,7 +72,8 @@ export default function StaffManagePage() {
     setFEmail("");
     setFDesignation("receptionist");
     setFPin("");
-    setFClinics(["surgery"]);
+    // Default to doctor's own clinic
+    setFClinics(session?.clinicAccess || ["surgery"]);
     setFError("");
     setShowForm(true);
   };

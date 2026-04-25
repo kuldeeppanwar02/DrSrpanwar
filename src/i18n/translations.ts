@@ -305,6 +305,75 @@ export const translations = {
       en: "Everything will sync when you're back online",
     },
   },
+
+  pharmacy: {
+    infoTitle: { hi: "फार्मेसी जानकारी", en: "Pharmacy Information" },
+    infoSubtitle: {
+      hi: "दवाई लेने के लिए डॉक्टर की पर्ची लेकर यहां आएं",
+      en: "Visit with doctor's prescription to collect medicines",
+    },
+    location: { hi: "पता", en: "Address" },
+    timing: { hi: "समय", en: "Timing" },
+    noBookingNeeded: {
+      hi: "फार्मेसी में अपॉइंटमेंट की जरूरत नहीं है। सीधे पर्ची लेकर आएं।",
+      en: "No appointment needed for pharmacy. Visit directly with prescription.",
+    },
+    pickupToken: { hi: "दवाई पिकअप टोकन", en: "Medicine Pickup Token" },
+  },
+
+  emergency: {
+    closedTitle: { hi: "क्लिनिक आज बंद है", en: "Clinic Closed Today" },
+    closedMessage: {
+      hi: "डॉक्टर ने आज का शेड्यूल बदल दिया है",
+      en: "Doctor has changed today's schedule",
+    },
+    closeClinic: { hi: "क्लिनिक बंद करें", en: "Close Clinic" },
+    reopenClinic: { hi: "क्लिनिक खोलें", en: "Reopen Clinic" },
+    closeConfirm: {
+      hi: "क्या आप क्लिनिक बंद करना चाहते हैं? सभी मरीजों को सूचना दिखेगी।",
+      en: "Close clinic? All patients will see a notification.",
+    },
+    enterMessage: { hi: "मरीजों के लिए संदेश", en: "Message for patients" },
+    defaultMessage: {
+      hi: "डॉक्टर आज उपलब्ध नहीं हैं। कृपया कल आएं।",
+      en: "Doctor unavailable today. Please visit tomorrow.",
+    },
+  },
+
+  whatsapp: {
+    shareBtn: { hi: "WhatsApp पर शेयर करें", en: "Share on WhatsApp" },
+    shareMessage: {
+      hi: "मेरा अपॉइंटमेंट बुक हो गया है!",
+      en: "My appointment has been booked!",
+    },
+    tokenMsg: { hi: "टोकन", en: "Token" },
+    clinicMsg: { hi: "क्लिनिक", en: "Clinic" },
+    timeMsg: { hi: "समय", en: "Time" },
+  },
+
+  history: {
+    title: { hi: "पेशेंट हिस्ट्री", en: "Patient History" },
+    totalVisits: { hi: "कुल विज़िट (6 महीने)", en: "Total Visits (6 months)" },
+    lastVisit: { hi: "पिछली विज़िट", en: "Last Visit" },
+    noHistory: { hi: "कोई पिछला रिकॉर्ड नहीं", en: "No past records" },
+    visitDate: { hi: "तारीख", en: "Date" },
+    viewHistory: { hi: "हिस्ट्री देखें", en: "View History" },
+  },
+
+  queue: {
+    complete: { hi: "पूरा हुआ", en: "Complete" },
+    pending: { hi: "बाकी", en: "Pending" },
+    todayQueue: { hi: "आज की क्यू", en: "Today's Queue" },
+    tomorrowQueue: { hi: "कल की क्यू", en: "Tomorrow's Queue" },
+    shiftToTomorrow: { hi: "कल पर शिफ्ट करें", en: "Shift to Tomorrow" },
+    shiftConfirm: {
+      hi: "क्या आप इस बुकिंग को कल पर शिफ्ट करना चाहते हैं?",
+      en: "Shift this booking to tomorrow?",
+    },
+    completedCount: { hi: "चेकअप पूरा", en: "Checkup Complete" },
+    pendingCount: { hi: "बाकी है", en: "Remaining" },
+    noCompletedToday: { hi: "आज अभी तक कोई चेकअप पूरा नहीं हुआ", en: "No checkups completed yet today" },
+  },
 } as const;
 
 export type TranslationKey = keyof typeof translations;

@@ -20,6 +20,7 @@ export type ClinicDefinition = {
   locationLabel: string;
   hoursLabel: string;
   accentColor: string;
+  hasBooking: boolean;
 };
 
 export type QueueEntry = {
@@ -54,6 +55,8 @@ export type ClinicState = {
   lastUpdated: string;
   lastSyncedAt?: string;
   queue: QueueEntry[];
+  emergencyClosed?: boolean;
+  emergencyMessage?: string;
 };
 
 export type CreateBookingInput = {

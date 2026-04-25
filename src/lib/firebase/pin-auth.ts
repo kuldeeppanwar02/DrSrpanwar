@@ -30,30 +30,33 @@ export async function verifyPin(
   pin: string,
 ): Promise<{ member: StaffMember; role: StaffRole } | null> {
   const db = getAdminDb();
-  const pinHashed = hashPin(pin);
+  const trimmedPin = pin.trim();
 
-  // Check doctor PIN from env first
-  if (serverEnv.doctorPin && pin.trim() === serverEnv.doctorPin) {
-    return {
-      member: {
-        id: "doctor-master",
-        name: serverEnv.doctorName || "Doctor",
+  // Check each clinic's doctor PIN
+  for (const [clinicId, config] of Object.entries(serverEnv.doctors)) {
+    if (config.pin && trimmedPin === config.pin) {
+      return {
+        member: {
+          id: `doctor-${clinicId}`,
+          name: config.name || "Doctor",
+          role: "doctor",
+          pinHash: hashPin(trimmedPin),
+          phone: "",
+          email: "",
+          designation: "Doctor",
+          clinicAccess: [clinicId as ClinicId],
+          status: "active",
+          joinedAt: new Date().toISOString(),
+          lastLoginAt: new Date().toISOString(),
+          createdBy: "system",
+        },
         role: "doctor",
-        pinHash: pinHashed,
-        phone: "",
-        email: "",
-        designation: "Doctor",
-        clinicAccess: ["surgery", "dental", "pharmacy"],
-        status: "active",
-        joinedAt: new Date().toISOString(),
-        lastLoginAt: new Date().toISOString(),
-        createdBy: "system",
-      },
-      role: "doctor",
-    };
+      };
+    }
   }
 
-  // Check staff_members collection
+  // Check staff_members collection in Firestore
+  const pinHashed = hashPin(trimmedPin);
   const snapshot = await db
     .collection("staff_members")
     .where("pinHash", "==", pinHashed)
@@ -73,17 +76,28 @@ export async function verifyPin(
   return { member, role: member.role };
 }
 
-export async function listStaffMembers(): Promise<StaffMember[]> {
+export async function listStaffMembers(
+  clinicFilter?: ClinicId,
+): Promise<StaffMember[]> {
   const db = getAdminDb();
   const snapshot = await db
     .collection("staff_members")
     .orderBy("joinedAt", "desc")
     .get();
 
-  return snapshot.docs.map((doc) => ({
+  const members = snapshot.docs.map((doc) => ({
     id: doc.id,
     ...(doc.data() as Omit<StaffMember, "id">),
   }));
+
+  // If clinicFilter provided, only return staff with access to that clinic
+  if (clinicFilter) {
+    return members.filter(
+      (m) => m.clinicAccess && m.clinicAccess.includes(clinicFilter),
+    );
+  }
+
+  return members;
 }
 
 export async function createStaffMember(

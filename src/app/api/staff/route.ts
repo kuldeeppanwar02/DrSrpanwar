@@ -1,9 +1,12 @@
 import { jsonError } from "@/app/api/api-helpers";
 import { listStaffMembers, createStaffMember } from "@/lib/firebase/pin-auth";
+import type { ClinicId } from "@/features/clinic/types";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const members = await listStaffMembers();
+    const { searchParams } = new URL(request.url);
+    const clinicFilter = searchParams.get("clinic") as ClinicId | null;
+    const members = await listStaffMembers(clinicFilter || undefined);
     return Response.json({ members });
   } catch (error) {
     return jsonError(error);
