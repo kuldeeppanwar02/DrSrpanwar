@@ -23,6 +23,7 @@ import { CLINICS, buildClinicHref } from "@/features/clinic/catalog";
 import { getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
+import { type TranslationKey } from "@/i18n/translations";
 import { getStaffSession } from "@/components/navbar";
 import type { ClinicDefinition } from "@/features/clinic/types";
 
@@ -295,7 +296,7 @@ function FocusedClinicCard({
   clinic: ClinicDefinition;
   activeClinicId: string;
   isLoggedIn: boolean;
-  t: (ns: string, key: string) => string;
+  t: (section: TranslationKey, key: string) => string;
 }) {
   return (
     <div className="card card-active fade-up overflow-hidden">
