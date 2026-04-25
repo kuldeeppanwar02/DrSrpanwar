@@ -2,6 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import {
+  CalendarCheck,
+  Ticket,
+  Search,
+  Phone,
+  MapPin,
+  Clock,
+  Mail,
+  ExternalLink,
+  Activity,
+  Users,
+  CheckCircle2,
+} from "lucide-react";
 import { CLINICS, buildClinicHref } from "@/features/clinic/catalog";
 import { getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
@@ -29,27 +42,30 @@ export default function HomePage() {
     <div className="page-shell">
       {/* Emergency Banner */}
       {state.emergencyClosed && (
-        <div className="bg-[rgba(182,93,54,0.12)] border-b border-[rgba(182,93,54,0.2)]">
+        <div className="bg-[var(--danger-soft)] border-b border-[rgba(192,57,43,0.15)]">
           <div className="section-shell py-3 text-center">
-            <p className="text-sm font-semibold text-[#8b4626]">
+            <p className="text-sm font-semibold text-[var(--danger)]">
               ⚠️ {t("emergency", "closedTitle")} — {activeClinic.shortName}
             </p>
-            <p className="mt-1 text-xs text-[rgba(139,70,38,0.8)]">
+            <p className="mt-1 text-xs text-[rgba(192,57,43,0.7)]">
               {state.emergencyMessage || t("emergency", "defaultMessage")}
             </p>
           </div>
         </div>
       )}
 
-      {/* Hero — different for Doctor/Staff vs Patient */}
-      <section className="section-shell pt-8 pb-6">
+      {/* ═══ Hero Section ═══ */}
+      <section className="section-shell pt-8 pb-4">
         <div className="fade-up text-center">
-          <h1 className="display-type text-3xl text-[var(--accent-strong)] sm:text-4xl">
+          <p className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--accent-strong)]">
+            <Activity className="h-3 w-3" />
+            {isOnline ? t("home", "syncOnline") : t("home", "syncOffline")}
+          </p>
+          <h1 className="display-type mt-4 text-3xl text-[var(--accent-strong)] sm:text-4xl balance-text">
             {t("common", "appName")}
           </h1>
 
           {isLoggedIn ? (
-            /* Doctor/Staff: Clean welcome — nav is in the top icon bar */
             <div className="mt-3">
               <p className="text-sm text-[rgba(19,49,58,0.65)]">
                 {t("staff", "welcomeBack")}, <strong>{session?.name}</strong>
@@ -59,30 +75,34 @@ export default function HomePage() {
               </p>
             </div>
           ) : (
-            /* Patient: Booking actions */
             <>
-              <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-[rgba(19,49,58,0.7)]">
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-[rgba(19,49,58,0.65)] balance-text">
                 {t("home", "tagline")}
               </p>
+
+              {/* CTA Buttons */}
               <div className="mt-6 flex flex-wrap justify-center gap-3">
                 {activeClinic.hasBooking && (
                   <Link
                     href={buildClinicHref("/book", activeClinicId)}
-                    className="focus-ring rounded-full bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+                    className="btn btn-primary btn-lg"
                   >
+                    <CalendarCheck className="h-4 w-4" />
                     {t("home", "bookBtn")}
                   </Link>
                 )}
                 <Link
                   href={buildClinicHref("/walkin", activeClinicId)}
-                  className="focus-ring rounded-full bg-[var(--warm)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8b4626]"
+                  className="btn btn-warm btn-lg"
                 >
+                  <Ticket className="h-4 w-4" />
                   {activeClinic.hasBooking ? t("home", "walkinBtn") : t("pharmacy", "pickupToken")}
                 </Link>
                 <Link
                   href={buildClinicHref("/status", activeClinicId)}
-                  className="focus-ring rounded-full border border-[var(--line-strong)] px-5 py-2.5 text-sm font-semibold transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+                  className="btn btn-outline btn-lg"
                 >
+                  <Search className="h-4 w-4" />
                   {t("home", "checkStatus")}
                 </Link>
               </div>
@@ -91,52 +111,76 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Queue Stats + Clinics */}
+      {/* ═══ Queue + Clinics Grid ═══ */}
       <section className="section-shell grid gap-6 pb-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        {/* Left — Clinic Cards (for patients) / Quick Stats (for staff) */}
+        {/* Left — Clinic Cards */}
         <div>
           {!isLoggedIn && (
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
               {t("home", "threeClinicPortal")}
             </p>
           )}
-          <div className={`mt-4 grid gap-3 ${isLoggedIn ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+          <div className={`mt-4 grid gap-3 stagger-children ${isLoggedIn ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
             {CLINICS.map((clinic) => (
               <article
                 key={clinic.id}
-                className={`rounded-2xl border p-4 transition ${
-                  clinic.id === activeClinicId
-                    ? "border-[rgba(15,107,99,0.24)] bg-[rgba(15,107,99,0.06)]"
-                    : "border-[var(--line)] bg-[rgba(255,255,255,0.6)] hover:border-[rgba(15,107,99,0.18)]"
+                className={`card fade-up p-4 transition-all ${
+                  clinic.id === activeClinicId ? "card-active" : ""
                 }`}
               >
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
-                  {clinic.shortName}
-                </p>
+                <div className="flex items-start justify-between">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--accent)]">
+                    {clinic.shortName}
+                  </p>
+                  {clinic.id === activeClinicId && (
+                    <span className="badge badge-in-progress">Active</span>
+                  )}
+                </div>
                 <h3 className="mt-2 text-base font-semibold text-[var(--accent-strong)]">
                   {clinic.title}
                 </h3>
-                <p className="mt-1 text-xs leading-5 text-[rgba(19,49,58,0.65)]">
+                <p className="mt-1 text-xs leading-5 text-[rgba(19,49,58,0.6)]">
                   {clinic.subtitle}
                 </p>
-                <p className="mt-1 text-xs text-[rgba(19,49,58,0.55)]">🕐 {clinic.hoursLabel}</p>
-                <p className="text-xs text-[rgba(19,49,58,0.55)]">📍 {clinic.locationLabel}</p>
-                <p className="text-xs text-[rgba(19,49,58,0.55)]">📞 {clinic.phone}</p>
-                {clinic.email && <p className="text-xs text-[rgba(19,49,58,0.55)]">✉️ {clinic.email}</p>}
+
+                <div className="mt-3 space-y-1.5">
+                  <p className="flex items-center gap-1.5 text-xs text-[rgba(19,49,58,0.55)]">
+                    <Clock className="h-3 w-3 text-[var(--accent)]" /> {clinic.hoursLabel}
+                  </p>
+                  <p className="flex items-center gap-1.5 text-xs text-[rgba(19,49,58,0.55)]">
+                    <MapPin className="h-3 w-3 text-[var(--accent)]" /> {clinic.locationLabel}
+                  </p>
+                  <p className="flex items-center gap-1.5 text-xs text-[rgba(19,49,58,0.55)]">
+                    <Phone className="h-3 w-3 text-[var(--accent)]" /> {clinic.phone}
+                  </p>
+                  {clinic.email && (
+                    <p className="flex items-center gap-1.5 text-xs text-[rgba(19,49,58,0.55)]">
+                      <Mail className="h-3 w-3 text-[var(--accent)]" /> {clinic.email}
+                    </p>
+                  )}
+                </div>
 
                 {!isLoggedIn && (
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {clinic.hasBooking ? (
                       <>
-                        <Link href={buildClinicHref("/book", clinic.id)} className="rounded-full bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-white">
+                        <Link
+                          href={buildClinicHref("/book", clinic.id)}
+                          className="btn btn-primary btn-sm"
+                        >
+                          <CalendarCheck className="h-3 w-3" />
                           {t("nav", "booking")}
                         </Link>
-                        <Link href={buildClinicHref("/walkin", clinic.id)} className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold">
+                        <Link
+                          href={buildClinicHref("/walkin", clinic.id)}
+                          className="btn btn-outline btn-sm"
+                        >
+                          <Ticket className="h-3 w-3" />
                           {t("nav", "walkin")}
                         </Link>
                       </>
                     ) : (
-                      <span className="rounded-full bg-[rgba(52,89,166,0.08)] px-3 py-1 text-xs font-semibold text-[#3459a6]">
+                      <span className="badge badge-booking">
                         {t("pharmacy", "noBookingNeeded")}
                       </span>
                     )}
@@ -147,39 +191,54 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Right — Live Queue */}
-        <div className="fade-up-delay space-y-4">
-          <div className="rounded-2xl bg-[rgba(15,107,99,0.92)] p-5 text-white">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[rgba(255,255,255,0.6)]">
-              {t("home", "currentToken")}
-            </p>
-            <p className="display-type mt-2 text-5xl">
-              {summary.current?.token ?? `${activeClinic.prefix}-000`}
-            </p>
-            <p className="mt-2 text-sm text-[rgba(255,255,255,0.7)]">
-              {summary.current?.name ?? t("home", "queueStart")}
-            </p>
+        {/* Right — Live Queue Status */}
+        <div className="fade-up-delay space-y-3">
+          {/* Current Token — hero card */}
+          <div className="card-elevated overflow-hidden rounded-2xl">
+            <div className="bg-gradient-to-br from-[rgba(15,107,99,0.94)] to-[rgba(8,63,70,0.97)] p-5 text-white">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.24em] text-[rgba(255,255,255,0.6)]">
+                <Activity className="h-3 w-3 animate-pulse-dot" />
+                {t("home", "currentToken")}
+              </p>
+              <p className="display-type mt-3 text-5xl">
+                {summary.current?.token ?? `${activeClinic.prefix}-000`}
+              </p>
+              <p className="mt-2 text-sm text-[rgba(255,255,255,0.7)]">
+                {summary.current?.name ?? t("home", "queueStart")}
+              </p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-[var(--line)] bg-white/70 p-3">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("home", "nextToken")}</p>
-              <p className="mt-1 text-2xl font-semibold">{summary.next?.token ?? "--"}</p>
+          {/* Mini stats */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="card p-3 text-center">
+              <p className="text-[9px] font-semibold uppercase tracking-widest text-[var(--accent)]">
+                {t("home", "nextToken")}
+              </p>
+              <p className="mt-1 text-xl font-bold">{summary.next?.token ?? "--"}</p>
             </div>
-            <div className="rounded-xl border border-[var(--line)] bg-white/70 p-3">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("home", "waiting")}</p>
-              <p className="mt-1 text-2xl font-semibold">{summary.waiting.length}</p>
+            <div className="card p-3 text-center">
+              <p className="text-[9px] font-semibold uppercase tracking-widest text-[var(--accent)]">
+                <Users className="mx-auto mb-0.5 h-3 w-3" />
+                {t("home", "waiting")}
+              </p>
+              <p className="mt-1 text-xl font-bold">{summary.waiting.length}</p>
             </div>
-            <div className="rounded-xl border border-[var(--line)] bg-white/70 p-3">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("queue", "completedCount")}</p>
-              <p className="mt-1 text-2xl font-semibold">
+            <div className="card p-3 text-center">
+              <p className="text-[9px] font-semibold uppercase tracking-widest text-[var(--accent)]">
+                <CheckCircle2 className="mx-auto mb-0.5 h-3 w-3" />
+                {t("queue", "completedCount")}
+              </p>
+              <p className="mt-1 text-xl font-bold text-[var(--success)]">
                 {state.queue.filter((e) => e.status === "done").length}
               </p>
             </div>
           </div>
 
-          <div className="rounded-xl border border-[var(--line)] bg-white/60 p-3 text-xs text-[rgba(19,49,58,0.65)]">
-            <p>
+          {/* Sync indicator */}
+          <div className="card p-3 text-xs text-[rgba(19,49,58,0.6)]">
+            <p className="flex items-center gap-1.5">
+              <span className={`h-2 w-2 rounded-full ${isOnline ? "bg-emerald-500 animate-pulse-dot" : "bg-red-400"}`} />
               {t("common", "clinic")}: <strong>{activeClinic.shortName}</strong> ·{" "}
               {isOnline ? t("home", "syncOnline") : t("home", "syncOffline")}
             </p>
@@ -187,25 +246,40 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Contact + Map — only for patients */}
+      {/* ═══ Contact + Map — Patients only ═══ */}
       {!isLoggedIn && (
         <section className="section-shell pb-10">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-[var(--line)] bg-white/60 p-5">
+            <div className="card p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
                 {t("home", "contact")} · {activeClinic.shortName}
               </p>
-              <div className="mt-3 space-y-1 text-sm text-[rgba(19,49,58,0.7)]">
-                <p>📍 {activeClinic.locationLabel}</p>
-                <p>📞 {activeClinic.phone}</p>
-                {activeClinic.email && <p>✉️ {activeClinic.email}</p>}
-                <p>🕐 {activeClinic.hoursLabel}</p>
+              <div className="mt-4 space-y-2.5">
+                <p className="flex items-center gap-2.5 text-sm text-[rgba(19,49,58,0.7)]">
+                  <MapPin className="h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
+                  {activeClinic.locationLabel}
+                </p>
+                <p className="flex items-center gap-2.5 text-sm text-[rgba(19,49,58,0.7)]">
+                  <Phone className="h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
+                  {activeClinic.phone}
+                </p>
+                {activeClinic.email && (
+                  <p className="flex items-center gap-2.5 text-sm text-[rgba(19,49,58,0.7)]">
+                    <Mail className="h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
+                    {activeClinic.email}
+                  </p>
+                )}
+                <p className="flex items-center gap-2.5 text-sm text-[rgba(19,49,58,0.7)]">
+                  <Clock className="h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
+                  {activeClinic.hoursLabel}
+                </p>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-2">
                 <a
                   href={`tel:+91${activeClinic.phone}`}
-                  className="focus-ring inline-flex rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white"
+                  className="btn btn-primary btn-sm"
                 >
+                  <Phone className="h-3 w-3" />
                   {t("home", "callNow")}
                 </a>
                 {activeClinic.mapUrl && (
@@ -213,15 +287,16 @@ export default function HomePage() {
                     href={activeClinic.mapUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="focus-ring inline-flex rounded-full border border-[var(--line-strong)] px-4 py-2 text-sm font-semibold"
+                    className="btn btn-outline btn-sm"
                   >
-                    📍 Google Maps
+                    <ExternalLink className="h-3 w-3" />
+                    Google Maps
                   </a>
                 )}
               </div>
             </div>
             {activeClinic.mapUrl ? (
-              <div className="overflow-hidden rounded-2xl border border-[var(--line)]">
+              <div className="card overflow-hidden">
                 <iframe
                   title={`${activeClinic.title} map`}
                   src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3574.0!2d70.905228!3d26.9126519!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3947bf85998998d1%3A0x9b5b327f625d9421!2sDR%20SATTARAM%20PANWAR!5e0!3m2!1sen!2sin!4v1"
@@ -232,14 +307,16 @@ export default function HomePage() {
                 />
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-[var(--line)] bg-white/60 p-6 text-center">
-                <p className="text-3xl">🏥</p>
-                <p className="mt-2 text-sm font-semibold text-[var(--accent-strong)]">{activeClinic.title}</p>
+              <div className="card flex flex-col items-center justify-center p-6 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-soft)]">
+                  <MapPin className="h-6 w-6 text-[var(--accent)]" />
+                </div>
+                <p className="mt-3 text-sm font-semibold text-[var(--accent-strong)]">{activeClinic.title}</p>
                 <p className="mt-1 text-xs leading-5 text-[rgba(19,49,58,0.6)]">{activeClinic.subtitle}</p>
                 {!activeClinic.hasBooking && (
-                  <p className="mt-3 rounded-full bg-[rgba(52,89,166,0.08)] px-3 py-1 text-xs font-semibold text-[#3459a6]">
+                  <span className="badge badge-booking mt-3">
                     {t("pharmacy", "noBookingNeeded")}
-                  </p>
+                  </span>
                 )}
               </div>
             )}

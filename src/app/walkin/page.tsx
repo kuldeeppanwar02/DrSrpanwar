@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { Ticket, User, Phone, Share2, Eye, AlertTriangle, Pill, Loader2, CheckCircle2 } from "lucide-react";
 import { buildClinicHref } from "@/features/clinic/catalog";
 import { getEntryPosition, getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
@@ -74,60 +75,49 @@ export default function WalkInPage() {
 
           <div className="mt-8 grid gap-6">
             {/* Form */}
-            <div className="rounded-2xl border border-[var(--line)] bg-white/70 p-5">
+            <div className="card p-5">
               <form className="space-y-4" onSubmit={handleSubmit}>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block">
-                    <span className="mb-1 block text-xs font-semibold text-[rgba(19,49,58,0.7)]">
-                      {t("walkin", "patientName")}
+                    <span className="mb-1.5 block text-xs font-semibold text-[rgba(19,49,58,0.65)]">
+                      <User className="inline h-3 w-3 mr-1" />{t("walkin", "patientName")}
                     </span>
-                    <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-sm outline-none"
-                      placeholder={t("booking", "namePlaceholder")}
-                    />
+                    <input value={name} onChange={(e) => setName(e.target.value)}
+                      className="input" placeholder={t("booking", "namePlaceholder")} />
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-xs font-semibold text-[rgba(19,49,58,0.7)]">
-                      {t("common", "mobile")}
+                    <span className="mb-1.5 block text-xs font-semibold text-[rgba(19,49,58,0.65)]">
+                      <Phone className="inline h-3 w-3 mr-1" />{t("common", "mobile")}
                     </span>
-                    <input
-                      value={mobile}
-                      onChange={(e) => setMobile(e.target.value)}
-                      inputMode="numeric"
-                      className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-sm outline-none"
-                      placeholder={t("booking", "mobilePlaceholder")}
-                    />
+                    <input value={mobile} onChange={(e) => setMobile(e.target.value)}
+                      inputMode="numeric" className="input" placeholder={t("booking", "mobilePlaceholder")} />
                   </label>
                 </div>
 
                 {activeClinicId !== "pharmacy" && (
-                  <label className="flex items-center gap-2 rounded-lg border border-[var(--line)] bg-white/60 px-3 py-2.5 text-sm text-[rgba(19,49,58,0.7)]">
-                    <input
-                      type="checkbox"
-                      checked={requiresPharmacyFollowUp}
+                  <label className="card flex items-center gap-2.5 px-3 py-2.5 text-sm text-[rgba(19,49,58,0.65)] cursor-pointer">
+                    <input type="checkbox" checked={requiresPharmacyFollowUp}
                       onChange={(e) => setRequiresPharmacyFollowUp(e.target.checked)}
-                      className="h-4 w-4"
-                    />
+                      className="h-4 w-4 accent-[var(--accent)]" />
+                    <Pill className="h-4 w-4 text-[var(--accent)]" />
                     {t("walkin", "pharmacyFollowUp")}
                   </label>
                 )}
 
                 {error && (
-                  <p className="rounded-lg bg-[rgba(182,93,54,0.1)] px-3 py-2 text-sm font-semibold text-[#8b4626]">
-                    {error}
-                  </p>
+                  <div className="flex items-center gap-2 rounded-xl bg-[var(--danger-soft)] px-3 py-2">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0 text-[var(--danger)]" />
+                    <p className="text-sm font-medium text-[var(--danger)]">{error}</p>
+                  </div>
                 )}
 
-                <button
-                  type="submit"
-                  className="focus-ring w-full rounded-full bg-[var(--warm)] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8b4626] disabled:opacity-60"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? t("walkin", "generating") : t("walkin", "generateBtn")}
+                <button type="submit" className="btn btn-warm btn-lg w-full justify-center" disabled={isSubmitting}>
+                  {isSubmitting
+                    ? <><Loader2 className="h-4 w-4 animate-spin-slow" /> {t("walkin", "generating")}</>
+                    : <><Ticket className="h-4 w-4" /> {t("walkin", "generateBtn")}</>}
                 </button>
-                <p className="text-center text-xs text-[rgba(19,49,58,0.55)]">
+                <p className="flex items-center justify-center gap-1.5 text-center text-xs text-[rgba(19,49,58,0.5)]">
+                  <span className={`h-2 w-2 rounded-full ${isOnline ? "bg-emerald-500 animate-pulse-dot" : "bg-red-400"}`} />
                   {isOnline ? t("walkin", "onlineMode") : t("walkin", "offlineMode")}
                 </p>
               </form>
@@ -135,46 +125,53 @@ export default function WalkInPage() {
 
             {/* Token Result */}
             {confirmation ? (
-              <div className="fade-up rounded-2xl bg-[rgba(19,49,58,0.94)] p-6 text-center text-white">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[rgba(255,255,255,0.6)]">
-                  {t("walkin", "yourToken")}
-                </p>
-                <p className="display-type mt-3 text-6xl">{confirmation.token}</p>
-                <div className="mt-4 space-y-1 text-sm text-[rgba(255,255,255,0.7)]">
-                  <p>{t("walkin", "referenceId")}: <strong>{confirmation.bookingId}</strong></p>
-                  <p>{t("walkin", "estimatedWait")}: <strong>{confirmation.waitMinutes} {t("booking", "minutes")}</strong></p>
-                  <p className="text-xs">
-                    {confirmation.syncState === "pending" ? t("booking", "pending") : t("booking", "synced")}
+              <div className="fade-up card-elevated overflow-hidden rounded-2xl">
+                <div className="bg-gradient-to-br from-[rgba(19,49,58,0.94)] to-[rgba(8,42,51,0.98)] p-6 text-center text-white">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(255,255,255,0.12)]">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                  <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.24em] text-[rgba(255,255,255,0.55)]">
+                    {t("walkin", "yourToken")}
                   </p>
-                </div>
-                {syncInFlight && (
-                  <p className="mt-2 text-xs font-semibold text-[rgba(255,255,255,0.8)]">{t("home", "syncing")}...</p>
-                )}
-                <p className="mt-4 rounded-lg bg-[rgba(235,193,125,0.15)] px-3 py-2 text-xs font-semibold">
-                  {t("walkin", "noteToken")}
-                </p>
-                <div className="mt-4 flex flex-wrap justify-center gap-3">
-                  <a
-                    href={`https://wa.me/?text=${encodeURIComponent(
-                      `🏥 मेरा वॉक-इन टोकन!\n\n📋 टोकन: ${confirmation.token}\n🏥 क्लिनिक: ${activeClinic.shortName}\n⏱️ Wait: ~${confirmation.waitMinutes} min\n\nPanwar SmartCare Hub`
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white"
-                  >
-                    {t("whatsapp", "shareBtn")}
-                  </a>
-                  <Link
-                    href={buildClinicHref("/status", activeClinicId)}
-                    className="rounded-full border border-[rgba(255,255,255,0.2)] px-4 py-2 text-sm font-semibold"
-                  >
-                    {t("walkin", "checkQueue")}
-                  </Link>
+                  <p className="display-type mt-2 text-6xl">{confirmation.token}</p>
+                  <div className="mt-4 space-y-1 text-sm text-[rgba(255,255,255,0.65)]">
+                    <p>{t("walkin", "referenceId")}: <strong>{confirmation.bookingId}</strong></p>
+                    <p>{t("walkin", "estimatedWait")}: <strong>{confirmation.waitMinutes} {t("booking", "minutes")}</strong></p>
+                    <span className={`badge ${confirmation.syncState === "pending" ? "badge-waiting" : "badge-done"}`}>
+                      {confirmation.syncState === "pending" ? t("booking", "pending") : t("booking", "synced")}
+                    </span>
+                  </div>
+                  {syncInFlight && (
+                    <p className="mt-2 flex items-center justify-center gap-1.5 text-xs font-semibold text-[rgba(255,255,255,0.8)]">
+                      <Loader2 className="h-3 w-3 animate-spin-slow" /> {t("home", "syncing")}...
+                    </p>
+                  )}
+                  <div className="mt-4 flex items-center gap-2 rounded-xl bg-[rgba(235,193,125,0.12)] px-3 py-2">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0 text-[var(--gold)]" />
+                    <p className="text-xs font-medium text-left">{t("walkin", "noteToken")}</p>
+                  </div>
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    <a
+                      href={`https://wa.me/?text=${encodeURIComponent(
+                        `🏥 मेरा वॉक-इन टोकन!\n\n📋 टोकन: ${confirmation.token}\n🏥 क्लिनिक: ${activeClinic.shortName}\n⏱️ Wait: ~${confirmation.waitMinutes} min\n\nPanwar SmartCare Hub`
+                      )}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="btn btn-sm" style={{background:'#25D366',color:'white'}}>
+                      <Share2 className="h-3 w-3" /> {t("whatsapp", "shareBtn")}
+                    </a>
+                    <Link href={buildClinicHref("/status", activeClinicId)}
+                      className="btn btn-sm" style={{borderColor:'rgba(255,255,255,0.2)',color:'white'}}>
+                      <Eye className="h-3 w-3" /> {t("walkin", "checkQueue")}
+                    </Link>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-[var(--line-strong)] bg-white/40 p-5 text-center text-sm text-[rgba(19,49,58,0.55)]">
-                {t("walkin", "yourToken")} — {t("common", "loading").replace("...", "")}
+              <div className="card flex flex-col items-center justify-center border-dashed p-6 text-center">
+                <Ticket className="h-8 w-8 text-[rgba(19,49,58,0.18)]" />
+                <p className="mt-2 text-sm text-[rgba(19,49,58,0.45)]">
+                  {t("walkin", "yourToken")} — {t("common", "loading").replace("...", "")}
+                </p>
               </div>
             )}
           </div>

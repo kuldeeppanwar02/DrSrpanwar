@@ -2,6 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import {
+  PlayCircle,
+  CheckCircle2,
+  PauseCircle,
+  SkipForward,
+  CalendarClock,
+  UserCircle,
+  Inbox,
+} from "lucide-react";
 import { buildClinicHref } from "@/features/clinic/catalog";
 import { getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useLiveQueuePolling } from "@/features/clinic/hooks/use-live-queue-polling";
@@ -55,8 +64,8 @@ export default function LivePage() {
             </div>
             <div className="flex items-center gap-3">
               {isLoggedIn && (
-                <span className="rounded-full bg-[rgba(255,255,255,0.1)] px-3 py-1 text-xs font-semibold">
-                  👤 {session?.name}
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(255,255,255,0.1)] px-3 py-1 text-xs font-semibold">
+                  <UserCircle className="h-3.5 w-3.5" /> {session?.name}
                 </span>
               )}
               <p className="text-xs text-[rgba(255,255,255,0.5)]">
@@ -104,37 +113,29 @@ export default function LivePage() {
             {/* Doctor/Staff Controls */}
             {isLoggedIn && (
               <div className="mt-6 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="rounded-full bg-[rgba(103,237,170,0.2)] px-5 py-2 text-sm font-semibold text-[#67edaa] transition hover:bg-[rgba(103,237,170,0.3)]"
-                  onClick={() => void runAction(async () => { await advanceQueue(); })}
-                >
-                  ▶ {t("staff", "advanceBtn")}
+                <button type="button"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(103,237,170,0.2)] px-5 py-2 text-sm font-semibold text-[#67edaa] transition hover:bg-[rgba(103,237,170,0.3)] active:scale-95"
+                  onClick={() => void runAction(async () => { await advanceQueue(); })}>
+                  <PlayCircle className="h-4 w-4" /> {t("staff", "advanceBtn")}
                 </button>
                 {isDoctor && current && (
                   <>
-                    <button
-                      type="button"
-                      className="rounded-full bg-[rgba(31,122,84,0.4)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(31,122,84,0.6)]"
-                      onClick={() => void runAction(async () => { await updateQueueStatus(current.id, "done"); })}
-                    >
-                      ✓ {t("staff", "doneBtn")}
+                    <button type="button"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(31,122,84,0.4)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(31,122,84,0.6)] active:scale-95"
+                      onClick={() => void runAction(async () => { await updateQueueStatus(current.id, "done"); })}>
+                      <CheckCircle2 className="h-4 w-4" /> {t("staff", "doneBtn")}
                     </button>
-                    <button
-                      type="button"
-                      className="rounded-full bg-[rgba(255,255,255,0.08)] px-4 py-2 text-sm font-semibold text-[rgba(255,255,255,0.7)] transition hover:bg-[rgba(255,255,255,0.15)]"
+                    <button type="button"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(255,255,255,0.08)] px-4 py-2 text-sm font-semibold text-[rgba(255,255,255,0.7)] transition hover:bg-[rgba(255,255,255,0.15)] active:scale-95"
                       onClick={() => void runAction(async () => {
                         await updateQueueStatus(current.id, current.status === "hold" ? "waiting" : "hold");
-                      })}
-                    >
-                      {current.status === "hold" ? t("staff", "resumeBtn") : t("staff", "holdBtn")}
+                      })}>
+                      <PauseCircle className="h-4 w-4" /> {current.status === "hold" ? t("staff", "resumeBtn") : t("staff", "holdBtn")}
                     </button>
-                    <button
-                      type="button"
-                      className="rounded-full bg-[rgba(182,93,54,0.2)] px-4 py-2 text-sm font-semibold text-[rgba(255,180,140,0.9)] transition hover:bg-[rgba(182,93,54,0.3)]"
-                      onClick={() => void runAction(async () => { await updateQueueStatus(current.id, "skipped"); })}
-                    >
-                      ⏭ {t("staff", "skipBtn")}
+                    <button type="button"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(182,93,54,0.2)] px-4 py-2 text-sm font-semibold text-[rgba(255,180,140,0.9)] transition hover:bg-[rgba(182,93,54,0.3)] active:scale-95"
+                      onClick={() => void runAction(async () => { await updateQueueStatus(current.id, "skipped"); })}>
+                      <SkipForward className="h-4 w-4" /> {t("staff", "skipBtn")}
                     </button>
                   </>
                 )}
@@ -175,19 +176,15 @@ export default function LivePage() {
                     {/* Doctor inline actions on each waiting entry */}
                     {isDoctor && (
                       <div className="flex gap-1">
-                        <button
-                          type="button"
-                          className="rounded-full bg-[rgba(103,237,170,0.15)] px-2 py-0.5 text-[10px] font-semibold text-[#67edaa]"
-                          onClick={() => void runAction(async () => { await updateQueueStatus(entry.id, "in-progress"); })}
-                        >
-                          {t("staff", "callNow")}
+                        <button type="button"
+                          className="inline-flex items-center gap-1 rounded-full bg-[rgba(103,237,170,0.15)] px-2 py-0.5 text-[10px] font-semibold text-[#67edaa] active:scale-95"
+                          onClick={() => void runAction(async () => { await updateQueueStatus(entry.id, "in-progress"); })}>
+                          <PlayCircle className="h-3 w-3" /> {t("staff", "callNow")}
                         </button>
-                        <button
-                          type="button"
-                          className="rounded-full bg-[rgba(182,93,54,0.15)] px-2 py-0.5 text-[10px] font-semibold text-[rgba(255,180,140,0.9)]"
-                          onClick={() => void runAction(async () => { await rescheduleQueueEntry(entry.id); })}
-                        >
-                          {t("queue", "shiftToTomorrow")}
+                        <button type="button"
+                          className="inline-flex items-center gap-1 rounded-full bg-[rgba(182,93,54,0.15)] px-2 py-0.5 text-[10px] font-semibold text-[rgba(255,180,140,0.9)] active:scale-95"
+                          onClick={() => void runAction(async () => { await rescheduleQueueEntry(entry.id); })}>
+                          <CalendarClock className="h-3 w-3" /> {t("queue", "shiftToTomorrow")}
                         </button>
                       </div>
                     )}
@@ -197,9 +194,12 @@ export default function LivePage() {
               ))}
 
               {summary.waiting.length === 0 && (
-                <p className="py-4 text-center text-sm text-[rgba(255,255,255,0.4)]">
-                  {t("staff", "noPatients")}
-                </p>
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <Inbox className="h-8 w-8 text-[rgba(255,255,255,0.15)]" />
+                  <p className="mt-2 text-sm text-[rgba(255,255,255,0.35)]">
+                    {t("staff", "noPatients")}
+                  </p>
+                </div>
               )}
             </div>
           </aside>

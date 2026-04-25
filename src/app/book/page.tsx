@@ -2,6 +2,19 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import {
+  CalendarCheck,
+  Clock,
+  User,
+  Phone,
+  CheckCircle2,
+  Share2,
+  Eye,
+  PlusCircle,
+  AlertTriangle,
+  Pill,
+  Loader2,
+} from "lucide-react";
 import { buildClinicHref } from "@/features/clinic/catalog";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
@@ -75,29 +88,31 @@ export default function BookPage() {
       <div className="page-shell">
         <div className="section-shell flex min-h-[50vh] items-center justify-center py-10">
           <div className="mx-auto max-w-md text-center">
-            <p className="text-4xl">💊</p>
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-soft)]">
+              <Pill className="h-6 w-6 text-[var(--accent)]" />
+            </div>
             <h1 className="display-type mt-4 text-xl text-[var(--accent-strong)]">
               {t("pharmacy", "infoTitle")}
             </h1>
-            <p className="mt-3 text-sm text-[rgba(19,49,58,0.65)]">
+            <p className="mt-3 text-sm text-[rgba(19,49,58,0.6)]">
               {t("pharmacy", "noBookingNeeded")}
             </p>
-            <div className="mt-4 rounded-xl border border-[var(--line)] bg-white/70 p-4 text-left text-sm text-[rgba(19,49,58,0.7)]">
-              <p>📍 {activeClinic.locationLabel}</p>
-              <p>🕐 {activeClinic.hoursLabel}</p>
-              <p>📞 {activeClinic.phone}</p>
+            <div className="card mt-4 p-4 text-left space-y-2">
+              <p className="flex items-center gap-2 text-sm text-[rgba(19,49,58,0.65)]">
+                <Clock className="h-3.5 w-3.5 text-[var(--accent)]" /> {activeClinic.locationLabel}
+              </p>
+              <p className="flex items-center gap-2 text-sm text-[rgba(19,49,58,0.65)]">
+                <Clock className="h-3.5 w-3.5 text-[var(--accent)]" /> {activeClinic.hoursLabel}
+              </p>
+              <p className="flex items-center gap-2 text-sm text-[rgba(19,49,58,0.65)]">
+                <Phone className="h-3.5 w-3.5 text-[var(--accent)]" /> {activeClinic.phone}
+              </p>
             </div>
             <div className="mt-5 flex flex-wrap justify-center gap-3">
-              <Link
-                href={buildClinicHref("/walkin", activeClinicId)}
-                className="rounded-full bg-[var(--warm)] px-5 py-2.5 text-sm font-semibold text-white"
-              >
+              <Link href={buildClinicHref("/walkin", activeClinicId)} className="btn btn-warm btn-lg">
                 {t("pharmacy", "pickupToken")}
               </Link>
-              <Link
-                href={buildClinicHref("/", activeClinicId)}
-                className="rounded-full border border-[var(--line-strong)] px-5 py-2.5 text-sm font-semibold"
-              >
+              <Link href={buildClinicHref("/", activeClinicId)} className="btn btn-outline btn-lg">
                 {t("common", "back")}
               </Link>
             </div>
@@ -234,31 +249,40 @@ export default function BookPage() {
       <div className="page-shell">
         <div className="section-shell py-10">
           <div className="mx-auto max-w-lg">
-            <div className="fade-up rounded-2xl border border-[var(--line)] bg-white/70 p-6 text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--success)]">
-                ✓ {t("booking", "confirmed")}
+            <div className="fade-up card card-elevated p-6 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--success-soft)]">
+                <CheckCircle2 className="h-6 w-6 text-[var(--success)]" />
+              </div>
+              <p className="mt-3 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--success)]">
+                {t("booking", "confirmed")}
               </p>
-              <div className="mt-5 rounded-xl bg-[var(--accent)] p-5 text-white">
-                <p className="text-xs uppercase tracking-[0.24em] text-[rgba(255,255,255,0.65)]">
+              <div className="mt-5 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-strong)] p-5 text-white">
+                <p className="text-[10px] uppercase tracking-[0.24em] text-[rgba(255,255,255,0.6)]">
                   {t("booking", "token")}
                 </p>
                 <p className="display-type mt-2 text-5xl">{confirmation.token}</p>
               </div>
-              <div className="mt-4 space-y-2 text-sm text-[rgba(19,49,58,0.7)]">
+              <div className="mt-4 space-y-1.5 text-sm text-[rgba(19,49,58,0.65)]">
                 <p>{t("booking", "bookingId")}: <strong>{confirmation.bookingId}</strong></p>
-                <p>{confirmation.dayLabel} · {confirmation.slotLabel}</p>
-                <p>{t("common", "clinic")}: <strong>{activeClinic.shortName}</strong></p>
-                <p className="text-xs">
-                  {confirmation.syncState === "pending" ? t("booking", "pending") : t("booking", "synced")}
+                <p className="flex items-center justify-center gap-1.5">
+                  <CalendarCheck className="h-3.5 w-3.5 text-[var(--accent)]" />
+                  {confirmation.dayLabel} · {confirmation.slotLabel}
                 </p>
+                <p>{t("common", "clinic")}: <strong>{activeClinic.shortName}</strong></p>
+                <span className={`badge ${confirmation.syncState === "pending" ? "badge-waiting" : "badge-done"}`}>
+                  {confirmation.syncState === "pending" ? t("booking", "pending") : t("booking", "synced")}
+                </span>
               </div>
               {syncInFlight && (
-                <p className="mt-3 text-xs font-semibold text-[var(--accent)]">{t("home", "syncing")}...</p>
+                <p className="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--accent)]">
+                  <Loader2 className="h-3 w-3 animate-spin-slow" /> {t("home", "syncing")}...
+                </p>
               )}
-              <p className="mt-4 rounded-lg bg-[rgba(182,93,54,0.08)] px-3 py-2 text-xs font-semibold text-[#8b4626]">
-                {t("booking", "screenshotNote")}
-              </p>
-              <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <div className="mt-4 flex items-center gap-2 rounded-xl bg-[var(--warm-soft)] px-3 py-2">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 text-[var(--warm)]" />
+                <p className="text-xs font-medium text-[#8b4626] text-left">{t("booking", "screenshotNote")}</p>
+              </div>
+              <div className="mt-5 flex flex-wrap justify-center gap-2">
                 <a
                   href={buildWhatsAppUrl(
                     activeClinic.shortName,
@@ -268,22 +292,15 @@ export default function BookPage() {
                   )}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1da851]"
+                  className="btn btn-sm" style={{background:'#25D366',color:'white'}}
                 >
-                  {t("whatsapp", "shareBtn")}
+                  <Share2 className="h-3 w-3" /> {t("whatsapp", "shareBtn")}
                 </a>
-                <Link
-                  href={buildClinicHref("/status", activeClinicId)}
-                  className="rounded-full border border-[var(--line-strong)] px-4 py-2 text-sm font-semibold transition hover:border-[var(--accent)]"
-                >
-                  {t("booking", "viewToken")}
+                <Link href={buildClinicHref("/status", activeClinicId)} className="btn btn-outline btn-sm">
+                  <Eye className="h-3 w-3" /> {t("booking", "viewToken")}
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => setConfirmation(null)}
-                  className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white"
-                >
-                  {t("booking", "bookAnother")}
+                <button type="button" onClick={() => setConfirmation(null)} className="btn btn-primary btn-sm">
+                  <PlusCircle className="h-3 w-3" /> {t("booking", "bookAnother")}
                 </button>
               </div>
             </div>
@@ -301,10 +318,11 @@ export default function BookPage() {
             {t("booking", "title")} — {activeClinic.shortName}
           </h1>
 
-          <div className="mt-8 space-y-6">
+            <div className="mt-8 space-y-5">
             {/* Step 1: Day */}
-            <div className="rounded-2xl border border-[var(--line)] bg-white/70 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+            <div className="card p-5">
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.15em] text-[var(--accent)]">
+                <CalendarCheck className="h-3.5 w-3.5" />
                 {t("booking", "step")} 1 · {t("booking", "chooseDay")}
               </p>
               <div className="mt-3 grid grid-cols-2 gap-3">
@@ -330,16 +348,22 @@ export default function BookPage() {
             </div>
 
             {/* Step 2: Slot */}
-            <div className="rounded-2xl border border-[var(--line)] bg-white/70 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+            <div className="card p-5">
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.15em] text-[var(--accent)]">
+                <Clock className="h-3.5 w-3.5" />
                 {t("booking", "step")} 2 · {t("booking", "chooseSlot")}
               </p>
               {loadingSlots ? (
-                <p className="mt-3 text-sm text-[rgba(19,49,58,0.5)]">{t("common", "loading")}</p>
-              ) : currentSlots.length === 0 ? (
-                <p className="mt-3 rounded-lg bg-[rgba(182,93,54,0.08)] px-3 py-2 text-sm text-[#8b4626]">
-                  {t("booking", "closed")} — {dayLabel === "Aaj" ? t("booking", "today") : t("booking", "tomorrow")}
+                <p className="mt-3 flex items-center gap-1.5 text-sm text-[rgba(19,49,58,0.5)]">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin-slow" /> {t("common", "loading")}
                 </p>
+              ) : currentSlots.length === 0 ? (
+                <div className="mt-3 flex items-center gap-2 rounded-xl bg-[var(--warm-soft)] px-3 py-2">
+                  <AlertTriangle className="h-4 w-4 text-[var(--warm)]" />
+                  <p className="text-sm font-medium text-[#8b4626]">
+                    {t("booking", "closed")} — {dayLabel === "Aaj" ? t("booking", "today") : t("booking", "tomorrow")}
+                  </p>
+                </div>
               ) : (
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   {currentSlots.map((slot) => (
@@ -348,8 +372,8 @@ export default function BookPage() {
                       type="button"
                       className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
                         slotLabel === slot
-                          ? "bg-[var(--warm)] text-white"
-                          : "border border-[var(--line)] hover:border-[var(--warm)]"
+                          ? "bg-[var(--warm)] text-white shadow-sm"
+                          : "border border-[var(--line)] hover:border-[var(--warm)] hover:bg-[var(--warm-soft)]"
                       }`}
                       onClick={() => setSlotLabel(slot)}
                     >
@@ -361,62 +385,52 @@ export default function BookPage() {
             </div>
 
             {/* Step 3: Details */}
-            <div className="rounded-2xl border border-[var(--line)] bg-white/70 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+            <div className="card p-5">
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.15em] text-[var(--accent)]">
+                <User className="h-3.5 w-3.5" />
                 {t("booking", "step")} 3 · {t("booking", "patientDetails")}
               </p>
-              <form className="mt-3 space-y-4" onSubmit={handleSubmit}>
+              <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block">
-                    <span className="mb-1 block text-xs font-semibold text-[rgba(19,49,58,0.7)]">
+                    <span className="mb-1.5 block text-xs font-semibold text-[rgba(19,49,58,0.65)]">
                       {t("booking", "patientName")} *
                     </span>
-                    <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-sm outline-none"
-                      placeholder={t("booking", "namePlaceholder")}
-                    />
+                    <input value={name} onChange={(e) => setName(e.target.value)}
+                      className="input" placeholder={t("booking", "namePlaceholder")} />
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-xs font-semibold text-[rgba(19,49,58,0.7)]">
-                      {t("common", "mobile")} <span className="text-[rgba(19,49,58,0.4)] font-normal">(optional)</span>
+                    <span className="mb-1.5 block text-xs font-semibold text-[rgba(19,49,58,0.65)]">
+                      {t("common", "mobile")} <span className="font-normal text-[rgba(19,49,58,0.4)]">(optional)</span>
                     </span>
-                    <input
-                      value={mobile}
-                      onChange={(e) => setMobile(e.target.value)}
-                      inputMode="numeric"
-                      className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-sm outline-none"
-                      placeholder={t("booking", "mobilePlaceholder")}
-                    />
+                    <input value={mobile} onChange={(e) => setMobile(e.target.value)}
+                      inputMode="numeric" className="input" placeholder={t("booking", "mobilePlaceholder")} />
                   </label>
                 </div>
 
-                <label className="flex items-center gap-2 rounded-lg border border-[var(--line)] bg-white/60 px-3 py-2.5 text-sm text-[rgba(19,49,58,0.7)]">
-                  <input
-                    type="checkbox"
-                    checked={requiresPharmacyFollowUp}
+                <label className="card flex items-center gap-2.5 px-3 py-2.5 text-sm text-[rgba(19,49,58,0.65)] cursor-pointer">
+                  <input type="checkbox" checked={requiresPharmacyFollowUp}
                     onChange={(e) => setRequiresPharmacyFollowUp(e.target.checked)}
-                    className="h-4 w-4"
-                  />
+                    className="h-4 w-4 accent-[var(--accent)]" />
+                  <Pill className="h-4 w-4 text-[var(--accent)]" />
                   {t("booking", "pharmacyFollowUp")}
                 </label>
 
                 {error && (
-                  <p className="rounded-lg bg-[rgba(182,93,54,0.1)] px-3 py-2 text-sm font-semibold text-[#8b4626]">
-                    {error}
-                  </p>
+                  <div className="flex items-center gap-2 rounded-xl bg-[var(--danger-soft)] px-3 py-2">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0 text-[var(--danger)]" />
+                    <p className="text-sm font-medium text-[var(--danger)]">{error}</p>
+                  </div>
                 )}
 
                 <div className="flex items-center gap-3">
-                  <button
-                    type="submit"
-                    className="focus-ring rounded-full bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:opacity-60"
-                    disabled={isSubmitting || currentSlots.length === 0}
-                  >
-                    {isSubmitting ? t("common", "loading") : t("booking", "confirmBtn")}
+                  <button type="submit" className="btn btn-primary btn-lg"
+                    disabled={isSubmitting || currentSlots.length === 0}>
+                    {isSubmitting
+                      ? <><Loader2 className="h-4 w-4 animate-spin-slow" /> {t("common", "loading")}</>
+                      : <><CalendarCheck className="h-4 w-4" /> {t("booking", "confirmBtn")}</>}
                   </button>
-                  <span className="text-xs text-[rgba(19,49,58,0.55)]">
+                  <span className="badge badge-booking">
                     {dayLabel === "Aaj" ? t("booking", "today") : t("booking", "tomorrow")} · {slotLabel || "—"}
                   </span>
                 </div>
