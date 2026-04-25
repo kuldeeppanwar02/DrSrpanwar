@@ -58,19 +58,19 @@ export default function StatusPage() {
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value)}
                   inputMode="numeric"
-                  className="input pl-9"
+                  className="input pl-10"
                   placeholder={t("status", "enterMobilePlaceholder")}
                 />
               </div>
-              <button type="submit" className="btn btn-primary">
+              <button type="submit" className="btn btn-primary flex-shrink-0">
                 <Search className="h-4 w-4" />
-                {t("status", "checkBtn")}
+                <span className="hidden sm:inline">{t("status", "checkBtn")}</span>
               </button>
             </form>
           </div>
 
           {/* Queue stats */}
-          <div className="mt-4 grid grid-cols-4 gap-2">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <div className="card-elevated overflow-hidden rounded-xl">
               <div className="bg-gradient-to-br from-[rgba(19,49,58,0.92)] to-[rgba(8,42,51,0.96)] p-3 text-center text-white">
                 <p className="text-[9px] uppercase tracking-widest text-[rgba(255,255,255,0.5)]">
