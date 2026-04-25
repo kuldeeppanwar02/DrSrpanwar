@@ -146,6 +146,8 @@ export default function HomePage() {
                 </p>
                 <p className="mt-1 text-xs text-[rgba(19,49,58,0.55)]">🕐 {clinic.hoursLabel}</p>
                 <p className="text-xs text-[rgba(19,49,58,0.55)]">📍 {clinic.locationLabel}</p>
+                <p className="text-xs text-[rgba(19,49,58,0.55)]">📞 {clinic.phone}</p>
+                {clinic.email && <p className="text-xs text-[rgba(19,49,58,0.55)]">✉️ {clinic.email}</p>}
 
                 {!isLoggedIn && (
                   <div className="mt-3 flex flex-wrap gap-1.5">
@@ -216,39 +218,56 @@ export default function HomePage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border border-[var(--line)] bg-white/60 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
-                {t("home", "contact")}
+                {t("home", "contact")} · {activeClinic.shortName}
               </p>
               <div className="mt-3 space-y-1 text-sm text-[rgba(19,49,58,0.7)]">
-                <p>Qtr No. 1, Behind Poonam Stadium, Officers Colony, Police Line, Jaisalmer - 345001</p>
-                <p>Phone / WhatsApp: 96362 43621</p>
+                <p>📍 {activeClinic.locationLabel}</p>
+                <p>📞 {activeClinic.phone}</p>
+                {activeClinic.email && <p>✉️ {activeClinic.email}</p>}
+                <p>🕐 {activeClinic.hoursLabel}</p>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <a
-                  href="tel:+919636243621"
+                  href={`tel:+91${activeClinic.phone}`}
                   className="focus-ring inline-flex rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white"
                 >
                   {t("home", "callNow")}
                 </a>
-                <a
-                  href="https://maps.app.goo.gl/DjCHEufYs3a6PvS27"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="focus-ring inline-flex rounded-full border border-[var(--line-strong)] px-4 py-2 text-sm font-semibold"
-                >
-                  📍 Google Maps
-                </a>
+                {activeClinic.mapUrl && (
+                  <a
+                    href={activeClinic.mapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="focus-ring inline-flex rounded-full border border-[var(--line-strong)] px-4 py-2 text-sm font-semibold"
+                  >
+                    📍 Google Maps
+                  </a>
+                )}
               </div>
             </div>
-            <div className="overflow-hidden rounded-2xl border border-[var(--line)]">
-              <iframe
-                title="Dr. Satta Ram Panwar Clinic map"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3574.0!2d70.905228!3d26.9126519!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3947bf85998998d1%3A0x9b5b327f625d9421!2sDR%20SATTARAM%20PANWAR!5e0!3m2!1sen!2sin!4v1"
-                className="min-h-[220px] w-full border-0"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                allowFullScreen
-              />
-            </div>
+            {activeClinic.mapUrl ? (
+              <div className="overflow-hidden rounded-2xl border border-[var(--line)]">
+                <iframe
+                  title={`${activeClinic.title} map`}
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3574.0!2d70.905228!3d26.9126519!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3947bf85998998d1%3A0x9b5b327f625d9421!2sDR%20SATTARAM%20PANWAR!5e0!3m2!1sen!2sin!4v1"
+                  className="min-h-[220px] w-full border-0"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-[var(--line)] bg-white/60 p-6 text-center">
+                <p className="text-3xl">🏥</p>
+                <p className="mt-2 text-sm font-semibold text-[var(--accent-strong)]">{activeClinic.title}</p>
+                <p className="mt-1 text-xs leading-5 text-[rgba(19,49,58,0.6)]">{activeClinic.subtitle}</p>
+                {!activeClinic.hasBooking && (
+                  <p className="mt-3 rounded-full bg-[rgba(52,89,166,0.08)] px-3 py-1 text-xs font-semibold text-[#3459a6]">
+                    {t("pharmacy", "noBookingNeeded")}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </section>
       )}

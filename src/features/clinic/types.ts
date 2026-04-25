@@ -17,6 +17,7 @@ export type ClinicDefinition = {
   subtitle: string;
   prefix: string;
   phone: string;
+  email?: string;
   locationLabel: string;
   hoursLabel: string;
   accentColor: string;
