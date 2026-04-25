@@ -5,6 +5,7 @@ import { getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
 import { getStaffSession, setStaffSession, clearStaffSession } from "@/components/navbar";
+import { useToast } from "@/components/toast";
 
 type StaffSessionData = {
   id: string;
@@ -32,7 +33,8 @@ export default function StaffPage() {
     rescheduleQueueEntry,
     updateQueueStatus,
   } = useClinic();
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const { toast } = useToast();
   const summary = useMemo(() => getQueueSummary(clinicState), [clinicState]);
 
   const [session, setSession] = useState<StaffSessionData | null>(null);
@@ -76,7 +78,9 @@ export default function StaffPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.message || t("staff", "invalidPin"));
+        const msg = data.message || t("staff", "invalidPin");
+        setError(msg);
+        toast(msg, "error");
         return;
       }
       const sessionData: StaffSessionData = {
@@ -90,8 +94,10 @@ export default function StaffPage() {
       setSession(sessionData);
       window.dispatchEvent(new Event("staff-session-change"));
       setPin("");
+      toast(`${t("staff", "welcomeBack")}, ${sessionData.name}`, "success");
     } catch {
       setError(t("staff", "invalidPin"));
+      toast(t("staff", "invalidPin"), "error");
     } finally {
       setBusy(false);
     }
@@ -103,12 +109,15 @@ export default function StaffPage() {
     window.dispatchEvent(new Event("staff-session-change"));
   };
 
-  const runAction = async (task: () => Promise<void>) => {
+  const runAction = async (task: () => Promise<void>, successMsg?: string) => {
     setError("");
     try {
       await task();
+      if (successMsg) toast(successMsg, "success");
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Action failed.");
+      const msg = actionError instanceof Error ? actionError.message : "Action failed.";
+      setError(msg);
+      toast(msg, "error");
     }
   };
 
@@ -209,8 +218,59 @@ export default function StaffPage() {
           <div className="mt-4 rounded-lg bg-[rgba(182,93,54,0.08)] px-3 py-2 text-sm text-[#8b4626]">{error}</div>
         )}
 
-        {/* Stats */}
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
+        {/* ─── Daily Summary Card ─── */}
+        <div className="mt-5 rounded-2xl border border-[var(--line)] overflow-hidden">
+          <div className="bg-gradient-to-r from-[rgba(15,107,99,0.92)] to-[rgba(10,78,83,0.95)] px-5 py-3.5 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[rgba(255,255,255,0.55)]">
+                {t("staff", "dailySummary")}
+              </p>
+              <p className="mt-0.5 text-xs text-[rgba(255,255,255,0.7)]">
+                {new Date().toLocaleDateString(lang === "hi" ? "hi-IN" : "en-IN", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="display-type text-3xl text-white">{clinicState.queue.length}</p>
+              <p className="text-[10px] text-[rgba(255,255,255,0.6)]">{t("staff", "totalPatients")}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-px bg-[var(--line)] sm:grid-cols-5">
+            <div className="bg-white/80 px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase text-[#1f7a54]">{t("staff", "checkupDone")}</p>
+              <p className="mt-1 text-xl font-bold text-[#1f7a54]">
+                {clinicState.queue.filter((e) => e.status === "done").length}
+              </p>
+            </div>
+            <div className="bg-white/80 px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase text-[#8b4626]">{t("staff", "skipped")}</p>
+              <p className="mt-1 text-xl font-bold text-[#8b4626]">
+                {clinicState.queue.filter((e) => e.status === "skipped").length}
+              </p>
+            </div>
+            <div className="bg-white/80 px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase text-[var(--accent)]">{t("staff", "waiting")}</p>
+              <p className="mt-1 text-xl font-bold">
+                {clinicState.queue.filter((e) => e.status === "waiting").length}
+              </p>
+            </div>
+            <div className="bg-white/80 px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.55)]">{t("staff", "holdCount")}</p>
+              <p className="mt-1 text-xl font-bold">{summary.holdCount}</p>
+            </div>
+            <div className="bg-white/80 px-4 py-3 col-span-2 sm:col-span-1">
+              <p className="text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.55)]">{t("staff", "bookings")}/{t("staff", "walkins")}</p>
+              <p className="mt-1 text-xl font-bold">{summary.bookings}/{summary.walkIns}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Live Token Stats */}
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div className="rounded-xl bg-[rgba(19,49,58,0.94)] p-4 text-white">
             <p className="text-[10px] uppercase tracking-[0.2em] text-[rgba(255,255,255,0.55)]">{t("staff", "currentToken")}</p>
             <p className="display-type mt-2 text-3xl">{summary.current?.token ?? "--"}</p>
@@ -219,17 +279,9 @@ export default function StaffPage() {
             <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("staff", "nextToken")}</p>
             <p className="mt-2 text-2xl font-semibold">{summary.next?.token ?? "--"}</p>
           </div>
-          <div className="rounded-xl border border-[var(--line)] bg-white/70 p-4">
+          <div className="rounded-xl border border-[var(--line)] bg-white/70 p-4 col-span-2 sm:col-span-1">
             <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("queue", "pendingCount")}</p>
             <p className="mt-2 text-2xl font-semibold">{pendingEntries.length}</p>
-          </div>
-          <div className="rounded-xl border border-[var(--line)] bg-white/70 p-4">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("queue", "completedCount")}</p>
-            <p className="mt-2 text-2xl font-semibold">{completeEntries.length}</p>
-          </div>
-          <div className="rounded-xl border border-[var(--line)] bg-white/70 p-4">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("staff", "bookings")}/{t("staff", "walkins")}</p>
-            <p className="mt-2 text-2xl font-semibold">{summary.bookings}/{summary.walkIns}</p>
           </div>
         </div>
 
@@ -239,7 +291,7 @@ export default function StaffPage() {
           <button
             type="button"
             className="focus-ring rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-            onClick={() => void runAction(async () => { await advanceQueue(); })}
+            onClick={() => void runAction(async () => { await advanceQueue(); }, t("staff", "advanceBtn") + " ✓")}
           >
             {t("staff", "advanceBtn")}
           </button>
@@ -252,7 +304,7 @@ export default function StaffPage() {
                 className="focus-ring rounded-full border border-[var(--line-strong)] px-5 py-2 text-sm font-semibold transition hover:border-[var(--accent)]"
                 onClick={() => {
                   if (confirm(t("staff", "resetConfirm"))) {
-                    void runAction(async () => { await resetClinicState(); });
+                    void runAction(async () => { await resetClinicState(); }, t("staff", "resetQueue") + " ✓");
                   }
                 }}
               >

@@ -213,6 +213,14 @@ export const translations = {
       en: "Doctor or staff — enter your PIN to access dashboard",
     },
     noMobile: { hi: "मोबाइल नहीं", en: "No mobile" },
+    dailySummary: { hi: "आज का सारांश", en: "Today's Summary" },
+    totalPatients: { hi: "कुल मरीज़", en: "Total Patients" },
+    checkupDone: { hi: "चेकअप पूरा", en: "Checkup Done" },
+    skipped: { hi: "स्किप हुए", en: "Skipped" },
+    waiting: { hi: "प्रतीक्षा में", en: "Waiting" },
+    holdCount: { hi: "होल्ड पर", en: "On Hold" },
+    closeClinic: { hi: "क्लिनिक बंद करें", en: "Close Clinic" },
+    openClinic: { hi: "क्लिनिक खोलें", en: "Open Clinic" },
   },
 
   staffMgmt: {
