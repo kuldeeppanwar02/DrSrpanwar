@@ -53,12 +53,12 @@ export default function StatusPage() {
           <div className="mt-6 card p-5">
             <form className="flex gap-3" onSubmit={handleSubmit}>
               <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgba(19,49,58,0.35)]" />
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgba(19,49,58,0.35)]" />
                 <input
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value)}
                   inputMode="numeric"
-                  className="input pl-10"
+                  className="input pl-11"
                   placeholder={t("status", "enterMobilePlaceholder")}
                 />
               </div>
