@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { buildClinicHref } from "@/features/clinic/catalog";
 import { getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
@@ -186,38 +184,13 @@ export default function StaffPage() {
     <div className="page-shell">
       <div className="section-shell py-6">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="display-type text-xl text-[var(--accent-strong)]">
-              {t("staff", "title")} — {activeClinic.shortName}
-            </h1>
-            <p className="mt-1 text-xs text-[rgba(19,49,58,0.6)]">
-              {t("staff", "welcomeBack")}, <strong>{session.name}</strong> ({isDoctor ? t("staff", "doctor") : t("staff", "staffRole")})
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {isDoctor && (
-              <Link
-                href={buildClinicHref("/staff/manage", activeClinicId)}
-                className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold transition hover:border-[var(--accent)]"
-              >
-                {t("nav", "staffMgmt")}
-              </Link>
-            )}
-            <Link
-              href={buildClinicHref("/staff/schedule", activeClinicId)}
-              className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold transition hover:border-[var(--accent)]"
-            >
-              {t("nav", "schedule")}
-            </Link>
-            <button
-              type="button"
-              onClick={logout}
-              className="rounded-full border border-[rgba(182,93,54,0.2)] px-3 py-1.5 text-xs font-semibold text-[#8b4626]"
-            >
-              {t("nav", "logout")}
-            </button>
-          </div>
+        <div>
+          <h1 className="display-type text-xl text-[var(--accent-strong)]">
+            {t("staff", "title")} — {activeClinic.shortName}
+          </h1>
+          <p className="mt-1 text-xs text-[rgba(19,49,58,0.6)]">
+            {t("staff", "welcomeBack")}, <strong>{session.name}</strong> ({isDoctor ? t("staff", "doctor") : t("staff", "staffRole")})
+          </p>
         </div>
 
         {/* Emergency Banner */}

@@ -51,7 +51,6 @@ export function Navbar() {
     setSession(getStaffSession());
     const handleStorage = () => setSession(getStaffSession());
     window.addEventListener("storage", handleStorage);
-    // Custom event for same-tab updates
     window.addEventListener("staff-session-change", handleStorage);
     return () => {
       window.removeEventListener("storage", handleStorage);
@@ -65,36 +64,35 @@ export function Navbar() {
     window.dispatchEvent(new Event("staff-session-change"));
   };
 
-  // When logged in as staff/doctor, hide patient-facing links
-  const patientLinks = session
-    ? [
-        { href: "/", label: t("nav", "home"), icon: "🏠" },
-        { href: "/live", label: t("nav", "live"), icon: "📺" },
-      ]
-    : [
-        { href: "/", label: t("nav", "home"), icon: "🏠" },
-        ...(activeClinic?.hasBooking
-          ? [{ href: "/book", label: t("nav", "booking"), icon: "📋" }]
-          : []),
-        { href: "/walkin", label: t("nav", "walkin"), icon: "🎫" },
-        { href: "/status", label: t("nav", "myToken"), icon: "🔍" },
-        { href: "/live", label: t("nav", "live"), icon: "📺" },
-      ];
+  const isDoctor = session?.role === "doctor";
 
-  const staffLinks = session
+  /* ─── Patient links (used in hamburger menu + desktop nav) ─── */
+  const patientLinks = [
+    { href: "/", label: t("nav", "home"), icon: "🏠" },
+    ...(activeClinic?.hasBooking
+      ? [{ href: "/book", label: t("nav", "booking"), icon: "📋" }]
+      : []),
+    { href: "/walkin", label: t("nav", "walkin"), icon: "🎫" },
+    { href: "/status", label: t("nav", "myToken"), icon: "🔍" },
+    { href: "/live", label: t("nav", "live"), icon: "📺" },
+  ];
+
+  /* ─── Staff/Doctor quick-nav icons (sticky tab bar) ─── */
+  const staffQuickNav = session
     ? [
-        { href: "/staff", label: t("nav", "staff"), icon: "⚙️" },
+        { href: "/", label: t("nav", "home"), icon: "🏠" },
+        { href: "/staff", label: t("nav", "staff"), icon: "📊" },
+        { href: "/live", label: t("nav", "live"), icon: "📺" },
         { href: "/staff/schedule", label: t("nav", "schedule"), icon: "📅" },
-        ...(session.role === "doctor"
+        ...(isDoctor
           ? [{ href: "/staff/manage", label: t("nav", "staffMgmt"), icon: "👥" }]
           : []),
       ]
     : [];
 
-  const allLinks = [...patientLinks, ...staffLinks];
-
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[rgba(247,239,225,0.92)] backdrop-blur-lg">
+      {/* ─── Main bar ─── */}
       <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-3 px-4 py-2.5">
         {/* Logo */}
         <Link
@@ -122,22 +120,24 @@ export function Navbar() {
           ))}
         </div>
 
-        {/* Nav Links — desktop */}
-        <nav className="hidden items-center gap-0.5 lg:flex">
-          {allLinks.map((item) => (
-            <Link
-              key={item.href}
-              href={
-                item.href === "/"
-                  ? `/?clinic=${activeClinicId}`
-                  : buildClinicHref(item.href, activeClinicId)
-              }
-              className="rounded-lg px-2 py-1.5 text-xs font-medium text-[rgba(19,49,58,0.68)] transition hover:bg-[var(--accent-soft)] hover:text-[var(--accent-strong)]"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        {/* Nav Links — desktop (patient only, when NOT logged in) */}
+        {!session && (
+          <nav className="hidden items-center gap-0.5 lg:flex">
+            {patientLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={
+                  item.href === "/"
+                    ? `/?clinic=${activeClinicId}`
+                    : buildClinicHref(item.href, activeClinicId)
+                }
+                className="rounded-lg px-2 py-1.5 text-xs font-medium text-[rgba(19,49,58,0.68)] transition hover:bg-[var(--accent-soft)] hover:text-[var(--accent-strong)]"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        )}
 
         {/* Right controls */}
         <div className="flex items-center gap-2">
@@ -168,7 +168,7 @@ export function Navbar() {
             </Link>
           )}
 
-          {/* Staff name badge — if logged in */}
+          {/* Staff name badge — desktop */}
           {session && (
             <div className="hidden items-center gap-1.5 sm:flex">
               <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent-strong)]">
@@ -184,7 +184,7 @@ export function Navbar() {
             </div>
           )}
 
-          {/* Mobile menu button */}
+          {/* Mobile menu button — only for patients / clinic switcher */}
           <button
             type="button"
             onClick={() => setMenuOpen(!menuOpen)}
@@ -196,7 +196,44 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* ─── Staff/Doctor: Icon Tab Bar (always visible when logged in) ─── */}
+      {session && (
+        <div className="border-t border-[var(--line)] bg-[rgba(19,49,58,0.03)]">
+          <div className="mx-auto flex max-w-[1180px] items-center px-1">
+            <nav className="flex flex-1 items-center justify-around">
+              {staffQuickNav.map((item) => (
+                <Link
+                  key={item.href}
+                  href={
+                    item.href === "/"
+                      ? `/?clinic=${activeClinicId}`
+                      : buildClinicHref(item.href, activeClinicId)
+                  }
+                  className="group flex flex-1 flex-col items-center gap-0.5 py-2 transition active:bg-[var(--accent-soft)]"
+                >
+                  <span className="text-[17px] leading-none">{item.icon}</span>
+                  <span className="text-[10px] font-semibold text-[rgba(19,49,58,0.6)] group-hover:text-[var(--accent-strong)]">
+                    {item.label}
+                  </span>
+                </Link>
+              ))}
+            </nav>
+
+            {/* Mobile: compact logout */}
+            <div className="flex items-center gap-1 border-l border-[var(--line)] pl-2 sm:hidden">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-full border border-[rgba(182,93,54,0.25)] px-2 py-0.5 text-[10px] font-semibold text-[#8b4626]"
+              >
+                {t("nav", "logout")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Mobile Hamburger Menu ─── */}
       {menuOpen && (
         <div className="border-t border-[var(--line)] bg-[rgba(247,239,225,0.98)] px-4 py-3 lg:hidden">
           {/* Clinic switcher — mobile */}
@@ -217,28 +254,30 @@ export function Navbar() {
             ))}
           </div>
 
-          {/* Nav links — mobile */}
-          <div className="flex flex-col gap-0.5">
-            {allLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={
-                  item.href === "/"
-                    ? `/?clinic=${activeClinicId}`
-                    : buildClinicHref(item.href, activeClinicId)
-                }
-                onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[rgba(19,49,58,0.78)] transition hover:bg-[var(--accent-soft)]"
-              >
-                <span className="text-xs">{item.icon}</span>
-                {item.label}
-              </Link>
-            ))}
-          </div>
+          {/* Patient nav links */}
+          {!session && (
+            <div className="flex flex-col gap-0.5">
+              {patientLinks.map((item) => (
+                <Link
+                  key={item.href}
+                  href={
+                    item.href === "/"
+                      ? `/?clinic=${activeClinicId}`
+                      : buildClinicHref(item.href, activeClinicId)
+                  }
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[rgba(19,49,58,0.78)] transition hover:bg-[var(--accent-soft)]"
+                >
+                  <span className="text-xs">{item.icon}</span>
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          )}
 
-          {/* Staff session — mobile */}
+          {/* Staff session info — mobile */}
           {session ? (
-            <div className="mt-3 flex items-center justify-between rounded-lg bg-[var(--accent-soft)] px-3 py-2">
+            <div className="mt-2 flex items-center justify-between rounded-lg bg-[var(--accent-soft)] px-3 py-2">
               <span className="text-xs font-semibold text-[var(--accent-strong)]">
                 {session.role === "doctor" ? "👨‍⚕️" : "👤"} {session.name}
               </span>

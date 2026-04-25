@@ -49,39 +49,14 @@ export default function HomePage() {
           </h1>
 
           {isLoggedIn ? (
-            /* Doctor/Staff: Quick dashboard links */
-            <div className="mt-4">
+            /* Doctor/Staff: Clean welcome — nav is in the top icon bar */
+            <div className="mt-3">
               <p className="text-sm text-[rgba(19,49,58,0.65)]">
-                {t("staff", "welcomeBack")}, <strong>{session?.name}</strong> · {activeClinic.shortName}
+                {t("staff", "welcomeBack")}, <strong>{session?.name}</strong>
               </p>
-              <div className="mt-5 flex flex-wrap justify-center gap-3">
-                <Link
-                  href={buildClinicHref("/staff", activeClinicId)}
-                  className="focus-ring rounded-full bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-                >
-                  {t("nav", "staff")}
-                </Link>
-                <Link
-                  href={buildClinicHref("/live", activeClinicId)}
-                  className="focus-ring rounded-full bg-[rgba(19,49,58,0.9)] px-5 py-2.5 text-sm font-semibold text-white transition"
-                >
-                  {t("nav", "live")}
-                </Link>
-                <Link
-                  href={buildClinicHref("/staff/schedule", activeClinicId)}
-                  className="focus-ring rounded-full border border-[var(--line-strong)] px-5 py-2.5 text-sm font-semibold transition hover:border-[var(--accent)]"
-                >
-                  {t("nav", "schedule")}
-                </Link>
-                {isDoctor && (
-                  <Link
-                    href={buildClinicHref("/staff/manage", activeClinicId)}
-                    className="focus-ring rounded-full border border-[var(--line-strong)] px-5 py-2.5 text-sm font-semibold transition hover:border-[var(--accent)]"
-                  >
-                    {t("nav", "staffMgmt")}
-                  </Link>
-                )}
-              </div>
+              <p className="mt-1 text-xs text-[rgba(19,49,58,0.45)]">
+                {isDoctor ? t("staff", "doctor") : t("staff", "staffRole")} · {activeClinic.title}
+              </p>
             </div>
           ) : (
             /* Patient: Booking actions */
