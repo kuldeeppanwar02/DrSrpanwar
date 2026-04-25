@@ -1,5 +1,6 @@
-import { isRemoteSyncEnabled } from "@/config/env";
+import { hasRemoteSyncConfig } from "@/config/env";
 import { apiClient } from "@/services/api";
+import { DEFAULT_CLINIC_ID } from "@/features/clinic/catalog";
 import {
   advanceQueueState,
   createBookingState,
@@ -13,6 +14,7 @@ import {
 import { readClinicState, writeClinicState } from "@/features/clinic/storage/indexed-db";
 import type {
   ClinicState,
+  ClinicId,
   CreateBookingInput,
   CreateWalkInInput,
   QueueStatus,
@@ -23,46 +25,168 @@ async function persistState(state: ClinicState) {
   return state;
 }
 
-export const clinicService = {
-  async loadState() {
-    const state = await readClinicState();
+function sortQueueState(state: ClinicState) {
+  return {
+    ...state,
+    queue: [...state.queue].sort((first, second) => {
+      const firstOrder = first.queueOrder ?? Number.MAX_SAFE_INTEGER;
+      const secondOrder = second.queueOrder ?? Number.MAX_SAFE_INTEGER;
 
-    if (state.queue.length === 0) {
-      const seeded = createInitialClinicState();
+      if (firstOrder === secondOrder) {
+        return first.createdAt.localeCompare(second.createdAt);
+      }
+
+      return firstOrder - secondOrder;
+    }),
+  };
+}
+
+function mergePendingEntries(remoteState: ClinicState, localState: ClinicState) {
+  const existingRequestIds = new Set(
+    remoteState.queue.map((entry) => entry.clientRequestId),
+  );
+  const pendingEntries = localState.queue.filter(
+    (entry) =>
+      entry.syncState === "pending" && !existingRequestIds.has(entry.clientRequestId),
+  );
+
+  if (pendingEntries.length === 0) {
+    return sortQueueState(remoteState);
+  }
+
+  return sortQueueState({
+    ...remoteState,
+    queue: [...remoteState.queue, ...pendingEntries],
+  });
+}
+
+function remoteStateUrl(clinicId: ClinicId) {
+  return `/api/clinics/${clinicId}/state`;
+}
+
+export const clinicService = {
+  async loadState(
+    clinicId: ClinicId = DEFAULT_CLINIC_ID,
+    options: { online?: boolean } = {},
+  ) {
+    const localState = await readClinicState(clinicId);
+    const online = options.online ?? true;
+
+    if (online && hasRemoteSyncConfig()) {
+      try {
+        const response = await apiClient.get<{ state: ClinicState }>(remoteStateUrl(clinicId));
+        const mergedState = mergePendingEntries(response.data.state, localState);
+        await writeClinicState(mergedState);
+        return mergedState;
+      } catch {
+        return sortQueueState(localState);
+      }
+    }
+
+    if (localState.queue.length === 0) {
+      const seeded = createInitialClinicState(clinicId);
       await writeClinicState(seeded);
       return seeded;
     }
 
-    return state;
+    return sortQueueState(localState);
   },
 
-  async resetState() {
-    return persistState(createResetState());
+  async resetState(
+    clinicId: ClinicId = DEFAULT_CLINIC_ID,
+    options: { online?: boolean } = {},
+  ) {
+    const online = options.online ?? true;
+
+    if (online && hasRemoteSyncConfig()) {
+      try {
+        const response = await apiClient.post<{ state: ClinicState }>(
+          `/api/clinics/${clinicId}/reset`,
+        );
+
+        return persistState(sortQueueState(response.data.state));
+      } catch {
+        // Fall through to local reset if remote reset fails.
+      }
+    }
+
+    return persistState(createResetState(clinicId));
   },
 
   async createBooking(input: CreateBookingInput, options: { online: boolean }) {
-    const state = await readClinicState();
-    const nextState = createBookingState(state, input, options);
-    return persistState(nextState);
+    const createdAt = new Date().toISOString();
+    const clientRequestId = input.clientRequestId ?? `request-${crypto.randomUUID()}`;
+    const nextInput = {
+      ...input,
+      clientRequestId,
+      createdAt,
+    };
+
+    if (options.online && hasRemoteSyncConfig()) {
+      try {
+        const response = await apiClient.post<{ state: ClinicState }>(
+          `/api/clinics/${input.clinicId}/booking`,
+          nextInput,
+        );
+
+        return persistState(sortQueueState(response.data.state));
+      } catch {
+        // If network is flaky, keep the booking locally and sync later.
+      }
+    }
+
+    const state = await readClinicState(input.clinicId);
+    const nextState = createBookingState(state, nextInput, { online: false });
+    return persistState(sortQueueState(nextState));
   },
 
   async createWalkIn(input: CreateWalkInInput, options: { online: boolean }) {
-    const state = await readClinicState();
-    const nextState = createWalkInState(state, input, options);
-    return persistState(nextState);
+    const createdAt = new Date().toISOString();
+    const clientRequestId = input.clientRequestId ?? `request-${crypto.randomUUID()}`;
+    const nextInput = {
+      ...input,
+      clientRequestId,
+      createdAt,
+    };
+
+    if (options.online && hasRemoteSyncConfig()) {
+      try {
+        const response = await apiClient.post<{ state: ClinicState }>(
+          `/api/clinics/${input.clinicId}/walkin`,
+          nextInput,
+        );
+
+        return persistState(sortQueueState(response.data.state));
+      } catch {
+        // If network is flaky, keep the token locally and sync later.
+      }
+    }
+
+    const state = await readClinicState(input.clinicId);
+    const nextState = createWalkInState(state, nextInput, { online: false });
+    return persistState(sortQueueState(nextState));
   },
 
-  async syncPendingEntries() {
-    const state = await readClinicState();
+  async syncPendingEntries(
+    clinicId: ClinicId = DEFAULT_CLINIC_ID,
+    options: { online?: boolean } = {},
+  ) {
+    const state = await readClinicState(clinicId);
     const pendingEntries = state.queue.filter((entry) => entry.syncState === "pending");
 
     if (pendingEntries.length === 0) {
-      return state;
+      return sortQueueState(state);
     }
 
-    if (isRemoteSyncEnabled()) {
+    if (options.online ?? true) {
       try {
-        await apiClient.post("/queue/sync", {
+        if (!hasRemoteSyncConfig()) {
+          return persistState(sortQueueState(syncPendingState(state)));
+        }
+
+        const response = await apiClient.post<{ state: ClinicState }>(
+          `/api/clinics/${clinicId}/sync`,
+          {
           pendingEntries: pendingEntries.map((entry) => ({
             clientRequestId: entry.clientRequestId,
             source: entry.source,
@@ -71,28 +195,68 @@ export const clinicService = {
             dayLabel: entry.dayLabel,
             slotLabel: entry.slotLabel,
             provisionalToken: entry.provisionalToken,
+            provisionalBookingId: entry.provisionalBookingId,
+            createdAt: entry.createdAt,
+            requiresPharmacyFollowUp: entry.requiresPharmacyFollowUp,
           })),
-        });
+          },
+        );
+
+        return persistState(sortQueueState(response.data.state));
       } catch {
-        // Prototype fallback: if remote sync is unavailable we still finalize locally.
+        return sortQueueState(state);
       }
     }
 
-    return persistState(syncPendingState(state));
+    return sortQueueState(state);
   },
 
-  async advanceQueue() {
-    const state = await readClinicState();
-    return persistState(advanceQueueState(state));
+  async advanceQueue(
+    clinicId: ClinicId = DEFAULT_CLINIC_ID,
+    options: { online?: boolean } = {},
+  ) {
+    if ((options.online ?? true) && hasRemoteSyncConfig()) {
+      const response = await apiClient.post<{ state: ClinicState }>(
+        `/api/clinics/${clinicId}/advance`,
+      );
+      return persistState(sortQueueState(response.data.state));
+    }
+
+    const state = await readClinicState(clinicId);
+    return persistState(sortQueueState(advanceQueueState(state)));
   },
 
-  async updateQueueStatus(entryId: string, status: QueueStatus) {
-    const state = await readClinicState();
-    return persistState(updateQueueStatusState(state, entryId, status));
+  async updateQueueStatus(
+    clinicId: ClinicId,
+    entryId: string,
+    status: QueueStatus,
+    options: { online?: boolean } = {},
+  ) {
+    if ((options.online ?? true) && hasRemoteSyncConfig()) {
+      const response = await apiClient.post<{ state: ClinicState }>(
+        `/api/clinics/${clinicId}/entries/${entryId}/status`,
+        { status },
+      );
+      return persistState(sortQueueState(response.data.state));
+    }
+
+    const state = await readClinicState(clinicId);
+    return persistState(sortQueueState(updateQueueStatusState(state, entryId, status)));
   },
 
-  async rescheduleQueueEntry(entryId: string) {
-    const state = await readClinicState();
-    return persistState(rescheduleQueueEntryState(state, entryId));
+  async rescheduleQueueEntry(
+    clinicId: ClinicId,
+    entryId: string,
+    options: { online?: boolean } = {},
+  ) {
+    if ((options.online ?? true) && hasRemoteSyncConfig()) {
+      const response = await apiClient.post<{ state: ClinicState }>(
+        `/api/clinics/${clinicId}/entries/${entryId}/reschedule`,
+      );
+      return persistState(sortQueueState(response.data.state));
+    }
+
+    const state = await readClinicState(clinicId);
+    return persistState(sortQueueState(rescheduleQueueEntryState(state, entryId)));
   },
 };

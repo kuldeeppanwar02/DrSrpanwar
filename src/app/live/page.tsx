@@ -1,12 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
+import { buildClinicHref } from "@/features/clinic/catalog";
 import { getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useLiveQueuePolling } from "@/features/clinic/hooks/use-live-queue-polling";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 
 export default function LivePage() {
-  const { state: clinicState } = useClinic();
+  const { activeClinic, activeClinicId, state: clinicState } = useClinic();
   useLiveQueuePolling(5000);
   const summary = useMemo(() => getQueueSummary(clinicState), [clinicState]);
   const current = summary.current;
@@ -22,12 +24,13 @@ export default function LivePage() {
                 Waiting Area Screen
               </p>
               <h1 className="display-type mt-2 text-4xl sm:text-5xl">
-                डॉ. सत्ताराम पंवार क्लिनिक
+                {activeClinic.title}
               </h1>
               <p className="mt-2 text-lg text-[rgba(255,255,255,0.74)]">
-                कृपया token number note रखें. Staff screen se queue live update hoti rahegi.
+                कृपया token number note rakhein. Queue हर 5 सेकंड mein refresh hoti rahegi.
               </p>
             </div>
+
             <div className="text-sm text-[rgba(255,255,255,0.66)]">
               <p>Polling every 5 sec</p>
               <p>Last updated: {new Date(clinicState.lastUpdated).toLocaleTimeString("en-IN")}</p>
@@ -42,7 +45,7 @@ export default function LivePage() {
             </p>
             <div className="mt-6 rounded-[2.2rem] bg-[linear-gradient(180deg,rgba(67,182,124,0.38),rgba(17,91,72,0.62))] px-6 py-10">
               <p className="display-type text-[4.75rem] leading-none sm:text-[7rem] lg:text-[9rem]">
-                {current?.token ?? "T-000"}
+                {current?.token ?? `${activeClinic.prefix}-000`}
               </p>
               <p className="mt-4 text-2xl font-semibold text-[rgba(255,255,255,0.84)]">
                 {current?.name ?? "Queue is preparing"}
@@ -72,9 +75,18 @@ export default function LivePage() {
           </section>
 
           <aside className="live-token-shadow rounded-[2.6rem] bg-[rgba(255,255,255,0.08)] p-5">
-            <p className="text-sm font-semibold uppercase tracking-[0.34em] text-[rgba(255,255,255,0.62)]">
-              Waiting List
-            </p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold uppercase tracking-[0.34em] text-[rgba(255,255,255,0.62)]">
+                Waiting List
+              </p>
+              <Link
+                href={buildClinicHref("/staff", activeClinicId)}
+                className="rounded-full border border-[rgba(255,255,255,0.2)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(255,255,255,0.82)]"
+              >
+                Staff
+              </Link>
+            </div>
+
             <div className="mt-5 space-y-3">
               {summary.waiting.slice(0, 7).map((entry, index) => (
                 <div

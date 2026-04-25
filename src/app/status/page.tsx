@@ -21,7 +21,7 @@ function pickBestEntry(matches: QueueEntry[]) {
 }
 
 export default function StatusPage() {
-  const { state: clinicState, isOnline, syncInFlight } = useClinic();
+  const { activeClinic, state: clinicState, isOnline, syncInFlight } = useClinic();
   const summary = useMemo(() => getQueueSummary(clinicState), [clinicState]);
   const [mobile, setMobile] = useState("");
   const [submittedMobile, setSubmittedMobile] = useState("");
@@ -40,18 +40,18 @@ export default function StatusPage() {
 
   return (
     <PrototypeShell
-      eyebrow="Token Status"
-      title="मेरा टोकन / Queue Status"
-      description="Patient mobile number se current token position, doctor abhi kis token par hain aur kitne patients aage hain, yeh sab ek hi page par check kar sakta hai."
+      eyebrow="Queue Status"
+      title={`${activeClinic.shortName} mein मेरा टोकन`}
+      description="Patient mobile number se current position, patients ahead, doctor ka current token aur estimated wait time ek hi page par dekh sakta hai."
       aside={
         <div className="surface-panel rounded-[2rem] p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
             Status Note
           </p>
           <ul className="mt-4 space-y-3 text-sm leading-7 text-[rgba(19,49,58,0.76)]">
-            <li>Recent local bookings aur walk-ins is demo state mein turant दिखाई देंगे.</li>
-            <li>Offline mode mein last known queue status hi dikhaya jaayega.</li>
-            <li>Reception confirmation ke liye current token board bhi available hai.</li>
+            <li>Same mobile number use karein jo booking ya walk-in mein diya tha.</li>
+            <li>Offline mode mein last known queue status hi dikhaya jayega.</li>
+            <li>Reception board aur staff dashboard bhi isi queue ko follow karte hain.</li>
           </ul>
         </div>
       }
@@ -83,9 +83,9 @@ export default function StatusPage() {
         <section className="grid gap-4 lg:grid-cols-4">
           <div className="rounded-[1.8rem] bg-[rgba(19,49,58,0.96)] p-5 text-white">
             <p className="text-xs uppercase tracking-[0.28em] text-[rgba(255,255,255,0.65)]">
-              Doctor Current Token
+              Current Token
             </p>
-            <p className="display-type mt-3 text-5xl">{summary.current?.token ?? "T-000"}</p>
+            <p className="display-type mt-3 text-5xl">{summary.current?.token ?? "--"}</p>
           </div>
           <div className="rounded-[1.8rem] border border-[var(--line)] bg-[rgba(255,255,255,0.76)] p-5">
             <p className="text-xs uppercase tracking-[0.28em] text-[var(--accent)]">
@@ -110,8 +110,8 @@ export default function StatusPage() {
         <section className="rounded-[2rem] border border-[var(--line)] bg-[rgba(255,255,255,0.72)] p-5 sm:p-6">
           {submittedMobile && !selectedEntry ? (
             <div className="rounded-[1.4rem] bg-[rgba(182,93,54,0.08)] px-4 py-4 text-sm leading-7 text-[#8b4626]">
-              Is mobile number se koi token abhi nahi mila. Booking ke time wala same mobile
-              number use karke dobara check karein.
+              Is mobile number se koi token nahi mila. कृपया same clinic aur same mobile ke
+              saath dobara check karein.
             </div>
           ) : null}
 
@@ -137,7 +137,7 @@ export default function StatusPage() {
                       Position
                     </p>
                     <p className="mt-3 text-3xl font-semibold">
-                      {selectedEntry.status === "done" ? "Done" : position?.patientsAhead ?? 0}
+                      {selectedEntry.status === "done" ? "Done" : (position?.patientsAhead ?? 0) + 1}
                     </p>
                   </div>
                   <div className="rounded-[1.4rem] border border-[var(--line)] bg-white/80 p-4">
@@ -184,6 +184,11 @@ export default function StatusPage() {
                   <p>
                     Queue mode: <strong>{isOnline ? "Online" : "Offline cache view"}</strong>
                   </p>
+                  {selectedEntry.requiresPharmacyFollowUp ? (
+                    <p>
+                      Pharmacy follow-up: <strong>{selectedEntry.pharmacyStatus}</strong>
+                    </p>
+                  ) : null}
                 </div>
               </div>
 

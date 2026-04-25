@@ -1,5 +1,7 @@
 import { createSeedClinicState } from "@/features/clinic/data/seed";
+import { getClinicDefinition } from "@/features/clinic/catalog";
 import type {
+  ClinicId,
   ClinicState,
   CreateBookingInput,
   CreateWalkInInput,
@@ -20,21 +22,13 @@ function touchState(state: ClinicState, syncTimestamp?: string): ClinicState {
   };
 }
 
-function shortDateStamp(date = new Date()) {
-  const year = date.getFullYear().toString().slice(-2);
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-
-  return `${day}${month}${year}`;
-}
-
-function getNextNumericToken(queue: QueueEntry[], prefix: "A" | "T") {
+function getNextNumericToken(queue: QueueEntry[], prefix: string) {
   const values = queue
     .filter((entry) => entry.token.startsWith(`${prefix}-`))
     .map((entry) => Number(entry.token.split("-")[1]))
     .filter((value) => Number.isFinite(value));
 
-  return (values.length ? Math.max(...values) : prefix === "A" ? 100 : 0) + 1;
+  return (values.length ? Math.max(...values) : 0) + 1;
 }
 
 function getNextTempSequence(queue: QueueEntry[]) {
@@ -43,6 +37,14 @@ function getNextTempSequence(queue: QueueEntry[]) {
     .filter((token): token is string => Boolean(token))
     .filter((token) => token.startsWith("TEMP-"))
     .map((token) => Number(token.split("-")[1]))
+    .filter((value) => Number.isFinite(value));
+
+  return (values.length ? Math.max(...values) : 0) + 1;
+}
+
+function getNextQueueOrder(queue: QueueEntry[]) {
+  const values = queue
+    .map((entry, index) => entry.queueOrder ?? index + 1)
     .filter((value) => Number.isFinite(value));
 
   return (values.length ? Math.max(...values) : 0) + 1;
@@ -63,8 +65,26 @@ function createRequestId() {
   return `request-${crypto.randomUUID()}`;
 }
 
-export function createInitialClinicState() {
-  return createSeedClinicState();
+export function createInitialClinicState(clinicId: ClinicId) {
+  return createSeedClinicState(clinicId);
+}
+
+export function createEmptyClinicState(clinicId: ClinicId): ClinicState {
+  const clinic = getClinicDefinition(clinicId);
+
+  return {
+    clinicId,
+    clinicName: clinic.title,
+    clinicSubtitle: clinic.subtitle,
+    clinicPrefix: clinic.prefix,
+    doctorMessage:
+      clinicId === "pharmacy"
+        ? "Medicines aur follow-up pickup ke liye token lein."
+        : "Appointment aur walk-in dono available hain.",
+    lastUpdated: new Date().toISOString(),
+    lastSyncedAt: new Date().toISOString(),
+    queue: [],
+  };
 }
 
 export function createBookingState(
@@ -74,11 +94,15 @@ export function createBookingState(
 ) {
   const normalizedMobile = sanitizeMobile(input.mobile);
   const cleanName = input.name.trim();
+  const clinic = getClinicDefinition(input.clinicId);
+  const createdAt = input.createdAt ?? new Date().toISOString();
+  const clientRequestId = input.clientRequestId ?? createRequestId();
+  const queueOrder = getNextQueueOrder(state.queue);
 
   if (options.online) {
-    const finalNumber = getNextNumericToken(state.queue, "A");
-    const token = `A-${String(finalNumber).padStart(3, "0")}`;
-    const bookingId = `BK-${shortDateStamp()}-${String(finalNumber).padStart(3, "0")}`;
+    const finalNumber = getNextNumericToken(state.queue, clinic.prefix);
+    const token = `${clinic.prefix}-${String(finalNumber).padStart(3, "0")}`;
+    const bookingId = `BK-${clinic.prefix}-${String(finalNumber).padStart(3, "0")}`;
 
     return touchState({
       ...state,
@@ -86,7 +110,9 @@ export function createBookingState(
         ...state.queue,
         {
           id: `entry-${crypto.randomUUID()}`,
-          clientRequestId: createRequestId(),
+          clinicId: input.clinicId,
+          clientRequestId,
+          queueOrder,
           token,
           bookingId,
           name: cleanName,
@@ -96,9 +122,13 @@ export function createBookingState(
           slotLabel: input.slotLabel,
           status: "waiting",
           syncState: "synced",
-          createdAt: new Date().toISOString(),
+          createdAt,
+          requiresPharmacyFollowUp: Boolean(input.requiresPharmacyFollowUp),
+          pharmacyStatus: input.requiresPharmacyFollowUp ? "pending" : "not-needed",
           notes:
-            input.dayLabel === "कल" ? "Tomorrow queue slot saved for clinic review" : "",
+            input.dayLabel === "Kal"
+              ? "Tomorrow booking saved for clinic review."
+              : undefined,
         },
       ],
     });
@@ -116,7 +146,9 @@ export function createBookingState(
       ...state.queue,
       {
         id: `entry-${crypto.randomUUID()}`,
-        clientRequestId: createRequestId(),
+        clinicId: input.clinicId,
+        clientRequestId,
+        queueOrder,
         token: provisionalToken,
         bookingId: provisionalBookingId,
         provisionalToken,
@@ -128,8 +160,10 @@ export function createBookingState(
         slotLabel: input.slotLabel,
         status: "waiting",
         syncState: "pending",
-        createdAt: new Date().toISOString(),
-        notes: "Offline provisional booking. Sync hone par final slot number assign hoga.",
+        createdAt,
+        requiresPharmacyFollowUp: Boolean(input.requiresPharmacyFollowUp),
+        pharmacyStatus: input.requiresPharmacyFollowUp ? "pending" : "not-needed",
+        notes: "Offline provisional booking. Final token online sync par milega.",
       },
     ],
   });
@@ -142,11 +176,17 @@ export function createWalkInState(
 ) {
   const cleanName = input.name?.trim() || "Walk-in Patient";
   const normalizedMobile = sanitizeMobile(input.mobile ?? "");
+  const clinic = getClinicDefinition(input.clinicId);
+  const createdAt = input.createdAt ?? new Date().toISOString();
+  const clientRequestId = input.clientRequestId ?? createRequestId();
+  const queueOrder = getNextQueueOrder(state.queue);
 
   if (options.online) {
-    const finalNumber = getNextNumericToken(state.queue, "T");
-    const token = `T-${String(finalNumber).padStart(3, "0")}`;
-    const bookingId = `WI-${shortDateStamp()}-${String(finalNumber).padStart(3, "0")}`;
+    const finalNumber = getNextNumericToken(state.queue, clinic.prefix);
+    const token = `${clinic.prefix}-${String(finalNumber).padStart(3, "0")}`;
+    const bookingId = `${clinic.id === "pharmacy" ? "RX" : "WI"}-${clinic.prefix}-${String(
+      finalNumber,
+    ).padStart(3, "0")}`;
 
     return touchState({
       ...state,
@@ -154,17 +194,21 @@ export function createWalkInState(
         ...state.queue,
         {
           id: `entry-${crypto.randomUUID()}`,
-          clientRequestId: createRequestId(),
+          clinicId: input.clinicId,
+          clientRequestId,
+          queueOrder,
           token,
           bookingId,
           name: cleanName,
           mobile: normalizedMobile,
           source: "walk-in",
-          dayLabel: "आज",
-          slotLabel: "Walk-in",
+          dayLabel: "Aaj",
+          slotLabel: clinic.id === "pharmacy" ? "Pickup" : "Walk-in",
           status: "waiting",
           syncState: "synced",
-          createdAt: new Date().toISOString(),
+          createdAt,
+          requiresPharmacyFollowUp: Boolean(input.requiresPharmacyFollowUp),
+          pharmacyStatus: input.requiresPharmacyFollowUp ? "pending" : "not-needed",
         },
       ],
     });
@@ -182,7 +226,9 @@ export function createWalkInState(
       ...state.queue,
       {
         id: `entry-${crypto.randomUUID()}`,
-        clientRequestId: createRequestId(),
+        clinicId: input.clinicId,
+        clientRequestId,
+        queueOrder,
         token: provisionalToken,
         bookingId: provisionalBookingId,
         provisionalToken,
@@ -190,20 +236,22 @@ export function createWalkInState(
         name: cleanName,
         mobile: normalizedMobile,
         source: "walk-in",
-        dayLabel: "आज",
-        slotLabel: "Walk-in",
+        dayLabel: "Aaj",
+        slotLabel: clinic.id === "pharmacy" ? "Pickup" : "Walk-in",
         status: "waiting",
         syncState: "pending",
-        createdAt: new Date().toISOString(),
-        notes: "Offline provisional token. Internet aate hi final number assign hoga.",
+        createdAt,
+        requiresPharmacyFollowUp: Boolean(input.requiresPharmacyFollowUp),
+        pharmacyStatus: input.requiresPharmacyFollowUp ? "pending" : "not-needed",
+        notes: "Offline provisional walk-in. Final token online sync par milega.",
       },
     ],
   });
 }
 
 export function syncPendingState(state: ClinicState) {
-  let nextBookingNumber = getNextNumericToken(state.queue, "A");
-  let nextWalkInNumber = getNextNumericToken(state.queue, "T");
+  const clinic = getClinicDefinition(state.clinicId);
+  let nextNumber = getNextNumericToken(state.queue, clinic.prefix);
   const syncTimestamp = new Date().toISOString();
 
   const queue = state.queue.map((entry) => {
@@ -211,35 +259,18 @@ export function syncPendingState(state: ClinicState) {
       return entry;
     }
 
-    if (entry.source === "booking") {
-      const token = `A-${String(nextBookingNumber).padStart(3, "0")}`;
-      const bookingId = `BK-${shortDateStamp()}-${String(nextBookingNumber).padStart(
-        3,
-        "0",
-      )}`;
-      nextBookingNumber += 1;
-
-      return {
-        ...entry,
-        token,
-        bookingId,
-        syncState: "synced" as const,
-        notes: `Synced from ${entry.provisionalToken ?? "offline token"}`,
-      };
-    }
-
-    const token = `T-${String(nextWalkInNumber).padStart(3, "0")}`;
-    const bookingId = `WI-${shortDateStamp()}-${String(nextWalkInNumber).padStart(
-      3,
-      "0",
-    )}`;
-    nextWalkInNumber += 1;
+    const token = `${clinic.prefix}-${String(nextNumber).padStart(3, "0")}`;
+    const bookingId = `${entry.source === "booking" ? "BK" : "WI"}-${clinic.prefix}-${String(
+      nextNumber,
+    ).padStart(3, "0")}`;
+    nextNumber += 1;
 
     return {
       ...entry,
       token,
       bookingId,
       syncState: "synced" as const,
+      updatedAt: syncTimestamp,
       notes: `Synced from ${entry.provisionalToken ?? "offline token"}`,
     };
   });
@@ -261,6 +292,7 @@ export function advanceQueueState(state: ClinicState) {
     nextQueue[currentIndex] = {
       ...nextQueue[currentIndex],
       status: "done",
+      updatedAt: new Date().toISOString(),
     };
   }
 
@@ -270,6 +302,7 @@ export function advanceQueueState(state: ClinicState) {
     nextQueue[nextIndex] = {
       ...nextQueue[nextIndex],
       status: "in-progress",
+      updatedAt: new Date().toISOString(),
     };
   }
 
@@ -291,11 +324,13 @@ export function updateQueueStatusState(
         ? {
             ...entry,
             status,
+            updatedAt: new Date().toISOString(),
           }
         : status === "in-progress" && entry.status === "in-progress"
           ? {
               ...entry,
               status: "done",
+              updatedAt: new Date().toISOString(),
             }
           : entry,
     ),
@@ -314,10 +349,12 @@ export function rescheduleQueueEntryState(state: ClinicState, entryId: string) {
 
   queue.push({
     ...entry,
-    dayLabel: "कल",
+    dayLabel: "Kal",
     slotLabel: "11:30 AM",
     status: "waiting",
-    notes: "कल 11:30 AM par rescheduled",
+    queueOrder: getNextQueueOrder(queue),
+    updatedAt: new Date().toISOString(),
+    notes: "Kal 11:30 AM par rescheduled",
   });
 
   return touchState({
@@ -326,8 +363,8 @@ export function rescheduleQueueEntryState(state: ClinicState, entryId: string) {
   });
 }
 
-export function resetClinicState() {
-  return createInitialClinicState();
+export function resetClinicState(clinicId: ClinicId) {
+  return createInitialClinicState(clinicId);
 }
 
 export function getQueueSummary(state: ClinicState): QueueSummary {
@@ -365,7 +402,7 @@ export function getEntryPosition(state: ClinicState, entryId: string) {
 
   return {
     patientsAhead: Math.max(index, 0),
-    estimatedWaitMinutes: Math.max(index, 0) * 12,
+    estimatedWaitMinutes: Math.max(index, 0) * (state.clinicId === "pharmacy" ? 5 : 12),
   };
 }
 

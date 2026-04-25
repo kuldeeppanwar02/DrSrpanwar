@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "डॉ. सत्ताराम पंवार क्लिनिक",
-    short_name: "Panwar Clinic",
+    name: "Panwar SmartCare Hub",
+    short_name: "SmartCare Hub",
     description:
-      "Hindi-first clinic prototype with bookings, walk-in tokens, live queue status aur PWA style install support.",
+      "Hindi-first multi-clinic PWA with booking, QR walk-in token, live queue status aur staff dashboard.",
     start_url: "/",
     scope: "/",
     display: "standalone",

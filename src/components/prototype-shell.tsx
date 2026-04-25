@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { CLINICS, buildClinicHref } from "@/features/clinic/catalog";
+import { useClinic } from "@/features/clinic/state/clinic-provider";
 
 type PrototypeShellProps = {
   eyebrow: string;
@@ -14,7 +18,7 @@ const navItems = [
   { href: "/walkin", label: "Walk-in" },
   { href: "/status", label: "मेरा टोकन" },
   { href: "/staff", label: "स्टाफ" },
-  { href: "/live", label: "TV Screen" },
+  { href: "/live", label: "Live Queue" },
 ];
 
 export function PrototypeShell({
@@ -24,30 +28,49 @@ export function PrototypeShell({
   children,
   aside,
 }: PrototypeShellProps) {
+  const { activeClinic, activeClinicId, isOnline, syncInFlight, state } = useClinic();
+
   return (
     <div className="page-shell">
       <header className="section-shell pt-6">
         <div className="surface-panel rounded-[2rem] px-4 py-4 sm:px-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <Link href="/" className="display-type text-2xl text-[var(--accent-strong)]">
-                डॉ. सत्ताराम पंवार
+                PANWAR SMARTCARE HUB
               </Link>
               <p className="mt-1 text-sm text-[rgba(19,49,58,0.68)]">
-                Advance Laparoscopic, Gastro & Trauma Specialist Surgeon
+                Hindi-first multi-clinic queue, booking aur pharmacy-ready PWA
               </p>
             </div>
+
             <nav className="flex flex-wrap gap-2 text-sm font-semibold text-[rgba(19,49,58,0.76)]">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={buildClinicHref(item.href, activeClinicId)}
                   className="focus-ring rounded-full border border-[var(--line)] px-3 py-2 transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
                 >
                   {item.label}
                 </Link>
               ))}
             </nav>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            {CLINICS.map((clinic) => (
+              <Link
+                key={clinic.id}
+                href={buildClinicHref("/", clinic.id)}
+                className={`focus-ring rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  clinic.id === activeClinicId
+                    ? "bg-[var(--accent)] text-white"
+                    : "border border-[var(--line)] bg-white/60 hover:border-[var(--accent)]"
+                }`}
+              >
+                {clinic.shortName}
+              </Link>
+            ))}
           </div>
         </div>
       </header>
@@ -70,25 +93,52 @@ export function PrototypeShell({
           <aside className="space-y-4">
             <div className="surface-panel rounded-[2rem] p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
-                Clinic Details
+                Active Clinic
               </p>
-              <div className="mt-4 space-y-4 text-sm leading-7 text-[rgba(19,49,58,0.78)]">
-                <p>
-                  Qtr No. 1, Behind Poonam Stadium, Officers Colony, Police Line,
-                  Near Mahila Police Station, Jaisalmer, Rajasthan - 345001
+              <div className="mt-4 space-y-3 text-sm leading-7 text-[rgba(19,49,58,0.78)]">
+                <p className="text-lg font-semibold text-[var(--accent-strong)]">
+                  {activeClinic.title}
                 </p>
-                <p>सुबह 9:00 बजे से शाम 6:00 बजे तक</p>
-                <p>इमरजेंसी के लिए 24×7 संपर्क: 96362 43621</p>
+                <p>{activeClinic.subtitle}</p>
+                <p>{activeClinic.locationLabel}</p>
+                <p>क्लिनिक समय: {activeClinic.hoursLabel}</p>
+                <p>फोन / WhatsApp: {activeClinic.phone}</p>
               </div>
             </div>
-            {aside}
+
             <div className="surface-panel rounded-[2rem] p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
-                Prototype Note
+                Sync Status
+              </p>
+              <div className="mt-4 space-y-3 text-sm leading-7 text-[rgba(19,49,58,0.78)]">
+                <p>
+                  Mode:{" "}
+                  <strong>{isOnline ? "Online live sync" : "Offline cached view"}</strong>
+                </p>
+                <p>
+                  Queue entries: <strong>{state.queue.length}</strong>
+                </p>
+                <p>
+                  Background sync: <strong>{syncInFlight ? "चल रहा है" : "idle"}</strong>
+                </p>
+                <p>
+                  Last updated:{" "}
+                  <strong>
+                    {new Date(state.lastUpdated).toLocaleTimeString("en-IN")}
+                  </strong>
+                </p>
+              </div>
+            </div>
+
+            {aside}
+
+            <div className="surface-panel rounded-[2rem] p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
+                Live Setup Note
               </p>
               <p className="mt-3 text-sm leading-7 text-[rgba(19,49,58,0.76)]">
-                Yeh version local demo state use karta hai. Production mein Firebase,
-                login roles aur real QR final URL ke saath connect kiya jayega.
+                Patient aur staff dono same website use karte hain. Network weak hone par
+                provisional local token save hota hai aur internet aate hi sync ho jata hai.
               </p>
             </div>
           </aside>

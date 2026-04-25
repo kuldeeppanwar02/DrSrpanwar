@@ -1,12 +1,30 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { PrototypeShell } from "@/components/prototype-shell";
+import { buildClinicHref } from "@/features/clinic/catalog";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
+import type { ClinicDefinition, ClinicId } from "@/features/clinic/types";
 
-const slotMap: Record<"आज" | "कल", string[]> = {
-  आज: ["09:30 AM", "10:00 AM", "10:30 AM", "11:15 AM", "12:00 PM", "04:30 PM"],
-  कल: ["09:00 AM", "09:45 AM", "10:15 AM", "11:30 AM", "01:00 PM", "05:00 PM"],
+const dayOptions = [
+  { value: "Aaj", label: "आज / Today" },
+  { value: "Kal", label: "कल / Tomorrow" },
+] as const;
+
+const slotMap: Record<ClinicId, Record<"Aaj" | "Kal", string[]>> = {
+  surgery: {
+    Aaj: ["09:30 AM", "10:00 AM", "10:30 AM", "11:15 AM", "12:00 PM", "04:30 PM"],
+    Kal: ["09:00 AM", "09:45 AM", "10:15 AM", "11:30 AM", "01:00 PM", "05:00 PM"],
+  },
+  dental: {
+    Aaj: ["10:00 AM", "10:30 AM", "11:00 AM", "12:15 PM", "03:30 PM", "05:15 PM"],
+    Kal: ["09:30 AM", "10:15 AM", "11:45 AM", "01:15 PM", "04:00 PM", "05:30 PM"],
+  },
+  pharmacy: {
+    Aaj: ["09:15 AM", "10:45 AM", "12:30 PM", "02:30 PM", "04:00 PM", "05:30 PM"],
+    Kal: ["09:00 AM", "11:00 AM", "01:00 PM", "03:00 PM", "04:30 PM", "05:45 PM"],
+  },
 };
 
 type BookingConfirmation = {
@@ -17,12 +35,28 @@ type BookingConfirmation = {
   syncState: "synced" | "pending";
 };
 
-export default function BookPage() {
-  const { createBooking, isOnline, syncInFlight } = useClinic();
-  const [dayLabel, setDayLabel] = useState<"आज" | "कल">("आज");
-  const [slotLabel, setSlotLabel] = useState(slotMap["आज"][0]);
+type BookingScreenProps = {
+  activeClinic: ClinicDefinition;
+  activeClinicId: ClinicId;
+  createBooking: ReturnType<typeof useClinic>["createBooking"];
+  isOnline: boolean;
+  syncInFlight: boolean;
+};
+
+function BookingScreen({
+  activeClinic,
+  activeClinicId,
+  createBooking,
+  isOnline,
+  syncInFlight,
+}: BookingScreenProps) {
+  const [dayLabel, setDayLabel] = useState<"Aaj" | "Kal">("Aaj");
+  const [slotLabel, setSlotLabel] = useState(slotMap[activeClinicId].Aaj[0]);
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
+  const [requiresPharmacyFollowUp, setRequiresPharmacyFollowUp] = useState(
+    activeClinicId === "pharmacy",
+  );
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState<BookingConfirmation | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,10 +78,12 @@ export default function BookPage() {
 
     try {
       const nextState = await createBooking({
+        clinicId: activeClinicId,
         dayLabel,
         slotLabel,
         name,
         mobile,
+        requiresPharmacyFollowUp,
       });
       const latestEntry = nextState.queue[nextState.queue.length - 1];
 
@@ -61,6 +97,12 @@ export default function BookPage() {
       setName("");
       setMobile("");
       setError("");
+    } catch (submissionError) {
+      setError(
+        submissionError instanceof Error
+          ? submissionError.message
+          : "Booking save nahi ho paayi.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -69,17 +111,17 @@ export default function BookPage() {
   return (
     <PrototypeShell
       eyebrow="Booking Flow"
-      title="ऑनलाइन अपॉइंटमेंट बुक करें"
-      description="3 simple steps: दिन चुनें, स्लॉट चुनें, नाम और मोबाइल डालकर confirmation screen paaiye."
+      title={`${activeClinic.shortName} ke liye appointment booking`}
+      description="दिन चुनें, slot चुनें, naam aur mobile दर्ज करें. Confirmation ke baad booking ID aur queue token screen par mil jayega."
       aside={
         <div className="surface-panel rounded-[2rem] p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
             Booking Notes
           </p>
           <ul className="mt-4 space-y-3 text-sm leading-7 text-[rgba(19,49,58,0.76)]">
-            <li>Confirmation ke baad Booking ID dikhegi. Screenshot le lena best rahega.</li>
-            <li>SMS/WhatsApp is prototype mein intentionally use nahi kiya gaya hai.</li>
-            <li>Offline hone par booking local pending state mein save ho jayegi.</li>
+            <li>Confirmation ke baad booking ID ka screenshot lena best rahega.</li>
+            <li>SMS ya WhatsApp reminder abhi intentionally included nahi hai.</li>
+            <li>Offline hone par provisional booking save hogi aur baad mein sync hogi.</li>
           </ul>
         </div>
       }
@@ -91,24 +133,24 @@ export default function BookPage() {
               Step 1
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {(["आज", "कल"] as const).map((day) => (
+              {dayOptions.map((day) => (
                 <button
-                  key={day}
+                  key={day.value}
                   type="button"
                   className={`focus-ring rounded-[1.5rem] px-4 py-5 text-left transition ${
-                    dayLabel === day
+                    dayLabel === day.value
                       ? "bg-[var(--accent)] text-white"
                       : "border border-[var(--line)] bg-white/70 hover:border-[var(--accent)]"
                   }`}
                   onClick={() => {
-                    setDayLabel(day);
-                    setSlotLabel(slotMap[day][0]);
+                    setDayLabel(day.value);
+                    setSlotLabel(slotMap[activeClinicId][day.value][0]);
                   }}
                 >
                   <p className="text-xs font-semibold uppercase tracking-[0.28em]">
                     Day Select
                   </p>
-                  <p className="mt-2 text-2xl font-semibold">{day}</p>
+                  <p className="mt-2 text-2xl font-semibold">{day.label}</p>
                 </button>
               ))}
             </div>
@@ -119,7 +161,7 @@ export default function BookPage() {
               Step 2
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {slotMap[dayLabel].map((slot) => (
+              {slotMap[activeClinicId][dayLabel].map((slot) => (
                 <button
                   key={slot}
                   type="button"
@@ -170,6 +212,21 @@ export default function BookPage() {
                 </label>
               </div>
 
+              {activeClinicId !== "pharmacy" ? (
+                <label className="flex items-start gap-3 rounded-[1.2rem] border border-[var(--line)] bg-white/70 px-4 py-4 text-sm leading-7 text-[rgba(19,49,58,0.76)]">
+                  <input
+                    type="checkbox"
+                    checked={requiresPharmacyFollowUp}
+                    onChange={(event) => setRequiresPharmacyFollowUp(event.target.checked)}
+                    className="mt-1 h-4 w-4"
+                  />
+                  <span>
+                    Agar post-treatment pharmacy follow-up required ho to is option ko
+                    select karein.
+                  </span>
+                </label>
+              ) : null}
+
               {error ? (
                 <p className="rounded-[1rem] bg-[rgba(182,93,54,0.12)] px-4 py-3 text-sm font-semibold text-[#8b4626]">
                   {error}
@@ -185,7 +242,8 @@ export default function BookPage() {
                   {isSubmitting ? "Saving..." : "Confirm Booking"}
                 </button>
                 <p className="text-sm text-[rgba(19,49,58,0.68)]">
-                  Selected: {dayLabel} • {slotLabel} • {isOnline ? "Online" : "Offline provisional"}
+                  Selected: {dayLabel} • {slotLabel} •{" "}
+                  {isOnline ? "Live online save" : "Offline provisional save"}
                 </p>
               </div>
             </form>
@@ -209,6 +267,9 @@ export default function BookPage() {
               </div>
               <div className="rounded-[1.4rem] border border-[var(--line)] bg-white/80 p-4 text-sm leading-7 text-[rgba(19,49,58,0.76)]">
                 <p>
+                  Clinic: <strong>{activeClinic.shortName}</strong>
+                </p>
+                <p>
                   दिन: <strong>{confirmation.dayLabel}</strong>
                 </p>
                 <p>
@@ -218,7 +279,7 @@ export default function BookPage() {
                   Sync status:{" "}
                   <strong>
                     {confirmation.syncState === "pending"
-                      ? "Offline pending - final token sync hone par update hoga"
+                      ? "Offline provisional - final sync pending"
                       : "Synced"}
                   </strong>
                 </p>
@@ -231,14 +292,35 @@ export default function BookPage() {
               <p className="rounded-[1.2rem] bg-[rgba(182,93,54,0.08)] px-4 py-3 text-sm font-semibold text-[#8b4626]">
                 कृपया booking ID ka screenshot le lijiye ya note kar lijiye.
               </p>
+              <Link
+                href={buildClinicHref("/status", activeClinicId)}
+                className="focus-ring inline-flex rounded-full border border-[var(--line-strong)] px-4 py-2 text-sm font-semibold transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+              >
+                Mera Token dekhein
+              </Link>
             </div>
           ) : (
             <div className="mt-5 rounded-[1.6rem] border border-dashed border-[var(--line-strong)] bg-white/50 p-5 text-sm leading-7 text-[rgba(19,49,58,0.7)]">
-              Booking confirm karte hi yahan par ID, token aur screenshot note दिखाई देगा.
+              Booking confirm hote hi yahan ID, token aur screenshot note dikhega.
             </div>
           )}
         </div>
       </div>
     </PrototypeShell>
+  );
+}
+
+export default function BookPage() {
+  const { activeClinic, activeClinicId, createBooking, isOnline, syncInFlight } = useClinic();
+
+  return (
+    <BookingScreen
+      key={activeClinicId}
+      activeClinic={activeClinic}
+      activeClinicId={activeClinicId}
+      createBooking={createBooking}
+      isOnline={isOnline}
+      syncInFlight={syncInFlight}
+    />
   );
 }

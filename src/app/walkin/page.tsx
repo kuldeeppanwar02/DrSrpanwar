@@ -1,9 +1,12 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { PrototypeShell } from "@/components/prototype-shell";
+import { buildClinicHref } from "@/features/clinic/catalog";
 import { getEntryPosition, getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
+import type { ClinicDefinition, ClinicId } from "@/features/clinic/types";
 
 type WalkInConfirmation = {
   token: string;
@@ -12,10 +15,26 @@ type WalkInConfirmation = {
   syncState: "synced" | "pending";
 };
 
-export default function WalkInPage() {
-  const { createWalkIn, isOnline, syncInFlight } = useClinic();
+type WalkInScreenProps = {
+  activeClinic: ClinicDefinition;
+  activeClinicId: ClinicId;
+  createWalkIn: ReturnType<typeof useClinic>["createWalkIn"];
+  isOnline: boolean;
+  syncInFlight: boolean;
+};
+
+function WalkInScreen({
+  activeClinic,
+  activeClinicId,
+  createWalkIn,
+  isOnline,
+  syncInFlight,
+}: WalkInScreenProps) {
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
+  const [requiresPharmacyFollowUp, setRequiresPharmacyFollowUp] = useState(
+    activeClinicId === "pharmacy",
+  );
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState<WalkInConfirmation | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,14 +48,19 @@ export default function WalkInPage() {
     }
 
     if (mobile && mobile.replace(/\D/g, "").length > 0 && mobile.replace(/\D/g, "").length !== 10) {
-      setError("अगर mobile भर रहे हैं to 10 digits use करें.");
+      setError("Agar mobile भर रहे हैं to 10 digits use karein.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const nextState = await createWalkIn({ name, mobile });
+      const nextState = await createWalkIn({
+        clinicId: activeClinicId,
+        name,
+        mobile,
+        requiresPharmacyFollowUp,
+      });
       const latestEntry = nextState.queue[nextState.queue.length - 1];
       const position = getEntryPosition(nextState, latestEntry.id);
       const summary = getQueueSummary(nextState);
@@ -44,12 +68,18 @@ export default function WalkInPage() {
       setConfirmation({
         token: latestEntry.token,
         bookingId: latestEntry.bookingId,
-        waitMinutes: Math.max(position?.estimatedWaitMinutes ?? 0, summary.current ? 12 : 0),
+        waitMinutes: Math.max(position?.estimatedWaitMinutes ?? 0, summary.current ? 10 : 0),
         syncState: latestEntry.syncState,
       });
       setError("");
       setName("");
       setMobile("");
+    } catch (submissionError) {
+      setError(
+        submissionError instanceof Error
+          ? submissionError.message
+          : "Token generate nahi ho paaya.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -58,17 +88,17 @@ export default function WalkInPage() {
   return (
     <PrototypeShell
       eyebrow="QR / Walk-in Flow"
-      title="Walk-in Token लें"
-      description="Reception QR scan karne ke baad patient sirf naam ya mobile daal kar turant token paa sakta hai."
+      title={`${activeClinic.shortName} ke liye walk-in token`}
+      description="QR scan ke baad patient sirf naam ya mobile dekar turant token paa sakta hai. Internet weak ho to provisional token bhi save ho jayega."
       aside={
         <div className="surface-panel rounded-[2rem] p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
             Walk-in Notes
           </p>
           <ul className="mt-4 space-y-3 text-sm leading-7 text-[rgba(19,49,58,0.76)]">
-            <li>Mobile देना better hai taaki patient baad mein status check kar sake.</li>
-            <li>QR scan ke baad direct isi page par land karwana ideal रहेगा.</li>
-            <li>Token ke saath estimated wait time bhi दिखाया जा रहा है.</li>
+            <li>Mobile dena better hai taki patient baad mein status check kar sake.</li>
+            <li>Reception QR ko direct isi route par point karna best rahega.</li>
+            <li>Token ke saath estimated wait time bhi turant milta hai.</li>
           </ul>
         </div>
       }
@@ -77,8 +107,9 @@ export default function WalkInPage() {
         <section className="rounded-[2rem] border border-[var(--line)] bg-[rgba(255,255,255,0.72)] p-5 sm:p-6">
           <div className="max-w-2xl">
             <p className="text-sm leading-7 text-[rgba(19,49,58,0.76)]">
-              QR scan karne ke baad yahi page khulega. Patient ko fast entry experience dene ke
-              liye form ko minimum fields par rakha gaya hai.
+              {activeClinicId === "pharmacy"
+                ? "Medicine pickup aur prescribed follow-up ke liye fast token entry."
+                : "Walk-in patients ke liye fast entry experience, minimum fields ke saath."}
             </p>
           </div>
 
@@ -108,6 +139,21 @@ export default function WalkInPage() {
                 />
               </label>
             </div>
+
+            {activeClinicId !== "pharmacy" ? (
+              <label className="flex items-start gap-3 rounded-[1.2rem] border border-[var(--line)] bg-white/70 px-4 py-4 text-sm leading-7 text-[rgba(19,49,58,0.76)]">
+                <input
+                  type="checkbox"
+                  checked={requiresPharmacyFollowUp}
+                  onChange={(event) => setRequiresPharmacyFollowUp(event.target.checked)}
+                  className="mt-1 h-4 w-4"
+                />
+                <span>
+                  Agar consultation ke baad pharmacy follow-up expected ho to is option ko on
+                  karein.
+                </span>
+              </label>
+            ) : null}
 
             {error ? (
               <p className="rounded-[1rem] bg-[rgba(182,93,54,0.12)] px-4 py-3 text-sm font-semibold text-[#8b4626]">
@@ -151,7 +197,7 @@ export default function WalkInPage() {
                   Status:{" "}
                   <strong>
                     {confirmation.syncState === "pending"
-                      ? "Offline provisional - sync hone par final token milega"
+                      ? "Offline provisional - final sync pending"
                       : "Synced"}
                   </strong>
                 </p>
@@ -164,14 +210,35 @@ export default function WalkInPage() {
               <p className="rounded-[1.2rem] bg-[rgba(235,193,125,0.16)] px-4 py-3 text-sm font-semibold text-[rgba(255,255,255,0.86)]">
                 Apna token number note kar lijiye ya screenshot le lijiye.
               </p>
+              <Link
+                href={buildClinicHref("/status", activeClinicId)}
+                className="focus-ring inline-flex rounded-full border border-[rgba(255,255,255,0.24)] px-4 py-2 text-sm font-semibold text-white"
+              >
+                Queue status देखें
+              </Link>
             </div>
           ) : (
             <div className="mt-5 rounded-[1.8rem] border border-dashed border-[rgba(255,255,255,0.2)] p-5 text-sm leading-7 text-[rgba(255,255,255,0.72)]">
-              Token generate hone ke baad yahan par number aur estimated wait dikhega.
+              Token generate hone ke baad yahan number aur estimated wait dikhega.
             </div>
           )}
         </aside>
       </div>
     </PrototypeShell>
+  );
+}
+
+export default function WalkInPage() {
+  const { activeClinic, activeClinicId, createWalkIn, isOnline, syncInFlight } = useClinic();
+
+  return (
+    <WalkInScreen
+      key={activeClinicId}
+      activeClinic={activeClinic}
+      activeClinicId={activeClinicId}
+      createWalkIn={createWalkIn}
+      isOnline={isOnline}
+      syncInFlight={syncInFlight}
+    />
   );
 }

@@ -8,9 +8,17 @@ import {
   useEffectEvent,
   useState,
 } from "react";
+import { useSearchParams } from "next/navigation";
 import { clinicService } from "@/features/clinic/services/clinic-service";
-import { createInitialClinicState } from "@/features/clinic/services/queue-engine";
+import {
+  CLINICS,
+  DEFAULT_CLINIC_ID,
+  getClinicDefinition,
+  isClinicId,
+} from "@/features/clinic/catalog";
+import { createEmptyClinicState } from "@/features/clinic/services/queue-engine";
 import type {
+  ClinicId,
   ClinicState,
   CreateBookingInput,
   CreateWalkInInput,
@@ -18,14 +26,16 @@ import type {
 } from "@/features/clinic/types";
 
 type ClinicContextValue = {
+  activeClinicId: ClinicId;
+  activeClinic: ReturnType<typeof getClinicDefinition>;
   state: ClinicState;
   isReady: boolean;
   isOnline: boolean;
   syncInFlight: boolean;
-  refresh: () => Promise<void>;
+  refresh: (clinicId?: ClinicId) => Promise<void>;
   createBooking: (input: CreateBookingInput) => Promise<ClinicState>;
   createWalkIn: (input: CreateWalkInInput) => Promise<ClinicState>;
-  syncPendingEntries: () => Promise<ClinicState>;
+  syncPendingEntries: (clinicId?: ClinicId) => Promise<ClinicState>;
   advanceQueue: () => Promise<ClinicState>;
   updateQueueStatus: (entryId: string, status: QueueStatus) => Promise<ClinicState>;
   rescheduleQueueEntry: (entryId: string) => Promise<ClinicState>;
@@ -38,32 +48,91 @@ function browserOnline() {
   return typeof window === "undefined" ? true : window.navigator.onLine;
 }
 
+function createInitialStateMap() {
+  return Object.fromEntries(
+    CLINICS.map((clinic) => [clinic.id, createEmptyClinicState(clinic.id)]),
+  ) as Record<ClinicId, ClinicState>;
+}
+
+function createInitialReadyMap() {
+  return Object.fromEntries(
+    CLINICS.map((clinic) => [clinic.id, false]),
+  ) as Record<ClinicId, boolean>;
+}
+
 export function ClinicProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<ClinicState>(() => createInitialClinicState());
-  const [isReady, setIsReady] = useState(false);
+  const searchParams = useSearchParams();
+  const requestedClinicId = (() => {
+    const value = searchParams.get("clinic");
+    return isClinicId(value) ? value : DEFAULT_CLINIC_ID;
+  })();
+
+  return (
+    <ClinicProviderInner requestedClinicId={requestedClinicId}>
+      {children}
+    </ClinicProviderInner>
+  );
+}
+
+export function ClinicProviderFallback({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <ClinicProviderInner requestedClinicId={DEFAULT_CLINIC_ID}>
+      {children}
+    </ClinicProviderInner>
+  );
+}
+
+function ClinicProviderInner({
+  children,
+  requestedClinicId,
+}: {
+  children: React.ReactNode;
+  requestedClinicId: ClinicId;
+}) {
+  const [stateMap, setStateMap] = useState<Record<ClinicId, ClinicState>>(
+    () => createInitialStateMap(),
+  );
+  const [readyMap, setReadyMap] = useState<Record<ClinicId, boolean>>(
+    () => createInitialReadyMap(),
+  );
   const [isOnline, setIsOnline] = useState(() => browserOnline());
   const [syncInFlight, setSyncInFlight] = useState(false);
+  const state = stateMap[requestedClinicId] ?? createEmptyClinicState(requestedClinicId);
+  const isReady = readyMap[requestedClinicId] ?? false;
+  const activeClinic = getClinicDefinition(requestedClinicId);
 
-  const applyState = (nextState: ClinicState) => {
+  const applyState = (clinicId: ClinicId, nextState: ClinicState) => {
     startTransition(() => {
-      setState(nextState);
+      setStateMap((current) => ({
+        ...current,
+        [clinicId]: nextState,
+      }));
+      setReadyMap((current) => ({
+        ...current,
+        [clinicId]: true,
+      }));
     });
 
     return nextState;
   };
 
-  const refresh = async () => {
-    const nextState = await clinicService.loadState();
-    applyState(nextState);
-    setIsReady(true);
+  const refresh = async (clinicId: ClinicId = requestedClinicId) => {
+    const nextState = await clinicService.loadState(clinicId, { online: browserOnline() });
+    applyState(clinicId, nextState);
   };
 
-  const syncPendingEntries = async () => {
+  const syncPendingEntries = async (clinicId: ClinicId = requestedClinicId) => {
     setSyncInFlight(true);
 
     try {
-      const nextState = await clinicService.syncPendingEntries();
-      return applyState(nextState);
+      const nextState = await clinicService.syncPendingEntries(clinicId, {
+        online: browserOnline(),
+      });
+      return applyState(clinicId, nextState);
     } finally {
       setSyncInFlight(false);
     }
@@ -74,21 +143,29 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
   });
 
   const syncPendingEffect = useEffectEvent(() => {
-    void syncPendingEntries();
+    void Promise.all(
+      CLINICS.map(async (clinic) => {
+        const nextState = await clinicService.syncPendingEntries(clinic.id, {
+          online: true,
+        });
+        applyState(clinic.id, nextState);
+      }),
+    );
   });
 
   useEffect(() => {
     let isMounted = true;
 
     const bootstrap = async () => {
-      const nextState = await clinicService.loadState();
+      const nextState = await clinicService.loadState(requestedClinicId, {
+        online: browserOnline(),
+      });
 
       if (!isMounted) {
         return;
       }
 
-      applyState(nextState);
-      setIsReady(true);
+      applyState(requestedClinicId, nextState);
     };
 
     void bootstrap();
@@ -111,38 +188,65 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("focus", handleFocus);
     };
-  }, []);
+  }, [requestedClinicId]);
 
   const value: ClinicContextValue = {
+    activeClinicId: requestedClinicId,
+    activeClinic,
     state,
     isReady,
     isOnline,
     syncInFlight,
     refresh,
     createBooking: async (input) => {
-      const nextState = await clinicService.createBooking(input, { online: isOnline });
-      return applyState(nextState);
+      const nextState = await clinicService.createBooking(
+        {
+          ...input,
+          clinicId: input.clinicId ?? requestedClinicId,
+        },
+        { online: isOnline },
+      );
+      return applyState(nextState.clinicId, nextState);
     },
     createWalkIn: async (input) => {
-      const nextState = await clinicService.createWalkIn(input, { online: isOnline });
-      return applyState(nextState);
+      const nextState = await clinicService.createWalkIn(
+        {
+          ...input,
+          clinicId: input.clinicId ?? requestedClinicId,
+        },
+        { online: isOnline },
+      );
+      return applyState(nextState.clinicId, nextState);
     },
     syncPendingEntries,
     advanceQueue: async () => {
-      const nextState = await clinicService.advanceQueue();
-      return applyState(nextState);
+      const nextState = await clinicService.advanceQueue(requestedClinicId, {
+        online: isOnline,
+      });
+      return applyState(requestedClinicId, nextState);
     },
     updateQueueStatus: async (entryId, status) => {
-      const nextState = await clinicService.updateQueueStatus(entryId, status);
-      return applyState(nextState);
+      const nextState = await clinicService.updateQueueStatus(
+        requestedClinicId,
+        entryId,
+        status,
+        { online: isOnline },
+      );
+      return applyState(requestedClinicId, nextState);
     },
     rescheduleQueueEntry: async (entryId) => {
-      const nextState = await clinicService.rescheduleQueueEntry(entryId);
-      return applyState(nextState);
+      const nextState = await clinicService.rescheduleQueueEntry(
+        requestedClinicId,
+        entryId,
+        { online: isOnline },
+      );
+      return applyState(requestedClinicId, nextState);
     },
     resetClinicState: async () => {
-      const nextState = await clinicService.resetState();
-      return applyState(nextState);
+      const nextState = await clinicService.resetState(requestedClinicId, {
+        online: isOnline,
+      });
+      return applyState(requestedClinicId, nextState);
     },
   };
 

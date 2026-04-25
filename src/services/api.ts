@@ -2,8 +2,11 @@ import axios from "axios";
 import { env } from "@/config/env";
 
 export const apiClient = axios.create({
-  baseURL: env.apiBaseUrl || undefined,
+  baseURL: env.appBaseUrl || undefined,
   timeout: 12000,
+  headers: {
+    Accept: "application/json",
+  },
 });
 
 apiClient.interceptors.request.use((config) => {
@@ -17,7 +20,7 @@ apiClient.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${sessionToken}`;
   }
 
-  config.headers["x-clinic-demo-mode"] = "prototype";
+  config.headers["x-panwar-app"] = "smartcare-hub";
 
   return config;
 });

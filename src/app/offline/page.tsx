@@ -11,16 +11,16 @@ export default function OfflinePage() {
           आप अभी offline हैं
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-[rgba(19,49,58,0.76)]">
-          Cached pages available hain. Agar booking ya token form fill karna ho to dobara
-          connected hote hi sync-ready entries save ho jayengi. Reception se manual support bhi
-          mil sakti hai.
+          Cached pages available hain. Agar booking ya token form fill karna ho to entry
+          local pending state mein save ho jayegi aur connection aate hi sync ho sakti hai.
+          Zarurat ho to reception se manual support bhi mil sakti hai.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
             href="/"
             className="focus-ring rounded-full bg-[var(--accent)] px-6 py-3 font-semibold text-white transition hover:bg-[var(--accent-strong)]"
           >
-            होम पेज
+            Home page
           </Link>
           <Link
             href="/walkin"

@@ -1,78 +1,137 @@
-# Panwar Clinic PWA Prototype
+# Panwar SmartCare Hub
 
-Hindi-first Next.js prototype for:
+Hindi-first multi-clinic Next.js PWA for:
+
+- Dr. Satta Ram Panwar Clinic
+- Dhandev Dental Clinic
+- Associated Pharmacy
+
+It includes:
 
 - appointment booking
-- walk-in token generation
-- patient queue status
-- staff dashboard
-- live waiting room TV screen
-- offline-first PWA behavior for low-connectivity areas like Jaisalmer
+- QR walk-in token generation
+- patient queue status by mobile number
+- staff dashboard with next / hold / skip / reschedule
+- live waiting-room screen
+- offline-safe provisional entries with local sync retry
 
-## Run locally
+## Tech Stack
+
+- Next.js 16 App Router
+- Tailwind CSS 4
+- Firebase Authentication (staff login)
+- Firebase Firestore via server-side Admin SDK routes
+- IndexedDB/localStorage fallback for offline-safe patient flows
+
+## Routes
+
+- `/` home portal
+- `/book?clinic=surgery|dental|pharmacy`
+- `/walkin?clinic=surgery|dental|pharmacy`
+- `/status?clinic=surgery|dental|pharmacy`
+- `/staff?clinic=surgery|dental|pharmacy`
+- `/live?clinic=surgery|dental|pharmacy`
+- `/offline`
+
+## Local Run
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+## Required Environment Variables
 
-## Current architecture
+Copy `.env.example` to `.env.local` for local testing.
 
-This prototype now follows a cleaner 4-layer structure:
+Public Firebase web config:
+
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
+- `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`
+- `NEXT_PUBLIC_APP_BASE_URL`
+
+Server-only values:
+
+- `FIREBASE_SERVICE_ACCOUNT_JSON`
+- `STAFF_ALLOWED_EMAILS`
+
+## Manual Firebase Setup
+
+Follow these steps in order. Yehi woh manual work hai jo aapko karna padega:
+
+1. Firebase console mein naya project banao.
+2. `Build > Authentication > Sign-in method` mein `Email/Password` enable karo.
+3. `Authentication > Users` mein staff users manually add karo.
+4. `Build > Firestore Database` mein database create karo.
+5. Firestore rules ko client-side access ke liye lock kar do, because app database ko server API routes se use karta hai:
+
+```txt
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+```
+
+6. `Project settings > General` mein web app add karo aur Firebase web config copy karo.
+7. `Project settings > Service accounts` se service account JSON generate karo.
+8. `Authentication > Settings > Authorized domains` mein apna Vercel domain add karo.
+
+## Manual Vercel Setup
+
+Vercel project mein ye env vars add karo:
+
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
+- `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`
+- `NEXT_PUBLIC_APP_BASE_URL`
+- `FIREBASE_SERVICE_ACCOUNT_JSON`
+- `STAFF_ALLOWED_EMAILS`
+
+Notes:
+
+- `NEXT_PUBLIC_APP_BASE_URL` mein final deployed URL dalo, for example `https://dr-srpanwar.vercel.app`
+- `FIREBASE_SERVICE_ACCOUNT_JSON` mein poora JSON paste karo
+- `STAFF_ALLOWED_EMAILS` comma-separated list honi chahiye
+
+## First Live Test Checklist
+
+1. Home page open karo.
+2. `?clinic=surgery`, `?clinic=dental`, `?clinic=pharmacy` teenon flows check karo.
+3. Booking create karo aur status page se mobile number search karo.
+4. Walk-in token generate karo.
+5. Staff login karo.
+6. `Next Token Call करें` click karke `/live` screen verify karo.
+7. Internet off karke provisional booking / walk-in test karo.
+8. Internet on karke sync verify karo.
+
+## Current Architecture
 
 1. `src/app`
-   Routes and page-level rendering only
+   Routes and route handlers
 2. `src/features/clinic/state`
-   Global context for clinic session, queue state, refresh, and sync actions
+   Client provider for clinic state, refresh, and offline/online transitions
 3. `src/features/clinic/services`
-   Business rules for token generation, queue movement, optimistic offline sync, and persistence orchestration
-4. `src/services/api.ts`
-   Dedicated Axios client with request/response interceptors for future backend integration
+   Queue engine and client orchestration
+4. `src/lib/firebase`
+   Firebase client/admin setup, staff auth verification, Firestore queue store
+5. `src/services/api.ts`
+   Axios client with bearer-token forwarding for staff actions
 
-## Offline-first behavior
+## Notes
 
-- IndexedDB is the primary browser persistence layer.
-- If IndexedDB is unavailable, the prototype falls back to localStorage.
-- Offline bookings and walk-ins get provisional tokens like `TEMP-001`.
-- When internet returns, pending entries are auto-synced and replaced with final `A-###` or `T-###` tokens.
-- The live TV page uses polling every 5 seconds instead of websocket-only behavior.
-
-## Demo routes
-
-- `/` Home + authority positioning
-- `/book` Appointment booking
-- `/walkin` Walk-in token
-- `/status` Patient queue status
-- `/staff` Staff dashboard
-- `/live` Waiting room TV page
-- `/offline` Offline fallback page
-
-## Demo staff access
-
-- Staff code: `2026`
-- Session auto-expires after 15 minutes of inactivity
-
-## Environment variables
-
-Copy `.env.example` to `.env.local` if needed.
-
-- `NEXT_PUBLIC_CLINIC_NAME`
-  Clinic display name
-- `NEXT_PUBLIC_API_BASE_URL`
-  Future backend URL for queue sync and auth APIs
-
-If `NEXT_PUBLIC_API_BASE_URL` is empty, sync stays local-only in prototype mode.
-
-## Production path
-
-Recommended next backend phase:
-
-- Supabase Postgres for queue + bookings
-- Row Level Security for patient-safe data access
-- JWT-based auth for doctor/staff
-- server-side token finalization to prevent collisions across devices
-- blacklist/rotation strategy at backend or auth provider layer for secure logout
-
-This prototype intentionally does not fake backend security features that require a real server.
+- Public patient actions use same-origin API routes.
+- Staff actions require Firebase ID token verification on the server.
+- If Firebase env vars are missing, patient-side local fallback still works for prototype-style testing.
