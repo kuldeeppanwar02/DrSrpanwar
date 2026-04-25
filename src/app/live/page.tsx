@@ -1,20 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { buildClinicHref } from "@/features/clinic/catalog";
 import { getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useLiveQueuePolling } from "@/features/clinic/hooks/use-live-queue-polling";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
+import { getStaffSession } from "@/components/navbar";
 
 export default function LivePage() {
-  const { activeClinic, activeClinicId, state: clinicState } = useClinic();
+  const {
+    activeClinic,
+    activeClinicId,
+    state: clinicState,
+    advanceQueue,
+    updateQueueStatus,
+    rescheduleQueueEntry,
+  } = useClinic();
   const { t } = useLang();
   useLiveQueuePolling(5000);
   const summary = useMemo(() => getQueueSummary(clinicState), [clinicState]);
   const current = summary.current;
   const next = summary.next;
+
+  const [session, setSession] = useState<{ name: string; role: string } | null>(null);
+
+  useEffect(() => {
+    setSession(getStaffSession());
+    const sync = () => setSession(getStaffSession());
+    window.addEventListener("staff-session-change", sync);
+    return () => window.removeEventListener("staff-session-change", sync);
+  }, []);
+
+  const isDoctor = session?.role === "doctor";
+  const isStaff = session?.role === "staff";
+  const isLoggedIn = isDoctor || isStaff;
+
+  const runAction = async (task: () => Promise<void>) => {
+    try { await task(); } catch { /* silent */ }
+  };
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#0f6b63_0%,#082a33_48%,#05161d_100%)] px-4 py-6 text-white sm:px-8 sm:py-8">
@@ -28,9 +53,16 @@ export default function LivePage() {
               <h1 className="display-type mt-1 text-3xl sm:text-4xl">{activeClinic.title}</h1>
               <p className="mt-1 text-sm text-[rgba(255,255,255,0.6)]">{t("live", "refreshNote")}</p>
             </div>
-            <p className="text-xs text-[rgba(255,255,255,0.5)]">
-              {t("live", "lastUpdated")}: {new Date(clinicState.lastUpdated).toLocaleTimeString("en-IN")}
-            </p>
+            <div className="flex items-center gap-3">
+              {isLoggedIn && (
+                <span className="rounded-full bg-[rgba(255,255,255,0.1)] px-3 py-1 text-xs font-semibold">
+                  👤 {session?.name}
+                </span>
+              )}
+              <p className="text-xs text-[rgba(255,255,255,0.5)]">
+                {t("live", "lastUpdated")}: {new Date(clinicState.lastUpdated).toLocaleTimeString("en-IN")}
+              </p>
+            </div>
           </div>
         </header>
 
@@ -68,6 +100,46 @@ export default function LivePage() {
                 </p>
               </div>
             </div>
+
+            {/* Doctor/Staff Controls */}
+            {isLoggedIn && (
+              <div className="mt-6 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-full bg-[rgba(103,237,170,0.2)] px-5 py-2 text-sm font-semibold text-[#67edaa] transition hover:bg-[rgba(103,237,170,0.3)]"
+                  onClick={() => void runAction(async () => { await advanceQueue(); })}
+                >
+                  ▶ {t("staff", "advanceBtn")}
+                </button>
+                {isDoctor && current && (
+                  <>
+                    <button
+                      type="button"
+                      className="rounded-full bg-[rgba(31,122,84,0.4)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(31,122,84,0.6)]"
+                      onClick={() => void runAction(async () => { await updateQueueStatus(current.id, "done"); })}
+                    >
+                      ✓ {t("staff", "doneBtn")}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-full bg-[rgba(255,255,255,0.08)] px-4 py-2 text-sm font-semibold text-[rgba(255,255,255,0.7)] transition hover:bg-[rgba(255,255,255,0.15)]"
+                      onClick={() => void runAction(async () => {
+                        await updateQueueStatus(current.id, current.status === "hold" ? "waiting" : "hold");
+                      })}
+                    >
+                      {current.status === "hold" ? t("staff", "resumeBtn") : t("staff", "holdBtn")}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-full bg-[rgba(182,93,54,0.2)] px-4 py-2 text-sm font-semibold text-[rgba(255,180,140,0.9)] transition hover:bg-[rgba(182,93,54,0.3)]"
+                      onClick={() => void runAction(async () => { await updateQueueStatus(current.id, "skipped"); })}
+                    >
+                      ⏭ {t("staff", "skipBtn")}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </section>
 
           <aside className="live-token-shadow rounded-2xl bg-[rgba(255,255,255,0.06)] p-5">
@@ -84,7 +156,7 @@ export default function LivePage() {
             </div>
 
             <div className="mt-4 space-y-2">
-              {summary.waiting.slice(0, 7).map((entry, index) => (
+              {summary.waiting.slice(0, 10).map((entry, index) => (
                 <div
                   key={entry.id}
                   className={`rounded-xl border px-3 py-3 ${
@@ -94,14 +166,41 @@ export default function LivePage() {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <p className="text-xl font-semibold">{entry.token}</p>
-                    <span className="rounded-full bg-[rgba(255,255,255,0.08)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[rgba(255,255,255,0.6)]">
-                      {entry.source}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xl font-semibold">{entry.token}</p>
+                      <span className="rounded-full bg-[rgba(255,255,255,0.08)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[rgba(255,255,255,0.6)]">
+                        {entry.source}
+                      </span>
+                    </div>
+                    {/* Doctor inline actions on each waiting entry */}
+                    {isDoctor && (
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          className="rounded-full bg-[rgba(103,237,170,0.15)] px-2 py-0.5 text-[10px] font-semibold text-[#67edaa]"
+                          onClick={() => void runAction(async () => { await updateQueueStatus(entry.id, "in-progress"); })}
+                        >
+                          {t("staff", "callNow")}
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-full bg-[rgba(182,93,54,0.15)] px-2 py-0.5 text-[10px] font-semibold text-[rgba(255,180,140,0.9)]"
+                          onClick={() => void runAction(async () => { await rescheduleQueueEntry(entry.id); })}
+                        >
+                          {t("queue", "shiftToTomorrow")}
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <p className="mt-1 text-sm text-[rgba(255,255,255,0.65)]">{entry.name}</p>
                 </div>
               ))}
+
+              {summary.waiting.length === 0 && (
+                <p className="py-4 text-center text-sm text-[rgba(255,255,255,0.4)]">
+                  {t("staff", "noPatients")}
+                </p>
+              )}
             </div>
           </aside>
         </main>

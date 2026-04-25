@@ -21,6 +21,7 @@ export type ClinicDefinition = {
   hoursLabel: string;
   accentColor: string;
   hasBooking: boolean;
+  mapUrl?: string;
 };
 
 export type QueueEntry = {
