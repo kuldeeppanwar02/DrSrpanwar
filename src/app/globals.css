@@ -1,26 +1,215 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7efe1;
+  --foreground: #13313a;
+  --surface: rgba(255, 250, 242, 0.84);
+  --surface-strong: rgba(252, 244, 231, 0.94);
+  --line: rgba(19, 49, 58, 0.12);
+  --line-strong: rgba(19, 49, 58, 0.26);
+  --accent: #0f6b63;
+  --accent-strong: #0a4e53;
+  --accent-soft: rgba(15, 107, 99, 0.12);
+  --warm: #b65d36;
+  --gold: #ebc17d;
+  --success: #1f7a54;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-body);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), sans-serif;
+  background-image:
+    radial-gradient(circle at top left, rgba(235, 193, 125, 0.38), transparent 26%),
+    radial-gradient(circle at top right, rgba(15, 107, 99, 0.12), transparent 32%),
+    linear-gradient(180deg, #fcf5ea 0%, #f7efe1 40%, #f1e7d8 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: rgba(15, 107, 99, 0.18);
+  color: var(--accent-strong);
+}
+
+.page-shell {
+  min-height: 100svh;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.44)),
+    radial-gradient(circle at 20% 15%, rgba(235, 193, 125, 0.22), transparent 18%),
+    radial-gradient(circle at 80% 10%, rgba(15, 107, 99, 0.1), transparent 24%);
+}
+
+.section-shell {
+  width: min(1180px, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.display-type {
+  font-family: var(--font-display), serif;
+}
+
+.balance-text {
+  text-wrap: balance;
+}
+
+.surface-panel {
+  background: var(--surface);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--line);
+}
+
+.surface-panel-strong {
+  background: var(--surface-strong);
+  border: 1px solid var(--line-strong);
+}
+
+.label-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(19, 49, 58, 0.08);
+  padding: 0.55rem 1rem;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.hero-glow {
+  position: relative;
+}
+
+.hero-glow::after {
+  content: "";
+  position: absolute;
+  inset: 10% -8% -8% 18%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(235, 193, 125, 0.42), transparent 68%);
+  filter: blur(8px);
+}
+
+.grid-lines {
+  background-image:
+    linear-gradient(to right, rgba(19, 49, 58, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(19, 49, 58, 0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.queue-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 999px;
+  flex: none;
+}
+
+.queue-dot.waiting {
+  background: var(--warm);
+}
+
+.queue-dot.in-progress {
+  background: var(--success);
+}
+
+.queue-dot.hold {
+  background: #bf8a2f;
+}
+
+.queue-dot.done,
+.queue-dot.skipped {
+  background: rgba(19, 49, 58, 0.26);
+}
+
+.focus-ring:focus-visible {
+  outline: 3px solid rgba(15, 107, 99, 0.22);
+  outline-offset: 2px;
+}
+
+.live-token-shadow {
+  box-shadow:
+    0 40px 90px rgba(2, 22, 33, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.skeleton-line {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(19, 49, 58, 0.08);
+}
+
+.skeleton-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.7),
+    transparent
+  );
+  animation: shimmer 1.3s linear infinite;
+}
+
+.fade-up {
+  animation: fade-up 720ms ease-out both;
+}
+
+.fade-up-delay {
+  animation: fade-up 960ms ease-out both;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (max-width: 640px) {
+  .section-shell {
+    width: min(100% - 1.25rem, 1180px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .fade-up,
+  .fade-up-delay,
+  .skeleton-line::after {
+    animation: none;
+  }
 }
