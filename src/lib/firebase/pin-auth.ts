@@ -5,7 +5,7 @@ import { getAdminDb } from "@/lib/firebase/admin";
 import { serverEnv } from "@/config/server-env";
 import type { ClinicId } from "@/features/clinic/types";
 
-export type StaffRole = "doctor" | "staff";
+export type StaffRole = "doctor" | "staff" | "pharmacist";
 
 export type StaffMember = {
   id: string;
@@ -53,6 +53,27 @@ export async function verifyPin(
         role: "doctor",
       };
     }
+  }
+
+  // Check pharmacy PIN
+  if (serverEnv.pharmacy.pin && trimmedPin === serverEnv.pharmacy.pin) {
+    return {
+      member: {
+        id: "pharmacist-pharmacy",
+        name: serverEnv.pharmacy.name || "Pharmacist",
+        role: "pharmacist",
+        pinHash: hashPin(trimmedPin),
+        phone: "",
+        email: "",
+        designation: "Pharmacist",
+        clinicAccess: ["pharmacy" as ClinicId],
+        status: "active",
+        joinedAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
+        createdBy: "system",
+      },
+      role: "pharmacist",
+    };
   }
 
   // Check staff_members collection in Firestore

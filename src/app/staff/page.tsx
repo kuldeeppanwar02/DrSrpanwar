@@ -16,17 +16,19 @@ import {
   UserCircle,
   Inbox,
   Lock,
+  Camera,
 } from "lucide-react";
 import { getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
 import { getStaffSession, setStaffSession, clearStaffSession } from "@/components/navbar";
 import { useToast } from "@/components/toast";
+import { PrescriptionModal } from "@/components/prescription-modal";
 
 type StaffSessionData = {
   id: string;
   name: string;
-  role: "doctor" | "staff";
+  role: "doctor" | "staff" | "pharmacist";
   designation: string;
   clinicAccess: string[];
 };
@@ -61,6 +63,7 @@ export default function StaffPage() {
   const [historyMap, setHistoryMap] = useState<Record<string, PatientHistorySummary>>({});
   const [emergencyMsg, setEmergencyMsg] = useState("");
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
+  const [rxEntry, setRxEntry] = useState<{ id: string; token: string; name: string } | null>(null);
 
   const isDoctor = session?.role === "doctor";
 
@@ -470,7 +473,7 @@ export default function StaffPage() {
                         </button>
                         {isDoctor && (
                           <button type="button" className="btn btn-sm" style={{background:'var(--success)',color:'white'}}
-                            onClick={() => void runAction(async () => { await updateQueueStatus(entry.id, "done"); }, t("staff", "doneBtn") + " ✓")}>
+                            onClick={() => setRxEntry({ id: entry.id, token: entry.token, name: entry.name })}>
                             <CheckCircle2 className="h-3 w-3" /> {t("staff", "doneBtn")}
                           </button>
                         )}
@@ -530,6 +533,25 @@ export default function StaffPage() {
           )}
         </div>
       </div>
+
+      {/* Prescription Photo Modal */}
+      {rxEntry && (
+        <PrescriptionModal
+          tokenId={rxEntry.token}
+          patientName={rxEntry.name}
+          clinicId={activeClinicId}
+          createdBy={session?.id || "staff"}
+          onDone={() => {
+            // Mark entry as done after photo sent or skipped
+            void runAction(
+              async () => { await updateQueueStatus(rxEntry.id, "done"); },
+              t("staff", "doneBtn") + " ✓",
+            );
+            setRxEntry(null);
+          }}
+          onClose={() => setRxEntry(null)}
+        />
+      )}
     </div>
   );
 }

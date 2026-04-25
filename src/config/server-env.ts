@@ -21,6 +21,10 @@ export const serverEnv = {
       name: process.env.DOCTOR_NAME_DENTAL?.trim() ?? "Dr. Dhawna Dhande",
     },
   },
+  pharmacy: {
+    pin: process.env.PHARMACY_PIN?.trim() ?? "8619",
+    name: process.env.PHARMACY_NAME?.trim() ?? "Dhanwantri Medical",
+  },
 };
 
 export function hasFirebaseAdminConfig() {

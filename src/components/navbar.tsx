@@ -16,6 +16,7 @@ import {
   X,
   Globe,
   Hospital,
+  Pill,
 } from "lucide-react";
 import { CLINICS, buildClinicHref } from "@/features/clinic/catalog";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
@@ -24,7 +25,7 @@ import { useLang } from "@/i18n/lang-provider";
 type StaffSession = {
   id: string;
   name: string;
-  role: "doctor" | "staff";
+  role: "doctor" | "staff" | "pharmacist";
   designation: string;
   clinicAccess: string[];
 } | null;
@@ -80,6 +81,7 @@ export function Navbar() {
   };
 
   const isDoctor = session?.role === "doctor";
+  const isPharmacist = session?.role === "pharmacist";
 
   /* Patient links */
   const patientLinks = [
@@ -96,11 +98,19 @@ export function Navbar() {
   const staffQuickNav = session
     ? [
         { href: "/", label: t("nav", "home"), icon: Home },
-        { href: "/staff", label: t("nav", "staff"), icon: LayoutDashboard },
+        ...(isPharmacist
+          ? [{ href: "/pharmacy", label: t("nav", "pharmacy") || "Pharmacy", icon: Pill }]
+          : [{ href: "/staff", label: t("nav", "staff"), icon: LayoutDashboard }]),
         { href: "/live", label: t("nav", "live"), icon: Monitor },
-        { href: "/staff/schedule", label: t("nav", "schedule"), icon: CalendarDays },
         ...(isDoctor
-          ? [{ href: "/staff/manage", label: t("nav", "staffMgmt"), icon: Users }]
+          ? [
+              { href: "/pharmacy", label: t("nav", "pharmacy") || "Pharmacy", icon: Pill },
+              { href: "/staff/schedule", label: t("nav", "schedule"), icon: CalendarDays },
+              { href: "/staff/manage", label: t("nav", "staffMgmt"), icon: Users },
+            ]
+          : []),
+        ...(!isPharmacist && !isDoctor
+          ? [{ href: "/staff/schedule", label: t("nav", "schedule"), icon: CalendarDays }]
           : []),
       ]
     : [];
