@@ -33,8 +33,8 @@ function generateSlots(openTime: string, closeTime: string, intervalMin = 30): s
 
 /** Default fallback slots if schedule hasn't been configured yet */
 const defaultSlots: Record<string, string[]> = {
-  surgery: ["09:30 AM", "10:00 AM", "10:30 AM", "11:15 AM", "12:00 PM", "04:30 PM"],
-  dental: ["10:00 AM", "10:30 AM", "11:00 AM", "12:15 PM", "03:30 PM", "05:15 PM"],
+  surgery: generateSlots("09:00", "17:00"),
+  dental: generateSlots("10:00", "17:00"),
 };
 
 function buildWhatsAppUrl(clinic: string, token: string, day: string, slot: string): string {

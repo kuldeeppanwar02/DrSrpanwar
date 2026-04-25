@@ -35,16 +35,40 @@ function getMonday(offsetWeeks = 0) {
   return monday.toISOString().slice(0, 10);
 }
 
+/** Generate 30-min interval slots from openTime (HH:mm) to closeTime (HH:mm) */
+function generateSlots(open: string, close: string): string[] {
+  if (!open || !close) return [];
+  const slots: string[] = [];
+  const [oh, om] = open.split(":").map(Number);
+  const [ch, cm] = close.split(":").map(Number);
+  let mins = oh * 60 + om;
+  const endMins = ch * 60 + cm;
+  while (mins < endMins) {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    const ampm = h >= 12 ? "PM" : "AM";
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    slots.push(`${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`);
+    mins += 30;
+  }
+  return slots;
+}
+
 function createDefaultDays(): DaySchedule[] {
-  return Array.from({ length: 7 }, (_, i) => ({
-    dayOfWeek: i,
-    isOpen: i > 0 && i < 7,
-    openTime: "09:00",
-    closeTime: "17:00",
-    slots: ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "03:00 PM", "04:00 PM"],
-    maxPatients: 30,
-    notes: "",
-  }));
+  return Array.from({ length: 7 }, (_, i) => {
+    const isOpen = i > 0 && i < 7;
+    const openTime = "09:00";
+    const closeTime = "17:00";
+    return {
+      dayOfWeek: i,
+      isOpen,
+      openTime,
+      closeTime,
+      slots: isOpen ? generateSlots(openTime, closeTime) : [],
+      maxPatients: 30,
+      notes: "",
+    };
+  });
 }
 
 export default function SchedulePage() {
@@ -71,7 +95,14 @@ export default function SchedulePage() {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data.schedule) && data.schedule.length) {
-            setDays(data.schedule);
+            // Auto-generate slots for any day that has times but empty slots
+            const enriched = data.schedule.map((day: DaySchedule) => ({
+              ...day,
+              slots: day.isOpen && day.openTime && day.closeTime && (!day.slots || day.slots.length === 0)
+                ? generateSlots(day.openTime, day.closeTime)
+                : day.slots || [],
+            }));
+            setDays(enriched);
           } else {
             setDays(createDefaultDays());
           }
@@ -89,7 +120,15 @@ export default function SchedulePage() {
 
   const updateDay = (index: number, changes: Partial<DaySchedule>) => {
     setDays((prev) =>
-      prev.map((day, i) => (i === index ? { ...day, ...changes } : day)),
+      prev.map((day, i) => {
+        if (i !== index) return day;
+        const updated = { ...day, ...changes };
+        // Auto-regenerate slots when time changes
+        if ("openTime" in changes || "closeTime" in changes) {
+          updated.slots = generateSlots(updated.openTime, updated.closeTime);
+        }
+        return updated;
+      }),
     );
   };
 
@@ -267,21 +306,33 @@ export default function SchedulePage() {
                         className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-2 py-1.5 text-sm outline-none"
                       />
                     </label>
-                    <label className="block">
-                      <span className="mb-1 block text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.5)]">
-                        {t("schedule", "slots")} <span className="normal-case text-[rgba(19,49,58,0.35)]">({t("schedule", "slotsHelp")})</span>
-                      </span>
-                      <input
-                        value={day.slots.join(", ")}
-                        onChange={(e) =>
-                          updateDay(index, {
-                            slots: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
-                          })
-                        }
-                        className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-2 py-1.5 text-sm outline-none"
-                        placeholder="09:00 AM, 10:00 AM"
-                      />
-                    </label>
+                    <div className="block sm:col-span-2 lg:col-span-1">
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.5)]">
+                          {t("schedule", "slots")} ({day.slots.length})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => updateDay(index, { openTime: day.openTime, closeTime: day.closeTime })}
+                          className="rounded-full bg-[rgba(15,107,99,0.08)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent)] hover:bg-[rgba(15,107,99,0.15)]"
+                        >
+                          ↻ Auto-generate
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1 rounded-lg border border-[var(--line)] bg-white p-2 min-h-[36px]">
+                        {day.slots.length > 0 ? (
+                          day.slots.map((slot) => (
+                            <span key={slot} className="rounded-full bg-[rgba(15,107,99,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[var(--accent-strong)]">
+                              {slot}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-[11px] text-[rgba(19,49,58,0.35)]">
+                            Set open/close time to auto-generate
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

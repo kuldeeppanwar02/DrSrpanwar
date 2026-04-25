@@ -10,6 +10,24 @@ import {
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
+/** Generate 30-min interval slot labels from HH:mm open to HH:mm close */
+function generateSlots(open: string, close: string): string[] {
+  const slots: string[] = [];
+  const [oh, om] = open.split(":").map(Number);
+  const [ch, cm] = close.split(":").map(Number);
+  let mins = oh * 60 + om;
+  const endMins = ch * 60 + cm;
+  while (mins < endMins) {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    const ampm = h >= 12 ? "PM" : "AM";
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    slots.push(`${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`);
+    mins += 30;
+  }
+  return slots;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -29,19 +47,36 @@ export async function GET(request: Request) {
 
     const schedule = await getWeekSchedule(clinicId as ClinicId, weekStart);
 
+    const defaultOpen = "09:00";
+    const defaultClose = "17:00";
+
     // Convert the Record<string, DaySchedule> to an array format for the frontend
-    const daysArray = DAY_NAMES.map((name, index) => ({
-      dayOfWeek: index,
-      dayName: name,
-      ...(schedule.days[name] || {
-        isOpen: index > 0 && index < 7,
-        openTime: "09:00",
-        closeTime: "17:00",
-        slots: [],
+    const daysArray = DAY_NAMES.map((name, index) => {
+      const saved = schedule.days[name];
+      if (saved) {
+        // If saved day has open/close times but empty slots, auto-generate
+        return {
+          dayOfWeek: index,
+          dayName: name,
+          ...saved,
+          slots: saved.isOpen && saved.openTime && saved.closeTime && (!saved.slots || saved.slots.length === 0)
+            ? generateSlots(saved.openTime, saved.closeTime)
+            : saved.slots || [],
+        };
+      }
+      // Fallback for unconfigured days
+      const isOpen = index > 0 && index < 7;
+      return {
+        dayOfWeek: index,
+        dayName: name,
+        isOpen,
+        openTime: defaultOpen,
+        closeTime: defaultClose,
+        slots: isOpen ? generateSlots(defaultOpen, defaultClose) : [],
         maxPatients: 30,
         notes: "",
-      }),
-    }));
+      };
+    });
 
     return Response.json({
       schedule: daysArray,
