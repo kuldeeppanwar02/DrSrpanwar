@@ -1,27 +1,40 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { buildClinicHref } from "@/features/clinic/catalog";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
-import type { ClinicId } from "@/features/clinic/types";
 
 const dayOptions = ["Aaj", "Kal"] as const;
 
-const slotMap: Record<ClinicId, Record<"Aaj" | "Kal", string[]>> = {
-  surgery: {
-    Aaj: ["09:30 AM", "10:00 AM", "10:30 AM", "11:15 AM", "12:00 PM", "04:30 PM"],
-    Kal: ["09:00 AM", "09:45 AM", "10:15 AM", "11:30 AM", "01:00 PM", "05:00 PM"],
-  },
-  dental: {
-    Aaj: ["10:00 AM", "10:30 AM", "11:00 AM", "12:15 PM", "03:30 PM", "05:15 PM"],
-    Kal: ["09:30 AM", "10:15 AM", "11:45 AM", "01:15 PM", "04:00 PM", "05:30 PM"],
-  },
-  pharmacy: {
-    Aaj: [],
-    Kal: [],
-  },
+/**
+ * Generate time slots between open and close times.
+ * E.g. generateSlots("09:00", "13:00", 30) => ["09:00 AM","09:30 AM","10:00 AM",...]
+ */
+function generateSlots(openTime: string, closeTime: string, intervalMin = 30): string[] {
+  if (!openTime || !closeTime) return [];
+  const slots: string[] = [];
+  const [oh, om] = openTime.split(":").map(Number);
+  const [ch, cm] = closeTime.split(":").map(Number);
+  let current = oh * 60 + (om || 0);
+  const end = ch * 60 + (cm || 0);
+
+  while (current < end) {
+    const h = Math.floor(current / 60);
+    const m = current % 60;
+    const period = h >= 12 ? "PM" : "AM";
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    slots.push(`${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`);
+    current += intervalMin;
+  }
+  return slots;
+}
+
+/** Default fallback slots if schedule hasn't been configured yet */
+const defaultSlots: Record<string, string[]> = {
+  surgery: ["09:30 AM", "10:00 AM", "10:30 AM", "11:15 AM", "12:00 PM", "04:30 PM"],
+  dental: ["10:00 AM", "10:30 AM", "11:00 AM", "12:15 PM", "03:30 PM", "05:15 PM"],
 };
 
 function buildWhatsAppUrl(clinic: string, token: string, day: string, slot: string): string {
@@ -41,6 +54,15 @@ type BookingConfirmation = {
   dayLabel: string;
   slotLabel: string;
   syncState: "synced" | "pending";
+};
+
+type DayScheduleData = {
+  dayName: string;
+  isOpen: boolean;
+  openTime: string;
+  closeTime: string;
+  slots: string[];
+  maxPatients: number;
 };
 
 export default function BookPage() {
@@ -86,13 +108,87 @@ export default function BookPage() {
   }
 
   const [dayLabel, setDayLabel] = useState<"Aaj" | "Kal">("Aaj");
-  const [slotLabel, setSlotLabel] = useState(slotMap[activeClinicId].Aaj[0]);
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [requiresPharmacyFollowUp, setRequiresPharmacyFollowUp] = useState(false);
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState<BookingConfirmation | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [scheduleSlots, setScheduleSlots] = useState<Record<string, string[]>>({});
+  const [loadingSlots, setLoadingSlots] = useState(true);
+
+  // Fetch schedule and generate slots dynamically
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      setLoadingSlots(true);
+      try {
+        // Fetch this week (Aaj) and next week offset if needed (Kal might be next week)
+        const res = await fetch(`/api/schedule?clinic=${activeClinicId}&weekOffset=0`);
+        if (res.ok) {
+          const data = await res.json();
+          const schedule: DayScheduleData[] = data.schedule || [];
+
+          // Get today and tomorrow's day names
+          const today = new Date();
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+          const todayName = dayNames[today.getDay()];
+          const tomorrowName = dayNames[tomorrow.getDay()];
+
+          const todaySchedule = schedule.find((d) => d.dayName === todayName);
+          const tomorrowSchedule = schedule.find((d) => d.dayName === tomorrowName);
+
+          const newSlots: Record<string, string[]> = {};
+
+          if (todaySchedule?.isOpen && todaySchedule.slots?.length > 0) {
+            newSlots["Aaj"] = todaySchedule.slots;
+          } else if (todaySchedule?.isOpen && todaySchedule.openTime && todaySchedule.closeTime) {
+            newSlots["Aaj"] = generateSlots(todaySchedule.openTime, todaySchedule.closeTime);
+          } else {
+            newSlots["Aaj"] = defaultSlots[activeClinicId] || [];
+          }
+
+          if (tomorrowSchedule?.isOpen && tomorrowSchedule.slots?.length > 0) {
+            newSlots["Kal"] = tomorrowSchedule.slots;
+          } else if (tomorrowSchedule?.isOpen && tomorrowSchedule.openTime && tomorrowSchedule.closeTime) {
+            newSlots["Kal"] = generateSlots(tomorrowSchedule.openTime, tomorrowSchedule.closeTime);
+          } else {
+            newSlots["Kal"] = defaultSlots[activeClinicId] || [];
+          }
+
+          setScheduleSlots(newSlots);
+        } else {
+          // Fallback to defaults
+          setScheduleSlots({
+            Aaj: defaultSlots[activeClinicId] || [],
+            Kal: defaultSlots[activeClinicId] || [],
+          });
+        }
+      } catch {
+        setScheduleSlots({
+          Aaj: defaultSlots[activeClinicId] || [],
+          Kal: defaultSlots[activeClinicId] || [],
+        });
+      } finally {
+        setLoadingSlots(false);
+      }
+    };
+    void fetchSchedule();
+  }, [activeClinicId]);
+
+  const currentSlots = useMemo(
+    () => scheduleSlots[dayLabel] || defaultSlots[activeClinicId] || [],
+    [scheduleSlots, dayLabel, activeClinicId],
+  );
+  const [slotLabel, setSlotLabel] = useState("");
+
+  // Auto-select first slot when slots change
+  useEffect(() => {
+    if (currentSlots.length > 0 && !currentSlots.includes(slotLabel)) {
+      setSlotLabel(currentSlots[0]);
+    }
+  }, [currentSlots, slotLabel]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -100,7 +196,8 @@ export default function BookPage() {
       setError(t("booking", "nameRequired"));
       return;
     }
-    if (mobile.replace(/\D/g, "").length !== 10) {
+    // Mobile is OPTIONAL — only validate if provided
+    if (mobile.trim() && mobile.replace(/\D/g, "").length !== 10) {
       setError(t("booking", "invalidMobile"));
       return;
     }
@@ -111,7 +208,7 @@ export default function BookPage() {
         dayLabel,
         slotLabel,
         name,
-        mobile,
+        mobile: mobile.trim() || "",
         requiresPharmacyFollowUp,
       });
       const latestEntry = nextState.queue[nextState.queue.length - 1];
@@ -162,7 +259,6 @@ export default function BookPage() {
                 {t("booking", "screenshotNote")}
               </p>
               <div className="mt-5 flex flex-wrap justify-center gap-3">
-                {/* WhatsApp Share */}
                 <a
                   href={buildWhatsAppUrl(
                     activeClinic.shortName,
@@ -223,7 +319,6 @@ export default function BookPage() {
                     }`}
                     onClick={() => {
                       setDayLabel(day);
-                      setSlotLabel(slotMap[activeClinicId][day][0]);
                     }}
                   >
                     <p className="text-lg font-semibold">
@@ -239,22 +334,30 @@ export default function BookPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
                 {t("booking", "step")} 2 · {t("booking", "chooseSlot")}
               </p>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {slotMap[activeClinicId][dayLabel].map((slot) => (
-                  <button
-                    key={slot}
-                    type="button"
-                    className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
-                      slotLabel === slot
-                        ? "bg-[var(--warm)] text-white"
-                        : "border border-[var(--line)] hover:border-[var(--warm)]"
-                    }`}
-                    onClick={() => setSlotLabel(slot)}
-                  >
-                    {slot}
-                  </button>
-                ))}
-              </div>
+              {loadingSlots ? (
+                <p className="mt-3 text-sm text-[rgba(19,49,58,0.5)]">{t("common", "loading")}</p>
+              ) : currentSlots.length === 0 ? (
+                <p className="mt-3 rounded-lg bg-[rgba(182,93,54,0.08)] px-3 py-2 text-sm text-[#8b4626]">
+                  {t("booking", "closed")} — {dayLabel === "Aaj" ? t("booking", "today") : t("booking", "tomorrow")}
+                </p>
+              ) : (
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {currentSlots.map((slot) => (
+                    <button
+                      key={slot}
+                      type="button"
+                      className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+                        slotLabel === slot
+                          ? "bg-[var(--warm)] text-white"
+                          : "border border-[var(--line)] hover:border-[var(--warm)]"
+                      }`}
+                      onClick={() => setSlotLabel(slot)}
+                    >
+                      {slot}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Step 3: Details */}
@@ -266,7 +369,7 @@ export default function BookPage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block">
                     <span className="mb-1 block text-xs font-semibold text-[rgba(19,49,58,0.7)]">
-                      {t("booking", "patientName")}
+                      {t("booking", "patientName")} *
                     </span>
                     <input
                       value={name}
@@ -277,7 +380,7 @@ export default function BookPage() {
                   </label>
                   <label className="block">
                     <span className="mb-1 block text-xs font-semibold text-[rgba(19,49,58,0.7)]">
-                      {t("common", "mobile")}
+                      {t("common", "mobile")} <span className="text-[rgba(19,49,58,0.4)] font-normal">(optional)</span>
                     </span>
                     <input
                       value={mobile}
@@ -309,12 +412,12 @@ export default function BookPage() {
                   <button
                     type="submit"
                     className="focus-ring rounded-full bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:opacity-60"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || currentSlots.length === 0}
                   >
                     {isSubmitting ? t("common", "loading") : t("booking", "confirmBtn")}
                   </button>
                   <span className="text-xs text-[rgba(19,49,58,0.55)]">
-                    {dayLabel === "Aaj" ? t("booking", "today") : t("booking", "tomorrow")} · {slotLabel}
+                    {dayLabel === "Aaj" ? t("booking", "today") : t("booking", "tomorrow")} · {slotLabel || "—"}
                   </span>
                 </div>
               </form>

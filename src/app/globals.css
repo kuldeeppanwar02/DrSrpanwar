@@ -213,3 +213,12 @@ a {
     animation: none;
   }
 }
+
+/* Hindi mode: reset letter-spacing and uppercase that breaks Devanagari */
+html[data-lang="hi"] .uppercase {
+  text-transform: none;
+}
+
+html[data-lang="hi"] [class*="tracking-"] {
+  letter-spacing: 0.02em;
+}

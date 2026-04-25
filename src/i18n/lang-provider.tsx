@@ -24,13 +24,16 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>("hi");
 
   useEffect(() => {
-    setLangState(readStoredLang());
+    const stored = readStoredLang();
+    setLangState(stored);
+    document.documentElement.setAttribute("data-lang", stored);
   }, []);
 
   const setLang = useCallback((next: Lang) => {
     setLangState(next);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY, next);
+      document.documentElement.setAttribute("data-lang", next);
     }
   }, []);
 

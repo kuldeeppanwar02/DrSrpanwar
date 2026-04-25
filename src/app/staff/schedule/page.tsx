@@ -66,12 +66,12 @@ export default function SchedulePage() {
       setSaved(false);
       try {
         const res = await fetch(
-          `/api/schedule?clinicId=${activeClinicId}&weekStart=${weekStart}`,
+          `/api/schedule?clinic=${activeClinicId}&weekOffset=${weekOffset}`,
         );
         if (res.ok) {
           const data = await res.json();
-          if (data.schedule?.days?.length) {
-            setDays(data.schedule.days);
+          if (Array.isArray(data.schedule) && data.schedule.length) {
+            setDays(data.schedule);
           } else {
             setDays(createDefaultDays());
           }
@@ -85,7 +85,7 @@ export default function SchedulePage() {
       }
     };
     void fetchSchedule();
-  }, [activeClinicId, weekStart]);
+  }, [activeClinicId, weekOffset]);
 
   const updateDay = (index: number, changes: Partial<DaySchedule>) => {
     setDays((prev) =>

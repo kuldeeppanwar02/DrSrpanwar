@@ -65,15 +65,21 @@ export function Navbar() {
     window.dispatchEvent(new Event("staff-session-change"));
   };
 
-  const patientLinks = [
-    { href: "/", label: t("nav", "home"), icon: "🏠" },
-    ...(activeClinic?.hasBooking
-      ? [{ href: "/book", label: t("nav", "booking"), icon: "📋" }]
-      : []),
-    { href: "/walkin", label: t("nav", "walkin"), icon: "🎫" },
-    { href: "/status", label: t("nav", "myToken"), icon: "🔍" },
-    { href: "/live", label: t("nav", "live"), icon: "📺" },
-  ];
+  // When logged in as staff/doctor, hide patient-facing links
+  const patientLinks = session
+    ? [
+        { href: "/", label: t("nav", "home"), icon: "🏠" },
+        { href: "/live", label: t("nav", "live"), icon: "📺" },
+      ]
+    : [
+        { href: "/", label: t("nav", "home"), icon: "🏠" },
+        ...(activeClinic?.hasBooking
+          ? [{ href: "/book", label: t("nav", "booking"), icon: "📋" }]
+          : []),
+        { href: "/walkin", label: t("nav", "walkin"), icon: "🎫" },
+        { href: "/status", label: t("nav", "myToken"), icon: "🔍" },
+        { href: "/live", label: t("nav", "live"), icon: "📺" },
+      ];
 
   const staffLinks = session
     ? [
