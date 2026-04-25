@@ -14,12 +14,26 @@ import {
   Activity,
   Users,
   CheckCircle2,
+  Stethoscope,
+  Pill,
+  ArrowRight,
+  Monitor,
 } from "lucide-react";
 import { CLINICS, buildClinicHref } from "@/features/clinic/catalog";
 import { getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
 import { getStaffSession } from "@/components/navbar";
+import type { ClinicDefinition } from "@/features/clinic/types";
+
+/** Pick the best icon for a clinic */
+function ClinicIcon({ id, className }: { id: string; className?: string }) {
+  switch (id) {
+    case "surgery": return <Stethoscope className={className} />;
+    case "pharmacy": return <Pill className={className} />;
+    default: return <CalendarCheck className={className} />;
+  }
+}
 
 export default function HomePage() {
   const { activeClinic, activeClinicId, state, isOnline } = useClinic();
@@ -55,7 +69,7 @@ export default function HomePage() {
       )}
 
       {/* ═══ Hero Section ═══ */}
-      <section className="section-shell pt-8 pb-4">
+      <section className="section-shell pt-8 pb-2">
         <div className="fade-up text-center">
           <p className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--accent-strong)]">
             <Activity className="h-3 w-3" />
@@ -75,120 +89,71 @@ export default function HomePage() {
               </p>
             </div>
           ) : (
-            <>
-              <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-[rgba(19,49,58,0.65)] balance-text">
-                {t("home", "tagline")}
-              </p>
-
-              {/* CTA Buttons */}
-              <div className="mt-6 flex flex-wrap justify-center gap-3">
-                {activeClinic.hasBooking && (
-                  <Link
-                    href={buildClinicHref("/book", activeClinicId)}
-                    className="btn btn-primary btn-lg"
-                  >
-                    <CalendarCheck className="h-4 w-4" />
-                    {t("home", "bookBtn")}
-                  </Link>
-                )}
-                <Link
-                  href={buildClinicHref("/walkin", activeClinicId)}
-                  className="btn btn-warm btn-lg"
-                >
-                  <Ticket className="h-4 w-4" />
-                  {activeClinic.hasBooking ? t("home", "walkinBtn") : t("pharmacy", "pickupToken")}
-                </Link>
-                <Link
-                  href={buildClinicHref("/status", activeClinicId)}
-                  className="btn btn-outline btn-lg"
-                >
-                  <Search className="h-4 w-4" />
-                  {t("home", "checkStatus")}
-                </Link>
-              </div>
-            </>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-[rgba(19,49,58,0.65)] balance-text">
+              {t("home", "tagline")}
+            </p>
           )}
         </div>
       </section>
 
-      {/* ═══ Queue + Clinics Grid ═══ */}
-      <section className="section-shell grid gap-6 pb-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        {/* Left — Clinic Cards */}
-        <div>
+      {/* ═══ Clinic Switcher Tabs ═══ */}
+      <section className="section-shell pb-2">
+        <div className="flex gap-2 overflow-x-auto py-2 scrollbar-hide">
+          {CLINICS.map((clinic) => (
+            <Link
+              key={clinic.id}
+              href={buildClinicHref("/", clinic.id)}
+              className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                clinic.id === activeClinicId
+                  ? "bg-[var(--accent)] text-white shadow-md scale-[1.02]"
+                  : "card hover:border-[var(--accent)] hover:shadow-md"
+              }`}
+            >
+              <ClinicIcon id={clinic.id} className="h-4 w-4" />
+              {clinic.shortName}
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* ═══ Focused Clinic View ═══ */}
+      <section className="section-shell grid gap-5 pb-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        {/* Left — Active Clinic Detail */}
+        <div className="space-y-5">
+          {/* Clinic Hero Card */}
+          <FocusedClinicCard
+            clinic={activeClinic}
+            activeClinicId={activeClinicId}
+            isLoggedIn={isLoggedIn}
+            t={t}
+          />
+
+          {/* Other Clinics — mini switcher row */}
           {!isLoggedIn && (
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
-              {t("home", "threeClinicPortal")}
-            </p>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[rgba(19,49,58,0.4)]">
+                {t("home", "otherClinics") || "Other Clinics"}
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-2 stagger-children">
+                {CLINICS.filter((c) => c.id !== activeClinicId).map((clinic) => (
+                  <Link
+                    key={clinic.id}
+                    href={buildClinicHref("/", clinic.id)}
+                    className="card fade-up flex items-center gap-3 p-3 transition-all hover:card-active"
+                  >
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)]">
+                      <ClinicIcon id={clinic.id} className="h-4 w-4 text-[var(--accent)]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-[var(--accent-strong)] truncate">{clinic.shortName}</p>
+                      <p className="text-[10px] text-[rgba(19,49,58,0.5)] truncate">{clinic.title}</p>
+                    </div>
+                    <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 text-[rgba(19,49,58,0.25)]" />
+                  </Link>
+                ))}
+              </div>
+            </div>
           )}
-          <div className={`mt-4 grid gap-3 stagger-children ${isLoggedIn ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
-            {CLINICS.map((clinic) => (
-              <article
-                key={clinic.id}
-                className={`card fade-up p-4 transition-all ${
-                  clinic.id === activeClinicId ? "card-active" : ""
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--accent)]">
-                    {clinic.shortName}
-                  </p>
-                  {clinic.id === activeClinicId && (
-                    <span className="badge badge-in-progress">Active</span>
-                  )}
-                </div>
-                <h3 className="mt-2 text-base font-semibold text-[var(--accent-strong)]">
-                  {clinic.title}
-                </h3>
-                <p className="mt-1 text-xs leading-5 text-[rgba(19,49,58,0.6)]">
-                  {clinic.subtitle}
-                </p>
-
-                <div className="mt-3 space-y-1.5">
-                  <p className="flex items-center gap-1.5 text-xs text-[rgba(19,49,58,0.55)]">
-                    <Clock className="h-3 w-3 text-[var(--accent)]" /> {clinic.hoursLabel}
-                  </p>
-                  <p className="flex items-center gap-1.5 text-xs text-[rgba(19,49,58,0.55)]">
-                    <MapPin className="h-3 w-3 text-[var(--accent)]" /> {clinic.locationLabel}
-                  </p>
-                  <p className="flex items-center gap-1.5 text-xs text-[rgba(19,49,58,0.55)]">
-                    <Phone className="h-3 w-3 text-[var(--accent)]" /> {clinic.phone}
-                  </p>
-                  {clinic.email && (
-                    <p className="flex items-center gap-1.5 text-xs text-[rgba(19,49,58,0.55)]">
-                      <Mail className="h-3 w-3 text-[var(--accent)]" /> {clinic.email}
-                    </p>
-                  )}
-                </div>
-
-                {!isLoggedIn && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {clinic.hasBooking ? (
-                      <>
-                        <Link
-                          href={buildClinicHref("/book", clinic.id)}
-                          className="btn btn-primary btn-sm"
-                        >
-                          <CalendarCheck className="h-3 w-3" />
-                          {t("nav", "booking")}
-                        </Link>
-                        <Link
-                          href={buildClinicHref("/walkin", clinic.id)}
-                          className="btn btn-outline btn-sm"
-                        >
-                          <Ticket className="h-3 w-3" />
-                          {t("nav", "walkin")}
-                        </Link>
-                      </>
-                    ) : (
-                      <span className="badge badge-booking">
-                        {t("pharmacy", "noBookingNeeded")}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </article>
-            ))}
-          </div>
         </div>
 
         {/* Right — Live Queue Status */}
@@ -275,22 +240,13 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                <a
-                  href={`tel:+91${activeClinic.phone}`}
-                  className="btn btn-primary btn-sm"
-                >
-                  <Phone className="h-3 w-3" />
-                  {t("home", "callNow")}
+                <a href={`tel:+91${activeClinic.phone}`} className="btn btn-primary btn-sm">
+                  <Phone className="h-3 w-3" /> {t("home", "callNow")}
                 </a>
                 {activeClinic.mapUrl && (
-                  <a
-                    href={activeClinic.mapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-outline btn-sm"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    Google Maps
+                  <a href={activeClinic.mapUrl} target="_blank" rel="noopener noreferrer"
+                    className="btn btn-outline btn-sm">
+                    <ExternalLink className="h-3 w-3" /> Google Maps
                   </a>
                 )}
               </div>
@@ -309,7 +265,7 @@ export default function HomePage() {
             ) : (
               <div className="card flex flex-col items-center justify-center p-6 text-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-soft)]">
-                  <MapPin className="h-6 w-6 text-[var(--accent)]" />
+                  <ClinicIcon id={activeClinicId} className="h-6 w-6 text-[var(--accent)]" />
                 </div>
                 <p className="mt-3 text-sm font-semibold text-[var(--accent-strong)]">{activeClinic.title}</p>
                 <p className="mt-1 text-xs leading-5 text-[rgba(19,49,58,0.6)]">{activeClinic.subtitle}</p>
@@ -323,6 +279,100 @@ export default function HomePage() {
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   FOCUSED CLINIC CARD — main content block
+   ═══════════════════════════════════════════ */
+function FocusedClinicCard({
+  clinic,
+  activeClinicId,
+  isLoggedIn,
+  t,
+}: {
+  clinic: ClinicDefinition;
+  activeClinicId: string;
+  isLoggedIn: boolean;
+  t: (ns: string, key: string) => string;
+}) {
+  return (
+    <div className="card card-active fade-up overflow-hidden">
+      {/* Accent bar */}
+      <div className="h-1 bg-gradient-to-r from-[var(--accent)] via-[var(--warm)] to-[var(--gold)]" />
+
+      <div className="p-5 sm:p-6">
+        {/* Header */}
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)]">
+            <ClinicIcon id={clinic.id} className="h-5 w-5 text-[var(--accent)]" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--accent)]">
+              {clinic.shortName}
+            </p>
+            <h2 className="mt-0.5 text-lg font-bold text-[var(--accent-strong)] leading-tight">
+              {clinic.title}
+            </h2>
+            <p className="mt-0.5 text-xs text-[rgba(19,49,58,0.55)]">{clinic.subtitle}</p>
+          </div>
+        </div>
+
+        {/* Info row */}
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5">
+          <p className="flex items-center gap-1.5 text-xs text-[rgba(19,49,58,0.6)]">
+            <Clock className="h-3 w-3 text-[var(--accent)]" /> {clinic.hoursLabel}
+          </p>
+          <p className="flex items-center gap-1.5 text-xs text-[rgba(19,49,58,0.6)]">
+            <MapPin className="h-3 w-3 text-[var(--accent)]" /> {clinic.locationLabel}
+          </p>
+          <a href={`tel:+91${clinic.phone}`} className="flex items-center gap-1.5 text-xs text-[var(--accent)] font-semibold hover:underline">
+            <Phone className="h-3 w-3" /> {clinic.phone}
+          </a>
+          {clinic.email && (
+            <p className="flex items-center gap-1.5 text-xs text-[rgba(19,49,58,0.6)]">
+              <Mail className="h-3 w-3 text-[var(--accent)]" /> {clinic.email}
+            </p>
+          )}
+        </div>
+
+        {/* CTA Buttons */}
+        {!isLoggedIn && (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {clinic.hasBooking ? (
+              <>
+                <Link href={buildClinicHref("/book", clinic.id)} className="btn btn-primary">
+                  <CalendarCheck className="h-4 w-4" /> {t("home", "bookBtn")}
+                </Link>
+                <Link href={buildClinicHref("/walkin", clinic.id)} className="btn btn-warm">
+                  <Ticket className="h-4 w-4" /> {t("home", "walkinBtn")}
+                </Link>
+              </>
+            ) : (
+              <Link href={buildClinicHref("/walkin", clinic.id)} className="btn btn-warm">
+                <Ticket className="h-4 w-4" /> {t("pharmacy", "pickupToken")}
+              </Link>
+            )}
+            <Link href={buildClinicHref("/status", clinic.id)} className="btn btn-outline">
+              <Search className="h-4 w-4" /> {t("home", "checkStatus")}
+            </Link>
+            <Link href={buildClinicHref("/live", clinic.id)} className="btn btn-ghost">
+              <Monitor className="h-4 w-4" /> {t("nav", "live")}
+            </Link>
+          </div>
+        )}
+
+        {/* Pharmacy note */}
+        {!clinic.hasBooking && (
+          <div className="mt-4 flex items-center gap-2 rounded-xl bg-[var(--accent-soft)] px-3 py-2">
+            <Pill className="h-4 w-4 text-[var(--accent)]" />
+            <p className="text-xs font-medium text-[var(--accent-strong)]">
+              {t("pharmacy", "noBookingNeeded")}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

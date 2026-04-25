@@ -73,6 +73,7 @@ export const translations = {
     syncOffline: { hi: "ऑफलाइन कैश", en: "Offline Cache" },
     syncing: { hi: "सिंक हो रहा है", en: "Syncing" },
     threeClinicPortal: { hi: "एक पोर्टल, तीन क्लिनिक", en: "One Portal, Three Clinics" },
+    otherClinics: { hi: "अन्य क्लिनिक", en: "Other Clinics" },
   },
 
   booking: {
