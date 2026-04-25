@@ -50,6 +50,29 @@ const defaultSlots: Record<string, string[]> = {
   dental: generateSlots("10:00", "17:00"),
 };
 
+/**
+ * Filter out past time slots for today.
+ * Returns only slots that are in the future (with a small buffer).
+ */
+function filterPastSlots(slots: string[]): string[] {
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  return slots.filter((slot) => {
+    // Parse "09:30 AM" or "01:00 PM" format
+    const match = slot.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return true; // keep slot if can't parse
+    let h = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    const period = match[3].toUpperCase();
+    if (period === "PM" && h !== 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
+    const slotMinutes = h * 60 + m;
+    // Only show slots at least 15 minutes in the future
+    return slotMinutes > currentMinutes + 15;
+  });
+}
+
 function buildWhatsAppUrl(clinic: string, token: string, day: string, slot: string): string {
   const msg = encodeURIComponent(
     `🏥 मेरा अपॉइंटमेंट बुक हो गया!\n\n` +
@@ -193,7 +216,11 @@ export default function BookPage() {
   }, [activeClinicId]);
 
   const currentSlots = useMemo(
-    () => scheduleSlots[dayLabel] || defaultSlots[activeClinicId] || [],
+    () => {
+      const raw = scheduleSlots[dayLabel] || defaultSlots[activeClinicId] || [];
+      // For "Aaj" (Today), filter out time slots that have already passed
+      return dayLabel === "Aaj" ? filterPastSlots(raw) : raw;
+    },
     [scheduleSlots, dayLabel, activeClinicId],
   );
   const [slotLabel, setSlotLabel] = useState("");
@@ -358,11 +385,25 @@ export default function BookPage() {
                   <Loader2 className="h-3.5 w-3.5 animate-spin-slow" /> {t("common", "loading")}
                 </p>
               ) : currentSlots.length === 0 ? (
-                <div className="mt-3 flex items-center gap-2 rounded-xl bg-[var(--warm-soft)] px-3 py-2">
-                  <AlertTriangle className="h-4 w-4 text-[var(--warm)]" />
-                  <p className="text-sm font-medium text-[#8b4626]">
-                    {t("booking", "closed")} — {dayLabel === "Aaj" ? t("booking", "today") : t("booking", "tomorrow")}
-                  </p>
+                <div className="mt-3 flex flex-col gap-2 rounded-xl bg-[var(--warm-soft)] px-3 py-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0 text-[var(--warm)]" />
+                    <p className="text-sm font-medium text-[#8b4626]">
+                      {dayLabel === "Aaj"
+                        ? (t("booking", "todayClosed") || "आज के सभी स्लॉट बीत चुके हैं")
+                        : `${t("booking", "closed")} — ${t("booking", "tomorrow")}`}
+                    </p>
+                  </div>
+                  {dayLabel === "Aaj" && (
+                    <button
+                      type="button"
+                      className="btn btn-warm btn-sm self-start"
+                      onClick={() => setDayLabel("Kal")}
+                    >
+                      <CalendarCheck className="h-3 w-3" />
+                      {t("booking", "bookTomorrow") || "कल के लिए बुक करें →"}
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="mt-3 grid grid-cols-3 gap-2">

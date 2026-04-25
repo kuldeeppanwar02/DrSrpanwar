@@ -99,6 +99,8 @@ export const translations = {
     pending: { hi: "ऑफलाइन सेव — बाद में sync होगा", en: "Saved offline — will sync later" },
     bookAnother: { hi: "और बुकिंग करें", en: "Book Another" },
     closed: { hi: "बंद", en: "Closed" },
+    todayClosed: { hi: "आज के सभी स्लॉट बीत चुके हैं", en: "All today's slots have passed" },
+    bookTomorrow: { hi: "कल के लिए बुक करें →", en: "Book for tomorrow →" },
     nameRequired: {
       hi: "कृपया मरीज का नाम भरें",
       en: "Please enter patient name",
