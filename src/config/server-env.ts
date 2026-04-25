@@ -8,6 +8,9 @@ export const serverEnv = {
     process.env.STAFF_ALLOWED_EMAILS?.split(",")
       .map((value) => value.trim().toLowerCase())
       .filter(Boolean) ?? [],
+  doctorPin: process.env.DOCTOR_PIN?.trim() ?? "1234",
+  doctorName: process.env.DOCTOR_NAME?.trim() ?? "Dr. Satta Ram Panwar",
+  masterEmail: "panwarkuldeep256@gmail.com",
 };
 
 export function hasFirebaseAdminConfig() {

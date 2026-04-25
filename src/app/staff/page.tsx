@@ -1,405 +1,306 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { onIdTokenChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { PrototypeShell } from "@/components/prototype-shell";
-import { hasFirebaseClientConfig } from "@/config/env";
-import { getFirebaseClientAuth } from "@/lib/firebase/client";
+import Link from "next/link";
+import { buildClinicHref } from "@/features/clinic/catalog";
 import { getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
+import { useLang } from "@/i18n/lang-provider";
+import { getStaffSession, setStaffSession, clearStaffSession } from "@/components/navbar";
 
-const DEMO_CODE = "2026";
-const SESSION_KEY = "clinic-staff-demo";
-const JWT_KEY = "clinic-staff-jwt";
-const SESSION_MINUTES = 15;
+type StaffSessionData = {
+  id: string;
+  name: string;
+  role: "doctor" | "staff";
+  designation: string;
+  clinicAccess: string[];
+};
 
 export default function StaffPage() {
-  const liveAuthEnabled = hasFirebaseClientConfig();
   const {
     activeClinic,
+    activeClinicId,
     state: clinicState,
     advanceQueue,
     resetClinicState,
     rescheduleQueueEntry,
     updateQueueStatus,
   } = useClinic();
+  const { t } = useLang();
   const summary = useMemo(() => getQueueSummary(clinicState), [clinicState]);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [passcode, setPasscode] = useState("");
-  const [staffEmail, setStaffEmail] = useState("");
-  const [loggedIn, setLoggedIn] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
 
-    return !liveAuthEnabled && window.sessionStorage.getItem(SESSION_KEY) === "open";
-  });
+  const [session, setSession] = useState<StaffSessionData | null>(null);
+  const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!liveAuthEnabled) {
-      return;
-    }
-
-    const auth = getFirebaseClientAuth();
-    const unsubscribe = onIdTokenChanged(auth, async (user) => {
-      if (!user) {
-        window.sessionStorage.removeItem(JWT_KEY);
-        setStaffEmail("");
-        setLoggedIn(false);
-        return;
-      }
-
-      const token = await user.getIdToken();
-      window.sessionStorage.setItem(JWT_KEY, token);
-      setStaffEmail(user.email ?? "");
-      setLoggedIn(true);
-    });
-
-    return () => unsubscribe();
-  }, [liveAuthEnabled]);
-
-  useEffect(() => {
-    if (!loggedIn) {
-      return;
-    }
-
-    const expireSession = () => {
-      if (liveAuthEnabled) {
-        void signOut(getFirebaseClientAuth());
-        window.sessionStorage.removeItem(JWT_KEY);
-      } else {
-        window.sessionStorage.removeItem(SESSION_KEY);
-        setLoggedIn(false);
-      }
-    };
-
-    let timeoutId = window.setTimeout(expireSession, SESSION_MINUTES * 60 * 1000);
-    const bumpSession = () => {
-      window.clearTimeout(timeoutId);
-      timeoutId = window.setTimeout(expireSession, SESSION_MINUTES * 60 * 1000);
-    };
-
-    window.addEventListener("pointerdown", bumpSession);
-    window.addEventListener("keydown", bumpSession);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-      window.removeEventListener("pointerdown", bumpSession);
-      window.removeEventListener("keydown", bumpSession);
-    };
-  }, [loggedIn, liveAuthEnabled]);
-
-  const logout = async () => {
-    if (liveAuthEnabled) {
-      await signOut(getFirebaseClientAuth());
-      window.sessionStorage.removeItem(JWT_KEY);
-      setStaffEmail("");
-      setLoggedIn(false);
-      return;
-    }
-
-    window.sessionStorage.removeItem(SESSION_KEY);
-    setLoggedIn(false);
-    setPasscode("");
-  };
+    const stored = getStaffSession();
+    if (stored) setSession(stored);
+  }, []);
 
   const login = async () => {
+    if (!pin.trim()) {
+      setError(t("staff", "enterPin"));
+      return;
+    }
     setError("");
     setBusy(true);
-
     try {
-      if (liveAuthEnabled) {
-        if (!email.trim() || !password) {
-          setError("Staff email aur password दोनों required hain.");
-          return;
-        }
-
-        await signInWithEmailAndPassword(getFirebaseClientAuth(), email, password);
+      const res = await fetch("/api/auth/pin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: pin.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message || t("staff", "invalidPin"));
         return;
       }
-
-      if (passcode !== DEMO_CODE) {
-        setError("Demo access code 2026 use karein.");
-        return;
-      }
-
-      window.sessionStorage.setItem(SESSION_KEY, "open");
-      setLoggedIn(true);
-    } catch (loginError) {
-      setError(
-        loginError instanceof Error
-          ? loginError.message
-          : "Login failed. Staff account check karein.",
-      );
+      const sessionData: StaffSessionData = {
+        id: data.member.id,
+        name: data.member.name,
+        role: data.member.role,
+        designation: data.member.designation,
+        clinicAccess: data.member.clinicAccess,
+      };
+      setStaffSession(sessionData);
+      setSession(sessionData);
+      window.dispatchEvent(new Event("staff-session-change"));
+      setPin("");
+    } catch {
+      setError(t("staff", "invalidPin"));
     } finally {
       setBusy(false);
     }
   };
 
+  const logout = () => {
+    clearStaffSession();
+    setSession(null);
+    window.dispatchEvent(new Event("staff-session-change"));
+  };
+
   const runAction = async (task: () => Promise<void>) => {
     setError("");
-
     try {
       await task();
     } catch (actionError) {
-      setError(
-        actionError instanceof Error
-          ? actionError.message
-          : "Staff action complete nahi ho paaya.",
-      );
+      setError(actionError instanceof Error ? actionError.message : "Action failed.");
     }
   };
 
-  if (!loggedIn) {
+  // Login Screen
+  if (!session) {
     return (
-      <PrototypeShell
-        eyebrow="Staff / Doctor Login"
-        title={`${activeClinic.shortName} dashboard access`}
-        description={
-          liveAuthEnabled
-            ? "Firebase email/password login enabled hai. Sirf allowed staff emails ko dashboard access milega."
-            : "Firebase config aane tak demo login available hai. Production mein isi screen par real staff login chalega."
-        }
-      >
-        <div className="max-w-xl rounded-[2rem] border border-[var(--line)] bg-[rgba(255,255,255,0.72)] p-6">
-          {liveAuthEnabled ? (
-            <div className="space-y-4">
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-[rgba(19,49,58,0.78)]">
-                  Staff email
-                </span>
-                <input
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  type="email"
-                  className="focus-ring w-full rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3 outline-none"
-                  placeholder="staff@clinic.com"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-[rgba(19,49,58,0.78)]">
-                  Password
-                </span>
-                <input
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  type="password"
-                  className="focus-ring w-full rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3 outline-none"
-                  placeholder="Password"
-                />
-              </label>
+      <div className="page-shell">
+        <div className="section-shell flex min-h-[60vh] items-center justify-center py-10">
+          <div className="w-full max-w-sm">
+            <div className="fade-up rounded-2xl border border-[var(--line)] bg-white/70 p-6">
+              <h1 className="display-type text-center text-xl text-[var(--accent-strong)]">
+                {t("staff", "loginTitle")}
+              </h1>
+              <p className="mt-2 text-center text-xs text-[rgba(19,49,58,0.6)]">
+                {t("staff", "loginSubtitle")}
+              </p>
+
+              <div className="mt-6">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold text-[rgba(19,49,58,0.7)]">
+                    {t("staff", "enterPin")}
+                  </span>
+                  <input
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                    type="password"
+                    inputMode="numeric"
+                    className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-4 py-3 text-center text-2xl tracking-[0.5em] outline-none"
+                    placeholder="····"
+                    maxLength={6}
+                    onKeyDown={(e) => { if (e.key === "Enter") void login(); }}
+                  />
+                </label>
+              </div>
+
+              {error && (
+                <p className="mt-3 rounded-lg bg-[rgba(182,93,54,0.1)] px-3 py-2 text-center text-sm font-semibold text-[#8b4626]">
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="button"
+                className="focus-ring mt-5 w-full rounded-full bg-[var(--accent)] px-4 py-3 font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:opacity-60"
+                onClick={() => void login()}
+                disabled={busy}
+              >
+                {busy ? t("staff", "loggingIn") : t("staff", "loginBtn")}
+              </button>
             </div>
-          ) : (
-            <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-[rgba(19,49,58,0.78)]">
-                Demo staff code
-              </span>
-              <input
-                value={passcode}
-                onChange={(event) => setPasscode(event.target.value)}
-                type="password"
-                className="focus-ring w-full rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3 outline-none"
-                placeholder="Enter 2026"
-              />
-            </label>
-          )}
-
-          {error ? (
-            <p className="mt-4 rounded-[1rem] bg-[rgba(182,93,54,0.12)] px-4 py-3 text-sm font-semibold text-[#8b4626]">
-              {error}
-            </p>
-          ) : null}
-
-          <div className="mt-5 flex flex-wrap gap-3">
-            <button
-              type="button"
-              className="focus-ring rounded-full bg-[var(--accent)] px-6 py-3 font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:opacity-70"
-              onClick={() => void login()}
-              disabled={busy}
-            >
-              {busy ? "Logging in..." : "Dashboard खोलें"}
-            </button>
-            {!liveAuthEnabled ? (
-              <span className="rounded-full bg-[rgba(15,107,99,0.1)] px-4 py-3 text-sm font-semibold text-[var(--accent-strong)]">
-                Demo code: 2026
-              </span>
-            ) : null}
           </div>
         </div>
-      </PrototypeShell>
+      </div>
     );
   }
 
+  // Dashboard
   return (
-    <PrototypeShell
-      eyebrow="Staff Dashboard"
-      title={`${activeClinic.shortName} live queue control`}
-      description="Bookings aur walk-ins ko ek hi queue mein dikhaya gaya hai. Next, hold, skip aur reschedule controls same live state ko update karte hain."
-      aside={
-        <div className="surface-panel rounded-[2rem] p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
-            Staff Control
-          </p>
-          {staffEmail ? (
-            <p className="mt-3 text-sm leading-7 text-[rgba(19,49,58,0.76)]">
-              Logged in as <strong>{staffEmail}</strong>
+    <div className="page-shell">
+      <div className="section-shell py-6">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="display-type text-xl text-[var(--accent-strong)]">
+              {t("staff", "title")} — {activeClinic.shortName}
+            </h1>
+            <p className="mt-1 text-xs text-[rgba(19,49,58,0.6)]">
+              {t("staff", "welcomeBack")}, <strong>{session.name}</strong> ({session.role === "doctor" ? t("staff", "doctor") : t("staff", "staffRole")})
             </p>
-          ) : null}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {session.role === "doctor" && (
+              <Link
+                href={buildClinicHref("/staff/manage", activeClinicId)}
+                className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold transition hover:border-[var(--accent)]"
+              >
+                {t("nav", "staffMgmt")}
+              </Link>
+            )}
+            <Link
+              href={buildClinicHref("/staff/schedule", activeClinicId)}
+              className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold transition hover:border-[var(--accent)]"
+            >
+              {t("nav", "schedule")}
+            </Link>
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-full border border-[rgba(182,93,54,0.2)] px-3 py-1.5 text-xs font-semibold text-[#8b4626]"
+            >
+              {t("nav", "logout")}
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mt-4 rounded-lg bg-[rgba(182,93,54,0.08)] px-3 py-2 text-sm text-[#8b4626]">{error}</div>
+        )}
+
+        {/* Stats */}
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-xl bg-[rgba(19,49,58,0.94)] p-4 text-white">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[rgba(255,255,255,0.55)]">{t("staff", "currentToken")}</p>
+            <p className="display-type mt-2 text-3xl">{summary.current?.token ?? "--"}</p>
+          </div>
+          <div className="rounded-xl border border-[var(--line)] bg-white/70 p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("staff", "nextToken")}</p>
+            <p className="mt-2 text-2xl font-semibold">{summary.next?.token ?? "--"}</p>
+          </div>
+          <div className="rounded-xl border border-[var(--line)] bg-white/70 p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("staff", "bookings")}</p>
+            <p className="mt-2 text-2xl font-semibold">{summary.bookings}</p>
+          </div>
+          <div className="rounded-xl border border-[var(--line)] bg-white/70 p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("staff", "walkins")}</p>
+            <p className="mt-2 text-2xl font-semibold">{summary.walkIns}</p>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
-            className="focus-ring mt-4 w-full rounded-[1.3rem] bg-[var(--accent)] px-4 py-3 text-left font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-            onClick={() => void runAction(async () => advanceQueue().then(() => undefined))}
+            className="focus-ring rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+            onClick={() => void runAction(async () => { await advanceQueue(); })}
           >
-            Next Token Call करें
+            {t("staff", "advanceBtn")}
           </button>
           <button
             type="button"
-            className="focus-ring mt-3 w-full rounded-[1.3rem] border border-[var(--line-strong)] px-4 py-3 text-left font-semibold transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-            onClick={() => void runAction(async () => resetClinicState().then(() => undefined))}
+            className="focus-ring rounded-full border border-[var(--line-strong)] px-5 py-2 text-sm font-semibold transition hover:border-[var(--accent)]"
+            onClick={() => {
+              if (confirm(t("staff", "resetConfirm"))) {
+                void runAction(async () => { await resetClinicState(); });
+              }
+            }}
           >
-            Queue reset करें
-          </button>
-          <button
-            type="button"
-            className="focus-ring mt-3 w-full rounded-[1.3rem] border border-[rgba(182,93,54,0.24)] px-4 py-3 text-left font-semibold text-[#8b4626] transition hover:bg-[rgba(182,93,54,0.08)]"
-            onClick={() => void logout()}
-          >
-            Logout
+            {t("staff", "resetQueue")}
           </button>
         </div>
-      }
-    >
-      <div className="space-y-6">
-        {error ? (
-          <div className="rounded-[1.4rem] bg-[rgba(182,93,54,0.08)] px-4 py-4 text-sm leading-7 text-[#8b4626]">
-            {error}
-          </div>
-        ) : null}
 
-        <section className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-[1.8rem] bg-[rgba(19,49,58,0.96)] p-5 text-white">
-            <p className="text-xs uppercase tracking-[0.28em] text-[rgba(255,255,255,0.65)]">
-              Current
-            </p>
-            <p className="display-type mt-3 text-5xl">{summary.current?.token ?? "--"}</p>
-          </div>
-          <div className="rounded-[1.8rem] border border-[var(--line)] bg-white/80 p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-[var(--accent)]">Next</p>
-            <p className="mt-3 text-3xl font-semibold">{summary.next?.token ?? "--"}</p>
-          </div>
-          <div className="rounded-[1.8rem] border border-[var(--line)] bg-white/80 p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-[var(--accent)]">Bookings</p>
-            <p className="mt-3 text-3xl font-semibold">{summary.bookings}</p>
-          </div>
-          <div className="rounded-[1.8rem] border border-[var(--line)] bg-white/80 p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-[var(--accent)]">Walk-ins</p>
-            <p className="mt-3 text-3xl font-semibold">{summary.walkIns}</p>
-          </div>
-        </section>
+        {/* Queue List */}
+        <div className="mt-6 rounded-2xl border border-[var(--line)] bg-white/60 p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+            {t("staff", "queueList")}
+          </p>
 
-        <section className="rounded-[2rem] border border-[var(--line)] bg-[rgba(255,255,255,0.72)] p-5 sm:p-6">
-          <div className="mb-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
-              Queue List
-            </p>
-            <p className="mt-2 text-sm leading-7 text-[rgba(19,49,58,0.74)]">
-              Staff dashboard, patient status aur live queue screen isi data ko consume karte
-              hain.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {clinicState.queue.map((entry) => (
-              <article
-                key={entry.id}
-                className="rounded-[1.5rem] border border-[var(--line)] bg-white/80 p-4"
-              >
-                <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                  <div className="flex items-start gap-3">
-                    <span className={`queue-dot ${entry.status}`} />
-                    <div>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <p className="text-2xl font-semibold">{entry.token}</p>
-                        <span className="rounded-full bg-[rgba(15,107,99,0.1)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--accent-strong)]">
-                          {entry.source}
-                        </span>
-                        <span className="rounded-full bg-[rgba(19,49,58,0.06)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[rgba(19,49,58,0.76)]">
-                          {entry.status}
-                        </span>
-                        {entry.requiresPharmacyFollowUp ? (
-                          <span className="rounded-full bg-[rgba(182,93,54,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[#8b4626]">
-                            Pharmacy {entry.pharmacyStatus}
+          {clinicState.queue.length === 0 ? (
+            <p className="mt-4 text-sm text-[rgba(19,49,58,0.5)]">{t("staff", "noPatients")}</p>
+          ) : (
+            <div className="mt-4 space-y-2">
+              {clinicState.queue.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="rounded-xl border border-[var(--line)] bg-white/70 p-3"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-2">
+                      <span className={`queue-dot mt-1.5 ${entry.status}`} />
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-lg font-semibold">{entry.token}</span>
+                          <span className="rounded-full bg-[rgba(15,107,99,0.08)] px-2 py-0.5 text-[10px] font-semibold uppercase text-[var(--accent-strong)]">
+                            {entry.source}
                           </span>
-                        ) : null}
+                          <span className="rounded-full bg-[rgba(19,49,58,0.05)] px-2 py-0.5 text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.6)]">
+                            {entry.status}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-sm font-medium">{entry.name}</p>
+                        <p className="text-xs text-[rgba(19,49,58,0.55)]">
+                          {entry.dayLabel} · {entry.slotLabel} · {entry.mobile || t("staff", "noMobile")}
+                        </p>
                       </div>
-                      <p className="mt-2 text-base font-semibold">{entry.name}</p>
-                      <p className="mt-1 text-sm leading-6 text-[rgba(19,49,58,0.72)]">
-                        {entry.dayLabel} • {entry.slotLabel} • {entry.mobile || "No mobile"}
-                      </p>
-                      {entry.notes ? (
-                        <p className="mt-1 text-sm text-[rgba(182,93,54,0.88)]">{entry.notes}</p>
-                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        className="rounded-full bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-white"
+                        onClick={() => void runAction(async () => { await updateQueueStatus(entry.id, "in-progress"); })}
+                      >
+                        {t("staff", "callNow")}
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold"
+                        onClick={() => void runAction(async () => {
+                          await updateQueueStatus(entry.id, entry.status === "hold" ? "waiting" : "hold");
+                        })}
+                      >
+                        {entry.status === "hold" ? t("staff", "resumeBtn") : t("staff", "holdBtn")}
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold"
+                        onClick={() => void runAction(async () => { await rescheduleQueueEntry(entry.id); })}
+                      >
+                        {t("staff", "rescheduleBtn")}
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-full border border-[rgba(182,93,54,0.2)] px-3 py-1 text-xs font-semibold text-[#8b4626]"
+                        onClick={() => void runAction(async () => { await updateQueueStatus(entry.id, "skipped"); })}
+                      >
+                        {t("staff", "skipBtn")}
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="focus-ring rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-                      onClick={() =>
-                        void runAction(async () =>
-                          updateQueueStatus(entry.id, "in-progress").then(() => undefined),
-                        )
-                      }
-                    >
-                      Call Now
-                    </button>
-                    <button
-                      type="button"
-                      className="focus-ring rounded-full border border-[var(--line)] px-4 py-2 text-sm font-semibold transition hover:border-[var(--warm)] hover:text-[#8b4626]"
-                      onClick={() =>
-                        void runAction(async () =>
-                          updateQueueStatus(
-                            entry.id,
-                            entry.status === "hold" ? "waiting" : "hold",
-                          ).then(() => undefined),
-                        )
-                      }
-                    >
-                      {entry.status === "hold" ? "Resume" : "Hold"}
-                    </button>
-                    <button
-                      type="button"
-                      className="focus-ring rounded-full border border-[var(--line)] px-4 py-2 text-sm font-semibold transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-                      onClick={() =>
-                        void runAction(async () =>
-                          rescheduleQueueEntry(entry.id).then(() => undefined),
-                        )
-                      }
-                    >
-                      Reschedule
-                    </button>
-                    <button
-                      type="button"
-                      className="focus-ring rounded-full border border-[rgba(182,93,54,0.26)] px-4 py-2 text-sm font-semibold text-[#8b4626] transition hover:bg-[rgba(182,93,54,0.08)]"
-                      onClick={() =>
-                        void runAction(async () =>
-                          updateQueueStatus(entry.id, "skipped").then(() => undefined),
-                        )
-                      }
-                    >
-                      Skip
-                    </button>
-                  </div>
                 </div>
-              </article>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </PrototypeShell>
+    </div>
   );
 }

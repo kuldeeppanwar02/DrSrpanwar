@@ -5,6 +5,8 @@ import {
   ClinicProvider,
   ClinicProviderFallback,
 } from "@/features/clinic/state/clinic-provider";
+import { LangProvider } from "@/i18n/lang-provider";
+import { Navbar } from "@/components/navbar";
 import { PwaShell } from "@/components/pwa-shell";
 import "./globals.css";
 
@@ -23,7 +25,7 @@ const displayFont = Tiro_Devanagari_Hindi({
 export const metadata: Metadata = {
   title: "Panwar SmartCare Hub | Multi-Clinic Appointment & Queue PWA",
   description:
-    "Jaisalmer ke liye Hindi-first multi-clinic PWA with appointment booking, QR walk-in token, staff dashboard aur live queue status.",
+    "Hindi-first multi-clinic PWA with appointment booking, QR walk-in token, staff dashboard aur live queue status.",
   applicationName: "Panwar SmartCare Hub",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
@@ -55,19 +57,23 @@ export default function RootLayout({
       className={`${bodyFont.variable} ${displayFont.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Suspense
-          fallback={
-            <ClinicProviderFallback>
+        <LangProvider>
+          <Suspense
+            fallback={
+              <ClinicProviderFallback>
+                <Navbar />
+                <PwaShell />
+                <main className="flex-1">{children}</main>
+              </ClinicProviderFallback>
+            }
+          >
+            <ClinicProvider>
+              <Navbar />
               <PwaShell />
-              {children}
-            </ClinicProviderFallback>
-          }
-        >
-          <ClinicProvider>
-            <PwaShell />
-            {children}
-          </ClinicProvider>
-        </Suspense>
+              <main className="flex-1">{children}</main>
+            </ClinicProvider>
+          </Suspense>
+        </LangProvider>
       </body>
     </html>
   );

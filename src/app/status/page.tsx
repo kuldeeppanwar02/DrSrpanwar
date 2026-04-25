@@ -1,35 +1,28 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { PrototypeShell } from "@/components/prototype-shell";
-import {
-  findEntriesByMobile,
-  getEntryPosition,
-  getQueueSummary,
-} from "@/features/clinic/services/queue-engine";
+import { findEntriesByMobile, getEntryPosition, getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
+import { useLang } from "@/i18n/lang-provider";
 import type { QueueEntry } from "@/features/clinic/types";
 
 function pickBestEntry(matches: QueueEntry[]) {
   return (
-    matches.find((entry) => entry.status === "in-progress") ??
-    matches.find((entry) => entry.status === "waiting") ??
-    matches.find((entry) => entry.status === "hold") ??
-    matches[0] ??
-    null
+    matches.find((e) => e.status === "in-progress") ??
+    matches.find((e) => e.status === "waiting") ??
+    matches.find((e) => e.status === "hold") ??
+    matches[0] ?? null
   );
 }
 
 export default function StatusPage() {
-  const { activeClinic, state: clinicState, isOnline, syncInFlight } = useClinic();
+  const { activeClinic, state: clinicState, isOnline } = useClinic();
+  const { t } = useLang();
   const summary = useMemo(() => getQueueSummary(clinicState), [clinicState]);
   const [mobile, setMobile] = useState("");
   const [submittedMobile, setSubmittedMobile] = useState("");
 
-  const matches = useMemo(
-    () => findEntriesByMobile(submittedMobile, clinicState),
-    [clinicState, submittedMobile],
-  );
+  const matches = useMemo(() => findEntriesByMobile(submittedMobile, clinicState), [clinicState, submittedMobile]);
   const selectedEntry = pickBestEntry(matches);
   const position = selectedEntry ? getEntryPosition(clinicState, selectedEntry.id) : null;
 
@@ -39,187 +32,110 @@ export default function StatusPage() {
   };
 
   return (
-    <PrototypeShell
-      eyebrow="Queue Status"
-      title={`${activeClinic.shortName} mein मेरा टोकन`}
-      description="Patient mobile number se current position, patients ahead, doctor ka current token aur estimated wait time ek hi page par dekh sakta hai."
-      aside={
-        <div className="surface-panel rounded-[2rem] p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
-            Status Note
-          </p>
-          <ul className="mt-4 space-y-3 text-sm leading-7 text-[rgba(19,49,58,0.76)]">
-            <li>Same mobile number use karein jo booking ya walk-in mein diya tha.</li>
-            <li>Offline mode mein last known queue status hi dikhaya jayega.</li>
-            <li>Reception board aur staff dashboard bhi isi queue ko follow karte hain.</li>
-          </ul>
-        </div>
-      }
-    >
-      <div className="space-y-6">
-        <section className="rounded-[2rem] border border-[var(--line)] bg-[rgba(255,255,255,0.72)] p-5">
-          <form className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]" onSubmit={handleSubmit}>
-            <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-[rgba(19,49,58,0.78)]">
-                मोबाइल नंबर
-              </span>
+    <div className="page-shell">
+      <div className="section-shell py-8">
+        <div className="mx-auto max-w-2xl">
+          <h1 className="display-type text-center text-2xl text-[var(--accent-strong)] sm:text-3xl">
+            {t("status", "title")} — {activeClinic.shortName}
+          </h1>
+
+          {/* Search */}
+          <div className="mt-6 rounded-2xl border border-[var(--line)] bg-white/70 p-5">
+            <form className="flex gap-3" onSubmit={handleSubmit}>
               <input
                 value={mobile}
-                onChange={(event) => setMobile(event.target.value)}
+                onChange={(e) => setMobile(e.target.value)}
                 inputMode="numeric"
-                className="focus-ring w-full rounded-[1rem] border border-[var(--line)] bg-white px-4 py-3 outline-none"
-                placeholder="Booking / walk-in वाला mobile number"
+                className="focus-ring flex-1 rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-sm outline-none"
+                placeholder={t("status", "enterMobilePlaceholder")}
               />
-            </label>
-            <button
-              type="submit"
-              className="focus-ring self-end rounded-full bg-[var(--accent)] px-6 py-3 font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-            >
-              Status देखें
-            </button>
-          </form>
-        </section>
+              <button
+                type="submit"
+                className="focus-ring rounded-full bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white"
+              >
+                {t("status", "checkBtn")}
+              </button>
+            </form>
+          </div>
 
-        <section className="grid gap-4 lg:grid-cols-4">
-          <div className="rounded-[1.8rem] bg-[rgba(19,49,58,0.96)] p-5 text-white">
-            <p className="text-xs uppercase tracking-[0.28em] text-[rgba(255,255,255,0.65)]">
-              Current Token
-            </p>
-            <p className="display-type mt-3 text-5xl">{summary.current?.token ?? "--"}</p>
-          </div>
-          <div className="rounded-[1.8rem] border border-[var(--line)] bg-[rgba(255,255,255,0.76)] p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-[var(--accent)]">
-              Next Token
-            </p>
-            <p className="mt-3 text-4xl font-semibold">{summary.next?.token ?? "--"}</p>
-          </div>
-          <div className="rounded-[1.8rem] border border-[var(--line)] bg-[rgba(255,255,255,0.76)] p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-[var(--accent)]">
-              Waiting
-            </p>
-            <p className="mt-3 text-4xl font-semibold">{summary.waiting.length}</p>
-          </div>
-          <div className="rounded-[1.8rem] border border-[var(--line)] bg-[rgba(255,255,255,0.76)] p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-[var(--accent)]">
-              Hold
-            </p>
-            <p className="mt-3 text-4xl font-semibold">{summary.holdCount}</p>
-          </div>
-        </section>
-
-        <section className="rounded-[2rem] border border-[var(--line)] bg-[rgba(255,255,255,0.72)] p-5 sm:p-6">
-          {submittedMobile && !selectedEntry ? (
-            <div className="rounded-[1.4rem] bg-[rgba(182,93,54,0.08)] px-4 py-4 text-sm leading-7 text-[#8b4626]">
-              Is mobile number se koi token nahi mila. कृपया same clinic aur same mobile ke
-              saath dobara check karein.
+          {/* Queue stats */}
+          <div className="mt-4 grid grid-cols-4 gap-3">
+            <div className="rounded-xl bg-[rgba(19,49,58,0.94)] p-3 text-center text-white">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[rgba(255,255,255,0.55)]">
+                {t("status", "yourToken")}
+              </p>
+              <p className="display-type mt-1 text-2xl">{summary.current?.token ?? "--"}</p>
             </div>
-          ) : null}
-
-          {!submittedMobile ? (
-            <div className="rounded-[1.4rem] border border-dashed border-[var(--line-strong)] bg-white/50 px-4 py-4 text-sm leading-7 text-[rgba(19,49,58,0.72)]">
-              Mobile number डालते ही patient-specific queue status yahan dikh jayega.
+            <div className="rounded-xl border border-[var(--line)] bg-white/60 p-3 text-center">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("home", "nextToken")}</p>
+              <p className="mt-1 text-2xl font-semibold">{summary.next?.token ?? "--"}</p>
             </div>
-          ) : null}
+            <div className="rounded-xl border border-[var(--line)] bg-white/60 p-3 text-center">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("home", "waiting")}</p>
+              <p className="mt-1 text-2xl font-semibold">{summary.waiting.length}</p>
+            </div>
+            <div className="rounded-xl border border-[var(--line)] bg-white/60 p-3 text-center">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("common", "hold")}</p>
+              <p className="mt-1 text-2xl font-semibold">{summary.holdCount}</p>
+            </div>
+          </div>
 
-          {selectedEntry ? (
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
-              <div className="space-y-4">
-                <div className="rounded-[1.6rem] bg-[var(--accent)] p-5 text-white">
-                  <p className="text-xs uppercase tracking-[0.28em] text-[rgba(255,255,255,0.72)]">
-                    आपका Token
+          {/* Result */}
+          <div className="mt-6">
+            {submittedMobile && !selectedEntry && (
+              <div className="rounded-xl bg-[rgba(182,93,54,0.08)] px-4 py-3 text-sm text-[#8b4626]">
+                {t("status", "notFound")}
+              </div>
+            )}
+
+            {!submittedMobile && (
+              <div className="rounded-xl border border-dashed border-[var(--line-strong)] bg-white/40 p-4 text-center text-sm text-[rgba(19,49,58,0.55)]">
+                {t("status", "enterMobile")}
+              </div>
+            )}
+
+            {selectedEntry && (
+              <div className="fade-up space-y-4">
+                <div className="rounded-2xl bg-[var(--accent)] p-5 text-center text-white">
+                  <p className="text-xs uppercase tracking-[0.2em] text-[rgba(255,255,255,0.6)]">
+                    {t("status", "yourToken")}
                   </p>
-                  <p className="display-type mt-3 text-6xl">{selectedEntry.token}</p>
+                  <p className="display-type mt-2 text-5xl">{selectedEntry.token}</p>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  <div className="rounded-[1.4rem] border border-[var(--line)] bg-white/80 p-4">
-                    <p className="text-xs uppercase tracking-[0.28em] text-[var(--accent)]">
-                      Position
-                    </p>
-                    <p className="mt-3 text-3xl font-semibold">
-                      {selectedEntry.status === "done" ? "Done" : (position?.patientsAhead ?? 0) + 1}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-[var(--line)] bg-white/70 p-3 text-center">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("status", "position")}</p>
+                    <p className="mt-1 text-2xl font-semibold">
+                      {selectedEntry.status === "done" ? t("status", "done") : (position?.patientsAhead ?? 0) + 1}
                     </p>
                   </div>
-                  <div className="rounded-[1.4rem] border border-[var(--line)] bg-white/80 p-4">
-                    <p className="text-xs uppercase tracking-[0.28em] text-[var(--accent)]">
-                      Patients Ahead
-                    </p>
-                    <p className="mt-3 text-3xl font-semibold">
+                  <div className="rounded-xl border border-[var(--line)] bg-white/70 p-3 text-center">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("status", "patientsAhead")}</p>
+                    <p className="mt-1 text-2xl font-semibold">
                       {selectedEntry.status === "done" ? 0 : position?.patientsAhead ?? 0}
                     </p>
                   </div>
-                  <div className="rounded-[1.4rem] border border-[var(--line)] bg-white/80 p-4">
-                    <p className="text-xs uppercase tracking-[0.28em] text-[var(--accent)]">
-                      Estimated Wait
-                    </p>
-                    <p className="mt-3 text-3xl font-semibold">
-                      {selectedEntry.status === "done"
-                        ? "0 min"
-                        : `${position?.estimatedWaitMinutes ?? 0} min`}
+                  <div className="rounded-xl border border-[var(--line)] bg-white/70 p-3 text-center">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">{t("status", "estWait")}</p>
+                    <p className="mt-1 text-2xl font-semibold">
+                      {selectedEntry.status === "done" ? "0" : position?.estimatedWaitMinutes ?? 0} min
                     </p>
                   </div>
                 </div>
 
-                <div className="rounded-[1.4rem] border border-[var(--line)] bg-white/80 p-4 text-sm leading-7 text-[rgba(19,49,58,0.76)]">
-                  <p>
-                    Status: <strong>{selectedEntry.status}</strong>
-                  </p>
-                  <p>
-                    Booking ID: <strong>{selectedEntry.bookingId}</strong>
-                  </p>
-                  <p>
-                    Day / Slot: <strong>{selectedEntry.dayLabel + " • " + selectedEntry.slotLabel}</strong>
-                  </p>
-                  <p>
-                    Sync:{" "}
-                    <strong>
-                      {selectedEntry.syncState === "pending"
-                        ? "Offline provisional token"
-                        : "Synced"}
-                    </strong>
-                  </p>
-                  <p>
-                    Doctor abhi token <strong>{summary.current?.token ?? "--"}</strong> par hain.
-                  </p>
-                  <p>
-                    Queue mode: <strong>{isOnline ? "Online" : "Offline cache view"}</strong>
-                  </p>
-                  {selectedEntry.requiresPharmacyFollowUp ? (
-                    <p>
-                      Pharmacy follow-up: <strong>{selectedEntry.pharmacyStatus}</strong>
-                    </p>
-                  ) : null}
+                <div className="rounded-xl border border-[var(--line)] bg-white/70 p-4 text-sm text-[rgba(19,49,58,0.7)]">
+                  <p>{t("common", "status")}: <strong>{selectedEntry.status}</strong></p>
+                  <p>{t("status", "bookingIdLabel")}: <strong>{selectedEntry.bookingId}</strong></p>
+                  <p>{t("status", "daySlot")}: <strong>{selectedEntry.dayLabel} · {selectedEntry.slotLabel}</strong></p>
+                  <p>{t("status", "doctorAt")}: <strong>{summary.current?.token ?? "--"}</strong></p>
+                  <p>{t("status", "queueMode")}: <strong>{isOnline ? t("common", "online") : t("common", "offline")}</strong></p>
                 </div>
               </div>
-
-              <div className="rounded-[1.6rem] border border-[var(--line)] bg-[rgba(255,255,255,0.8)] p-5">
-                <p className="text-xs uppercase tracking-[0.28em] text-[var(--accent)]">
-                  Recent Entries
-                </p>
-                {syncInFlight ? (
-                  <p className="mt-3 rounded-[1rem] bg-[rgba(15,107,99,0.08)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent-strong)]">
-                    Syncing updates...
-                  </p>
-                ) : null}
-                <div className="mt-4 space-y-3">
-                  {matches.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="rounded-[1.2rem] border border-[var(--line)] bg-white/80 p-3 text-sm leading-6"
-                    >
-                      <p className="font-semibold">{entry.token}</p>
-                      <p>{entry.dayLabel + " • " + entry.slotLabel}</p>
-                      <p className="text-[rgba(19,49,58,0.66)]">
-                        {entry.status} • {entry.syncState}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </section>
+            )}
+          </div>
+        </div>
       </div>
-    </PrototypeShell>
+    </div>
   );
 }
