@@ -76,7 +76,7 @@ export default function HomePage() {
             <Activity className="h-3 w-3" />
             {isOnline ? t("home", "syncOnline") : t("home", "syncOffline")}
           </p>
-          <h1 className="display-type mt-4 text-3xl text-[var(--accent-strong)] sm:text-4xl balance-text">
+          <h1 className="display-type mt-5 text-3xl text-[var(--accent-strong)] sm:text-4xl balance-text">
             {t("common", "appName")}
           </h1>
 
@@ -104,10 +104,10 @@ export default function HomePage() {
             <Link
               key={clinic.id}
               href={buildClinicHref("/", clinic.id)}
-              className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+              className={`flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold transition-all ${
                 clinic.id === activeClinicId
-                  ? "bg-[var(--accent)] text-white shadow-md scale-[1.02]"
-                  : "card hover:border-[var(--accent)] hover:shadow-md"
+                  ? "bg-gradient-to-r from-[var(--accent-deep)] to-[var(--accent)] text-white shadow-md scale-[1.02]"
+                  : "card hover:shadow-md"
               }`}
             >
               <ClinicIcon id={clinic.id} className="h-4 w-4" />
@@ -132,7 +132,7 @@ export default function HomePage() {
           {/* Other Clinics — mini switcher row */}
           {!isLoggedIn && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[rgba(19,49,58,0.4)]">
+              <p className="label-type text-[rgba(19,49,58,0.4)]">
                 {t("home", "otherClinics") || "Other Clinics"}
               </p>
               <div className="mt-2 grid grid-cols-2 gap-2 stagger-children">
@@ -162,11 +162,11 @@ export default function HomePage() {
           {/* Current Token — hero card */}
           <div className="card-elevated overflow-hidden rounded-2xl">
             <div className="bg-gradient-to-br from-[rgba(15,107,99,0.94)] to-[rgba(8,63,70,0.97)] p-5 text-white">
-              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.24em] text-[rgba(255,255,255,0.6)]">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.24em] text-[rgba(255,255,255,0.55)]">
                 <Activity className="h-3 w-3 animate-pulse-dot" />
                 {t("home", "currentToken")}
               </p>
-              <p className="display-type mt-3 text-5xl">
+              <p className="display-type mt-3 text-5xl tracking-tight">
                 {summary.current?.token ?? `${activeClinic.prefix}-000`}
               </p>
               <p className="mt-2 text-sm text-[rgba(255,255,255,0.7)]">
@@ -310,10 +310,10 @@ function FocusedClinicCard({
             <ClinicIcon id={clinic.id} className="h-5 w-5 text-[var(--accent)]" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--accent)]">
+            <p className="label-type text-[var(--accent)]">
               {clinic.shortName}
             </p>
-            <h2 className="mt-0.5 text-lg font-bold text-[var(--accent-strong)] leading-tight">
+            <h2 className="heading-serif mt-0.5 text-lg text-[var(--accent-strong)] leading-tight">
               {clinic.title}
             </h2>
             <p className="mt-0.5 text-xs text-[rgba(19,49,58,0.55)]">{clinic.subtitle}</p>

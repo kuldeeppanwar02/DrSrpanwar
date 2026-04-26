@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Hind, Tiro_Devanagari_Hindi } from "next/font/google";
+import { Hind, Noto_Serif, Manrope } from "next/font/google";
 import {
   ClinicProvider,
   ClinicProviderFallback,
@@ -12,16 +12,22 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { ToastProvider } from "@/components/toast";
 import "./globals.css";
 
-const bodyFont = Hind({
+const bodyFont = Manrope({
   variable: "--font-body",
-  subsets: ["latin", "devanagari"],
+  subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 
-const displayFont = Tiro_Devanagari_Hindi({
+const displayFont = Noto_Serif({
   variable: "--font-display",
-  subsets: ["latin", "devanagari"],
-  weight: "400",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const hindiFont = Hind({
+  variable: "--font-hindi",
+  subsets: ["devanagari", "latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -70,7 +76,7 @@ export default function RootLayout({
   return (
     <html
       lang="hi"
-      className={`${bodyFont.variable} ${displayFont.variable} h-full antialiased`}
+      className={`${bodyFont.variable} ${displayFont.variable} ${hindiFont.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <LangProvider>
