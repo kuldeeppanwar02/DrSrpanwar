@@ -116,10 +116,19 @@ type DayScheduleData = {
   maxPatients: number;
 };
 
+type ShiftGroup = {
+  label: string;
+  startTime: string;
+  endTime: string;
+  slots: string[];
+  closed: boolean;
+};
+
 type DayAvailability = {
   isOpen: boolean;
   dateLabel: string;
   dayName: string;
+  shiftGroups: ShiftGroup[];
 };
 
 export default function BookPage() {
@@ -176,8 +185,8 @@ export default function BookPage() {
   const [scheduleSlots, setScheduleSlots] = useState<Record<string, string[]>>({});
   const [loadingSlots, setLoadingSlots] = useState(true);
   const [dayAvailability, setDayAvailability] = useState<Record<string, DayAvailability>>({
-    Aaj: { isOpen: true, dateLabel: "", dayName: "" },
-    Kal: { isOpen: true, dateLabel: "", dayName: "" },
+    Aaj: { isOpen: true, dateLabel: "", dayName: "", shiftGroups: [] },
+    Kal: { isOpen: true, dateLabel: "", dayName: "", shiftGroups: [] },
   });
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -187,7 +196,7 @@ export default function BookPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch schedule and generate slots dynamically
+  // Fetch schedule using resolved API (shift-aware)
   useEffect(() => {
     const fetchSchedule = async () => {
       setLoadingSlots(true);
@@ -196,73 +205,77 @@ export default function BookPage() {
       tomorrow.setDate(tomorrow.getDate() + 1);
       const todayName = getDayName(today);
       const tomorrowName = getDayName(tomorrow);
-
-      // Get current language for date formatting
       const lang = document.documentElement.lang || "hi";
       const todayDateLabel = formatDateLabel(today, lang);
       const tomorrowDateLabel = formatDateLabel(tomorrow, lang);
 
       try {
-        const res = await fetch(`/api/schedule?clinic=${activeClinicId}&weekOffset=0`);
-        if (res.ok) {
-          const data = await res.json();
-          const schedule: DayScheduleData[] = data.schedule || [];
+        // Try resolved API first (shift-aware)
+        const resolvedRes = await fetch(`/api/schedule?clinic=${activeClinicId}&mode=resolved`);
+        if (resolvedRes.ok) {
+          const data = await resolvedRes.json();
+          const todayData = data.today;
+          const tomorrowData = data.tomorrow;
 
-          const todaySchedule = schedule.find((d) => d.dayName === todayName);
-          const tomorrowSchedule = schedule.find((d) => d.dayName === tomorrowName);
+          const todayShifts: ShiftGroup[] = (todayData?.shifts || []).map((s: ShiftGroup) => ({
+            label: s.label, startTime: s.startTime, endTime: s.endTime,
+            slots: s.slots || [], closed: s.closed || false,
+          }));
+          const tomorrowShifts: ShiftGroup[] = (tomorrowData?.shifts || []).map((s: ShiftGroup) => ({
+            label: s.label, startTime: s.startTime, endTime: s.endTime,
+            slots: s.slots || [], closed: s.closed || false,
+          }));
 
-          const todayIsOpen = todaySchedule?.isOpen ?? true;
-          const tomorrowIsOpen = tomorrowSchedule?.isOpen ?? true;
+          const todayIsOpen = todayData?.isOpen ?? true;
+          const tomorrowIsOpen = tomorrowData?.isOpen ?? true;
 
-          // Set availability info
           setDayAvailability({
-            Aaj: { isOpen: todayIsOpen, dateLabel: todayDateLabel, dayName: todayName },
-            Kal: { isOpen: tomorrowIsOpen, dateLabel: tomorrowDateLabel, dayName: tomorrowName },
+            Aaj: { isOpen: todayIsOpen, dateLabel: todayDateLabel, dayName: todayName, shiftGroups: todayShifts },
+            Kal: { isOpen: tomorrowIsOpen, dateLabel: tomorrowDateLabel, dayName: tomorrowName, shiftGroups: tomorrowShifts },
           });
 
-          const newSlots: Record<string, string[]> = {};
-
-          if (todayIsOpen && todaySchedule?.slots?.length) {
-            newSlots["Aaj"] = todaySchedule.slots;
-          } else if (todayIsOpen && todaySchedule?.openTime && todaySchedule?.closeTime) {
-            newSlots["Aaj"] = generateSlots(todaySchedule.openTime, todaySchedule.closeTime);
-          } else if (todayIsOpen) {
-            newSlots["Aaj"] = defaultSlots[activeClinicId] || [];
-          } else {
-            newSlots["Aaj"] = []; // Closed
-          }
-
-          if (tomorrowIsOpen && tomorrowSchedule?.slots?.length) {
-            newSlots["Kal"] = tomorrowSchedule.slots;
-          } else if (tomorrowIsOpen && tomorrowSchedule?.openTime && tomorrowSchedule?.closeTime) {
-            newSlots["Kal"] = generateSlots(tomorrowSchedule.openTime, tomorrowSchedule.closeTime);
-          } else if (tomorrowIsOpen) {
-            newSlots["Kal"] = defaultSlots[activeClinicId] || [];
-          } else {
-            newSlots["Kal"] = []; // Closed
-          }
-
+          const newSlots: Record<string, string[]> = {
+            Aaj: todayIsOpen ? todayShifts.flatMap(s => s.closed ? [] : s.slots) : [],
+            Kal: tomorrowIsOpen ? tomorrowShifts.flatMap(s => s.closed ? [] : s.slots) : [],
+          };
           setScheduleSlots(newSlots);
 
-          // Auto-select first available day
-          if (!todayIsOpen && tomorrowIsOpen) {
-            setDayLabel("Kal");
-          }
+          if (!todayIsOpen && tomorrowIsOpen) setDayLabel("Kal");
         } else {
-          // Fallback
-          setDayAvailability({
-            Aaj: { isOpen: true, dateLabel: todayDateLabel, dayName: todayName },
-            Kal: { isOpen: true, dateLabel: tomorrowDateLabel, dayName: tomorrowName },
-          });
-          setScheduleSlots({
-            Aaj: defaultSlots[activeClinicId] || [],
-            Kal: defaultSlots[activeClinicId] || [],
-          });
+          // Fallback to legacy API
+          const res = await fetch(`/api/schedule?clinic=${activeClinicId}&weekOffset=0`);
+          if (res.ok) {
+            const data = await res.json();
+            const schedule: DayScheduleData[] = data.schedule || [];
+            const todaySchedule = schedule.find((d) => d.dayName === todayName);
+            const tomorrowSchedule = schedule.find((d) => d.dayName === tomorrowName);
+            const todayIsOpen = todaySchedule?.isOpen ?? true;
+            const tomorrowIsOpen = tomorrowSchedule?.isOpen ?? true;
+
+            setDayAvailability({
+              Aaj: { isOpen: todayIsOpen, dateLabel: todayDateLabel, dayName: todayName, shiftGroups: [] },
+              Kal: { isOpen: tomorrowIsOpen, dateLabel: tomorrowDateLabel, dayName: tomorrowName, shiftGroups: [] },
+            });
+
+            const newSlots: Record<string, string[]> = {};
+            if (todayIsOpen && todaySchedule?.slots?.length) newSlots["Aaj"] = todaySchedule.slots;
+            else if (todayIsOpen) newSlots["Aaj"] = defaultSlots[activeClinicId] || [];
+            else newSlots["Aaj"] = [];
+
+            if (tomorrowIsOpen && tomorrowSchedule?.slots?.length) newSlots["Kal"] = tomorrowSchedule.slots;
+            else if (tomorrowIsOpen) newSlots["Kal"] = defaultSlots[activeClinicId] || [];
+            else newSlots["Kal"] = [];
+
+            setScheduleSlots(newSlots);
+            if (!todayIsOpen && tomorrowIsOpen) setDayLabel("Kal");
+          }
         }
       } catch {
+        const todayDateL = formatDateLabel(new Date(), lang);
+        const tmrw = new Date(); tmrw.setDate(tmrw.getDate() + 1);
         setDayAvailability({
-          Aaj: { isOpen: true, dateLabel: todayDateLabel, dayName: todayName },
-          Kal: { isOpen: true, dateLabel: tomorrowDateLabel, dayName: tomorrowName },
+          Aaj: { isOpen: true, dateLabel: todayDateL, dayName: todayName, shiftGroups: [] },
+          Kal: { isOpen: true, dateLabel: formatDateLabel(tmrw, lang), dayName: tomorrowName, shiftGroups: [] },
         });
         setScheduleSlots({
           Aaj: defaultSlots[activeClinicId] || [],
@@ -500,29 +513,53 @@ export default function BookPage() {
                     </p>
                   </div>
                   {dayLabel === "Aaj" && (
-                    <button
-                      type="button"
-                      className="btn btn-warm btn-sm self-start"
-                      onClick={() => setDayLabel("Kal")}
-                    >
+                    <button type="button" className="btn btn-warm btn-sm self-start"
+                      onClick={() => setDayLabel("Kal")}>
                       <CalendarCheck className="h-3 w-3" />
                       {t("booking", "bookTomorrow") || "कल के लिए बुक करें →"}
                     </button>
                   )}
                 </div>
+              ) : dayAvailability[dayLabel]?.shiftGroups?.length > 0 ? (
+                /* ── Shift-Grouped Slots ── */
+                <div className="mt-3 space-y-4">
+                  {dayAvailability[dayLabel].shiftGroups.map((group, gIdx) => {
+                    if (group.closed || group.slots.length === 0) return null;
+                    const filteredSlots = dayLabel === "Aaj" ? filterPastSlots(group.slots) : group.slots;
+                    if (filteredSlots.length === 0) return null;
+                    return (
+                      <div key={gIdx}>
+                        <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-[rgba(19,49,58,0.45)]">
+                          {gIdx === 0 ? "☀️" : gIdx === 1 ? "🌤️" : "🌙"} {group.label} ({group.startTime} – {group.endTime})
+                        </p>
+                        <div className="mt-1.5 grid grid-cols-3 gap-2">
+                          {filteredSlots.map((slot) => (
+                            <button key={slot} type="button"
+                              className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+                                slotLabel === slot
+                                  ? "bg-[var(--warm)] text-white shadow-sm"
+                                  : "border border-[var(--line)] hover:border-[var(--warm)] hover:bg-[var(--warm-soft)]"
+                              }`}
+                              onClick={() => setSlotLabel(slot)}>
+                              {slot}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               ) : (
+                /* ── Flat Slots (legacy fallback) ── */
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   {currentSlots.map((slot) => (
-                    <button
-                      key={slot}
-                      type="button"
+                    <button key={slot} type="button"
                       className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
                         slotLabel === slot
                           ? "bg-[var(--warm)] text-white shadow-sm"
                           : "border border-[var(--line)] hover:border-[var(--warm)] hover:bg-[var(--warm-soft)]"
                       }`}
-                      onClick={() => setSlotLabel(slot)}
-                    >
+                      onClick={() => setSlotLabel(slot)}>
                       {slot}
                     </button>
                   ))}

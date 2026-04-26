@@ -4,41 +4,51 @@ import type { ClinicId } from "@/features/clinic/types";
 import {
   getWeekSchedule,
   saveWeekSchedule,
-  getMonday,
+  resolveScheduleForDate,
+  todayDateStr,
+  tomorrowDateStr,
+  generateSlots,
   type DaySchedule,
 } from "@/lib/firebase/schedule-store";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-/** Generate 30-min interval slot labels from HH:mm open to HH:mm close */
-function generateSlots(open: string, close: string): string[] {
-  const slots: string[] = [];
-  const [oh, om] = open.split(":").map(Number);
-  const [ch, cm] = close.split(":").map(Number);
-  let mins = oh * 60 + om;
-  const endMins = ch * 60 + cm;
-  while (mins < endMins) {
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    const ampm = h >= 12 ? "PM" : "AM";
-    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    slots.push(`${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`);
-    mins += 30;
-  }
-  return slots;
-}
-
+/**
+ * GET /api/schedule
+ *
+ * Supports two modes:
+ * 1. ?mode=resolved&clinic=surgery — Returns today + tomorrow resolved schedule (shift-aware)
+ * 2. ?clinic=surgery&weekOffset=0  — Legacy week-based schedule for Schedule Management page
+ */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const clinicId = searchParams.get("clinic") || searchParams.get("clinicId") || "surgery";
-    const weekOffset = parseInt(searchParams.get("weekOffset") || "0", 10);
+    const mode = searchParams.get("mode");
 
     if (!isClinicId(clinicId)) {
       return Response.json({ message: "Invalid clinic." }, { status: 400 });
     }
 
-    // Calculate weekStart based on offset
+    // ── New Mode: Resolved schedule (shift-aware) ──
+    if (mode === "resolved") {
+      const today = todayDateStr();
+      const tomorrow = tomorrowDateStr();
+
+      const [todaySchedule, tomorrowSchedule] = await Promise.all([
+        resolveScheduleForDate(clinicId as ClinicId, today),
+        resolveScheduleForDate(clinicId as ClinicId, tomorrow),
+      ]);
+
+      return Response.json({
+        today: todaySchedule,
+        tomorrow: tomorrowSchedule,
+      });
+    }
+
+    // ── Legacy Mode: Week-based schedule ──
+    const weekOffset = parseInt(searchParams.get("weekOffset") || "0", 10);
+
     const monday = new Date();
     const dayOfWeek = monday.getDay();
     const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -50,11 +60,9 @@ export async function GET(request: Request) {
     const defaultOpen = "09:00";
     const defaultClose = "17:00";
 
-    // Convert the Record<string, DaySchedule> to an array format for the frontend
     const daysArray = DAY_NAMES.map((name, index) => {
       const saved = schedule.days[name];
       if (saved) {
-        // If saved day has open/close times but empty slots, auto-generate
         return {
           dayOfWeek: index,
           dayName: name,
@@ -64,7 +72,6 @@ export async function GET(request: Request) {
             : saved.slots || [],
         };
       }
-      // Fallback for unconfigured days
       const isOpen = index > 0 && index < 7;
       return {
         dayOfWeek: index,
@@ -99,7 +106,6 @@ export async function POST(request: Request) {
       return Response.json({ message: "weekStart and days are required." }, { status: 400 });
     }
 
-    // Convert array format back to Record<string, DaySchedule> for the store
     const daysRecord: Record<string, DaySchedule> = {};
     (days as Array<{ dayOfWeek: number; isOpen: boolean; openTime: string; closeTime: string; slots: string[]; maxPatients: number; notes: string }>).forEach(
       (day) => {

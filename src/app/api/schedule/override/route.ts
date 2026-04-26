@@ -1,0 +1,63 @@
+import { jsonError } from "@/app/api/api-helpers";
+import { isClinicId } from "@/features/clinic/catalog";
+import type { ClinicId } from "@/features/clinic/types";
+import {
+  getDayOverride,
+  saveDayOverride,
+  deleteDayOverride,
+} from "@/lib/firebase/schedule-store";
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const clinicId = searchParams.get("clinic") || "surgery";
+    const date = searchParams.get("date");
+
+    if (!isClinicId(clinicId)) {
+      return Response.json({ message: "Invalid clinic." }, { status: 400 });
+    }
+    if (!date) {
+      return Response.json({ message: "date parameter required." }, { status: 400 });
+    }
+
+    const override = await getDayOverride(clinicId as ClinicId, date);
+
+    return Response.json({
+      exists: !!override,
+      override: override || null,
+    });
+  } catch (error) {
+    return jsonError(error);
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { clinicId, date, closedShifts, fullDayClosed, reason, createdBy } = body;
+
+    if (!isClinicId(clinicId)) {
+      return Response.json({ message: "Invalid clinic." }, { status: 400 });
+    }
+    if (!date) {
+      return Response.json({ message: "date is required." }, { status: 400 });
+    }
+
+    // If removing override (reopening)
+    if (body.remove === true) {
+      await deleteDayOverride(clinicId as ClinicId, date);
+      return Response.json({ removed: true });
+    }
+
+    const override = await saveDayOverride(clinicId as ClinicId, date, {
+      closedShifts: closedShifts || [],
+      fullDayClosed: fullDayClosed || false,
+      reason: reason || "",
+      createdBy: createdBy || "staff",
+    });
+
+    return Response.json({ override });
+  } catch (error) {
+    return jsonError(error);
+  }
+}

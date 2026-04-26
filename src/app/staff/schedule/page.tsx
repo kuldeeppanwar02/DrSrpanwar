@@ -6,172 +6,212 @@ import { buildClinicHref } from "@/features/clinic/catalog";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
 import { getStaffSession } from "@/components/navbar";
+import {
+  Sun, CloudSun, Moon, AlertTriangle, Loader2,
+} from "lucide-react";
 
-type DaySchedule = {
-  dayOfWeek: number;
-  isOpen: boolean;
-  openTime: string;
-  closeTime: string;
-  slots: string[];
-  maxPatients: number;
-  notes: string;
+/* ═══ Types ═══ */
+type ShiftDef = { label: string; startTime: string; endTime: string; enabled: boolean };
+type DefaultSched = {
+  clinicId: string; shifts: [ShiftDef, ShiftDef, ShiftDef];
+  weeklyOff: string[]; slotInterval: number; maxPatients: number;
+  updatedAt: string; updatedBy: string;
+};
+type DayScheduleLegacy = {
+  dayOfWeek: number; isOpen: boolean; openTime: string; closeTime: string;
+  slots: string[]; maxPatients: number; notes: string;
 };
 
-type WeekSchedule = {
-  clinicId: string;
-  weekStart: string;
-  days: DaySchedule[];
-  updatedAt?: string;
-  updatedBy?: string;
-};
+const SHIFT_ICONS = [Sun, CloudSun, Moon];
+const ALL_DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const dayKeys = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"] as const;
 
-const dayKeys = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
-
-function getMonday(offsetWeeks = 0) {
-  const now = new Date();
-  const day = now.getDay();
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(now.setDate(diff + offsetWeeks * 7));
-  return monday.toISOString().slice(0, 10);
-}
-
-/** Generate 30-min interval slots from openTime (HH:mm) to closeTime (HH:mm) */
-function generateSlots(open: string, close: string): string[] {
+function generateSlots(open: string, close: string, interval = 30): string[] {
   if (!open || !close) return [];
   const slots: string[] = [];
   const [oh, om] = open.split(":").map(Number);
   const [ch, cm] = close.split(":").map(Number);
-  let mins = oh * 60 + om;
-  const endMins = ch * 60 + cm;
-  while (mins < endMins) {
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    const ampm = h >= 12 ? "PM" : "AM";
+  let mins = oh * 60 + (om || 0);
+  const end = ch * 60 + (cm || 0);
+  while (mins < end) {
+    const h = Math.floor(mins / 60); const m = mins % 60;
+    const p = h >= 12 ? "PM" : "AM";
     const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    slots.push(`${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`);
-    mins += 30;
+    slots.push(`${String(h12).padStart(2,"0")}:${String(m).padStart(2,"0")} ${p}`);
+    mins += interval;
   }
   return slots;
 }
 
-function createDefaultDays(): DaySchedule[] {
-  return Array.from({ length: 7 }, (_, i) => {
-    const isOpen = i > 0 && i < 7;
-    const openTime = "09:00";
-    const closeTime = "17:00";
-    return {
-      dayOfWeek: i,
-      isOpen,
-      openTime,
-      closeTime,
-      slots: isOpen ? generateSlots(openTime, closeTime) : [],
-      maxPatients: 30,
-      notes: "",
-    };
-  });
+function getMonday(offset = 0) {
+  const now = new Date();
+  const d = now.getDay();
+  const diff = now.getDate() - d + (d === 0 ? -6 : 1);
+  const mon = new Date(now.setDate(diff + offset * 7));
+  return mon.toISOString().slice(0, 10);
 }
 
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+/* ═══ Main Component ═══ */
 export default function SchedulePage() {
   const { activeClinicId } = useClinic();
   const { t } = useLang();
   const session = typeof window !== "undefined" ? getStaffSession() : null;
 
+  // Tab state
+  const [tab, setTab] = useState<"default" | "today" | "week">("default");
+
+  // Default schedule
+  const [defaults, setDefaults] = useState<DefaultSched | null>(null);
+  const [shifts, setShifts] = useState<[ShiftDef, ShiftDef, ShiftDef]>([
+    { label: "Morning", startTime: "09:00", endTime: "12:00", enabled: true },
+    { label: "Afternoon", startTime: "12:00", endTime: "15:00", enabled: true },
+    { label: "Evening", startTime: "15:00", endTime: "18:00", enabled: false },
+  ]);
+  const [weeklyOff, setWeeklyOff] = useState<string[]>(["Sunday"]);
+  const [slotInterval, setSlotInterval] = useState(30);
+  const [maxPatients, setMaxPatients] = useState(20);
+  const [defaultExists, setDefaultExists] = useState(false);
+
+  // Today override
+  const [todayOverride, setTodayOverride] = useState<{ closedShifts: number[]; fullDayClosed: boolean } | null>(null);
+
+  // Legacy week
   const [weekOffset, setWeekOffset] = useState(0);
   const weekStart = getMonday(weekOffset);
-  const [days, setDays] = useState<DaySchedule[]>(createDefaultDays());
+  const [weekDays, setWeekDays] = useState<DayScheduleLegacy[]>([]);
+  const [showWeek, setShowWeek] = useState(false);
+
+  // UI
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
+  // Fetch default schedule
   useEffect(() => {
-    const fetchSchedule = async () => {
-      setLoading(true);
-      setSaved(false);
-      try {
-        const res = await fetch(
-          `/api/schedule?clinic=${activeClinicId}&weekOffset=${weekOffset}`,
-        );
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.schedule) && data.schedule.length) {
-            // Auto-generate slots for any day that has times but empty slots
-            const enriched = data.schedule.map((day: DaySchedule) => ({
-              ...day,
-              slots: day.isOpen && day.openTime && day.closeTime && (!day.slots || day.slots.length === 0)
-                ? generateSlots(day.openTime, day.closeTime)
-                : day.slots || [],
-            }));
-            setDays(enriched);
-          } else {
-            setDays(createDefaultDays());
-          }
-        } else {
-          setDays(createDefaultDays());
+    setLoading(true);
+    fetch(`/api/schedule/default?clinic=${activeClinicId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.exists && data.schedule) {
+          const s = data.schedule as DefaultSched;
+          setDefaults(s);
+          setShifts(s.shifts);
+          setWeeklyOff(s.weeklyOff || ["Sunday"]);
+          setSlotInterval(s.slotInterval || 30);
+          setMaxPatients(s.maxPatients || 20);
+          setDefaultExists(true);
         }
-      } catch {
-        setDays(createDefaultDays());
-      } finally {
-        setLoading(false);
-      }
-    };
-    void fetchSchedule();
-  }, [activeClinicId, weekOffset]);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [activeClinicId]);
 
-  const updateDay = (index: number, changes: Partial<DaySchedule>) => {
-    setDays((prev) =>
-      prev.map((day, i) => {
-        if (i !== index) return day;
-        const updated = { ...day, ...changes };
-        // Auto-regenerate slots when time changes
-        if ("openTime" in changes || "closeTime" in changes) {
-          updated.slots = generateSlots(updated.openTime, updated.closeTime);
+  // Fetch today override
+  useEffect(() => {
+    fetch(`/api/schedule/override?clinic=${activeClinicId}&date=${todayStr()}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.exists && data.override) {
+          setTodayOverride({ closedShifts: data.override.closedShifts || [], fullDayClosed: data.override.fullDayClosed || false });
+        } else {
+          setTodayOverride(null);
         }
-        return updated;
-      }),
-    );
+      })
+      .catch(() => {});
+  }, [activeClinicId]);
+
+  // Fetch week schedule (legacy)
+  useEffect(() => {
+    if (!showWeek) return;
+    fetch(`/api/schedule?clinic=${activeClinicId}&weekOffset=${weekOffset}`)
+      .then(r => r.json())
+      .then(data => { if (data.schedule) setWeekDays(data.schedule); })
+      .catch(() => {});
+  }, [activeClinicId, weekOffset, showWeek]);
+
+  const updateShift = (idx: number, changes: Partial<ShiftDef>) => {
+    setShifts(prev => {
+      const copy = [...prev] as [ShiftDef, ShiftDef, ShiftDef];
+      copy[idx] = { ...copy[idx], ...changes };
+      return copy;
+    });
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    setError("");
-    setSaved(false);
+  const handleSaveDefault = async () => {
+    setSaving(true); setError(""); setSaved(false);
+    try {
+      const res = await fetch("/api/schedule/default", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clinicId: activeClinicId, shifts, weeklyOff, slotInterval, maxPatients,
+          updatedBy: session?.name || "staff",
+        }),
+      });
+      if (!res.ok) { const d = await res.json(); setError(d.message || "Save failed"); }
+      else { setSaved(true); setDefaultExists(true); setTimeout(() => setSaved(false), 3000); }
+    } catch (e) { setError(e instanceof Error ? e.message : "Error"); }
+    finally { setSaving(false); }
+  };
+
+  const handleOverride = async (closedShifts: number[], fullDayClosed: boolean) => {
+    try {
+      await fetch("/api/schedule/override", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clinicId: activeClinicId, date: todayStr(), closedShifts, fullDayClosed,
+          reason: "", createdBy: session?.name || "staff",
+        }),
+      });
+      setTodayOverride({ closedShifts, fullDayClosed });
+    } catch {}
+  };
+
+  const handleRemoveOverride = async () => {
+    try {
+      await fetch("/api/schedule/override", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clinicId: activeClinicId, date: todayStr(), remove: true }),
+      });
+      setTodayOverride(null);
+    } catch {}
+  };
+
+  const handleSaveWeek = async () => {
+    setSaving(true); setError("");
     try {
       const res = await fetch("/api/schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clinicId: activeClinicId,
-          weekStart,
-          days,
-          updatedBy: session?.name || "staff",
-        }),
+        body: JSON.stringify({ clinicId: activeClinicId, weekStart, days: weekDays, updatedBy: session?.name || "staff" }),
       });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.message || "Save failed.");
-      } else {
-        setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Save failed");
-    } finally {
-      setSaving(false);
-    }
+      if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
+      else { const d = await res.json(); setError(d.message || "Failed"); }
+    } catch (e) { setError(e instanceof Error ? e.message : "Error"); }
+    finally { setSaving(false); }
   };
 
-  // Auth guard
+  const updateWeekDay = (idx: number, changes: Partial<DayScheduleLegacy>) => {
+    setWeekDays(prev => prev.map((d, i) => {
+      if (i !== idx) return d;
+      const u = { ...d, ...changes };
+      if ("openTime" in changes || "closeTime" in changes) u.slots = generateSlots(u.openTime, u.closeTime);
+      return u;
+    }));
+  };
+
   if (!session) {
     return (
       <div className="page-shell">
         <div className="section-shell flex min-h-[50vh] items-center justify-center">
           <div className="text-center">
             <p className="text-lg font-semibold text-[rgba(19,49,58,0.7)]">{t("staffMgmt", "notLoggedIn")}</p>
-            <Link
-              href={buildClinicHref("/staff", activeClinicId)}
-              className="mt-4 inline-flex rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white"
-            >
+            <Link href={buildClinicHref("/staff", activeClinicId)} className="mt-4 inline-flex rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white">
               {t("nav", "login")}
             </Link>
           </div>
@@ -180,177 +220,263 @@ export default function SchedulePage() {
     );
   }
 
+  const todayLabel = new Date().toLocaleDateString("hi-IN", { weekday: "long", day: "numeric", month: "long" });
+
   return (
     <div className="page-shell">
       <div className="section-shell py-6">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="display-type text-xl text-[var(--accent-strong)]">
-            {t("schedule", "title")}
-          </h1>
-          <Link
-            href={buildClinicHref("/staff", activeClinicId)}
-            className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold"
-          >
+          <h1 className="display-type text-xl text-[var(--accent-strong)]">{t("schedule", "title")}</h1>
+          <Link href={buildClinicHref("/staff", activeClinicId)} className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold">
             ← {t("common", "back")}
           </Link>
         </div>
 
-        {/* Week Navigation */}
-        <div className="mt-5 flex items-center justify-center gap-4">
-          <button
-            type="button"
-            onClick={() => setWeekOffset((w) => w - 1)}
-            className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold"
-          >
-            {t("schedule", "prevWeek")}
-          </button>
-          <div className="text-center">
-            <p className="text-sm font-semibold text-[var(--accent-strong)]">
-              {t("schedule", "weekOf")} {weekStart}
-            </p>
-            {weekOffset === 0 && (
-              <p className="text-xs text-[rgba(19,49,58,0.5)]">{t("schedule", "thisWeek")}</p>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => setWeekOffset((w) => w + 1)}
-            className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold"
-          >
-            {t("schedule", "nextWeek")}
-          </button>
+        {/* Tab Switcher */}
+        <div className="mt-5 flex gap-2 overflow-x-auto scrollbar-hide">
+          {(["default", "today", "week"] as const).map(key => (
+            <button key={key} type="button" onClick={() => { setTab(key); if (key === "week") setShowWeek(true); }}
+              className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition ${
+                tab === key ? "bg-gradient-to-r from-[var(--accent-deep,var(--accent))] to-[var(--accent)] text-white shadow-md" : "card"
+              }`}>
+              {key === "default" ? `⚙️ ${t("schedule", "defaultSetup")}`
+                : key === "today" ? `📅 ${t("schedule", "todayControl")}`
+                : `📋 ${t("schedule", "weekSchedule")}`}
+            </button>
+          ))}
         </div>
 
-        {error && (
-          <div className="mt-4 rounded-lg bg-[rgba(182,93,54,0.08)] px-3 py-2 text-sm text-[#8b4626]">{error}</div>
-        )}
-        {saved && (
-          <div className="mt-4 rounded-lg bg-[rgba(15,107,99,0.08)] px-3 py-2 text-sm font-semibold text-[var(--accent-strong)]">
-            ✓ {t("common", "saved")}
-          </div>
-        )}
+        {error && <div className="mt-4 rounded-lg bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]">{error}</div>}
+        {saved && <div className="mt-4 rounded-lg bg-[var(--success-soft)] px-3 py-2 text-sm font-semibold text-[var(--success)]">✓ {t("common", "saved")}</div>}
 
-        {/* Schedule Grid */}
         {loading ? (
-          <p className="mt-6 text-sm text-[rgba(19,49,58,0.5)]">{t("common", "loading")}</p>
+          <p className="mt-6 flex items-center gap-2 text-sm text-[rgba(19,49,58,0.5)]"><Loader2 className="h-4 w-4 animate-spin" /> {t("common", "loading")}</p>
         ) : (
-          <div className="mt-6 space-y-3">
-            {days.map((day, index) => (
-              <div
-                key={index}
-                className={`rounded-xl border p-4 transition ${
-                  day.isOpen
-                    ? "border-[var(--line)] bg-white/70"
-                    : "border-[rgba(19,49,58,0.06)] bg-[rgba(19,49,58,0.02)] opacity-60"
-                }`}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => updateDay(index, { isOpen: !day.isOpen })}
-                      className={`h-5 w-9 rounded-full transition ${
-                        day.isOpen ? "bg-[var(--accent)]" : "bg-[rgba(19,49,58,0.15)]"
-                      }`}
-                    >
-                      <span
-                        className={`block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                          day.isOpen ? "translate-x-4" : "translate-x-0.5"
-                        }`}
-                      />
-                    </button>
-                    <span className="font-semibold">
-                      {t("schedule", dayKeys[day.dayOfWeek])}
-                    </span>
-                    <span className="text-xs text-[rgba(19,49,58,0.5)]">
-                      {day.isOpen ? t("schedule", "open") : t("schedule", "closed")}
-                    </span>
+          <>
+            {/* ═══ TAB: Default Schedule ═══ */}
+            {tab === "default" && (
+              <div className="mt-6 space-y-4">
+                <p className="text-xs text-[rgba(19,49,58,0.5)]">{t("schedule", "defaultSetupDesc")}</p>
+
+                {/* 3 Shift Cards */}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {shifts.map((shift, idx) => {
+                    const Icon = SHIFT_ICONS[idx];
+                    const slotCount = shift.enabled ? generateSlots(shift.startTime, shift.endTime, slotInterval).length : 0;
+                    return (
+                      <div key={idx} className={`card p-4 transition ${shift.enabled ? "card-active" : "opacity-60"}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-[var(--accent)]" />
+                            <span className="text-sm font-semibold">{t("schedule", "shift")} {idx + 1}</span>
+                          </div>
+                          <button type="button" onClick={() => updateShift(idx, { enabled: !shift.enabled })}
+                            className={`h-5 w-9 rounded-full transition ${shift.enabled ? "bg-[var(--accent)]" : "bg-[rgba(19,49,58,0.15)]"}`}>
+                            <span className={`block h-4 w-4 rounded-full bg-white shadow transition-transform ${shift.enabled ? "translate-x-4" : "translate-x-0.5"}`} />
+                          </button>
+                        </div>
+
+                        {shift.enabled && (
+                          <div className="mt-3 space-y-2">
+                            <label className="block">
+                              <span className="mb-1 block text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.5)]">{t("schedule", "shiftLabel")}</span>
+                              <input value={shift.label} onChange={e => updateShift(idx, { label: e.target.value })}
+                                className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-2 py-1.5 text-sm outline-none" />
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <label className="block">
+                                <span className="mb-1 block text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.5)]">{t("schedule", "startTime")}</span>
+                                <input type="time" value={shift.startTime} onChange={e => updateShift(idx, { startTime: e.target.value })}
+                                  className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-2 py-1.5 text-sm outline-none" />
+                              </label>
+                              <label className="block">
+                                <span className="mb-1 block text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.5)]">{t("schedule", "endTime")}</span>
+                                <input type="time" value={shift.endTime} onChange={e => updateShift(idx, { endTime: e.target.value })}
+                                  className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-2 py-1.5 text-sm outline-none" />
+                              </label>
+                            </div>
+                            <p className="text-[10px] text-[rgba(19,49,58,0.45)]">{slotCount} {t("schedule", "slots")}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Weekly Off */}
+                <div className="card p-4">
+                  <p className="text-xs font-semibold text-[rgba(19,49,58,0.6)]">{t("schedule", "weeklyOff")}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {ALL_DAYS.map(day => (
+                      <button key={day} type="button"
+                        onClick={() => setWeeklyOff(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day])}
+                        className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                          weeklyOff.includes(day) ? "bg-[var(--danger)] text-white" : "border border-[var(--line)] hover:border-[var(--accent)]"
+                        }`}>
+                        {t("schedule", day.toLowerCase() as "sunday")}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                {day.isOpen && (
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <label className="block">
-                      <span className="mb-1 block text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.5)]">
-                        {t("schedule", "openTime")}
-                      </span>
-                      <input
-                        type="time"
-                        value={day.openTime}
-                        onChange={(e) => updateDay(index, { openTime: e.target.value })}
-                        className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-2 py-1.5 text-sm outline-none"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-1 block text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.5)]">
-                        {t("schedule", "closeTime")}
-                      </span>
-                      <input
-                        type="time"
-                        value={day.closeTime}
-                        onChange={(e) => updateDay(index, { closeTime: e.target.value })}
-                        className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-2 py-1.5 text-sm outline-none"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-1 block text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.5)]">
-                        {t("schedule", "maxPatients")}
-                      </span>
-                      <input
-                        type="number"
-                        value={day.maxPatients}
-                        onChange={(e) =>
-                          updateDay(index, { maxPatients: Number(e.target.value) || 0 })
-                        }
-                        className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-2 py-1.5 text-sm outline-none"
-                      />
-                    </label>
-                    <div className="block sm:col-span-2 lg:col-span-1">
-                      <div className="mb-1 flex items-center justify-between">
-                        <span className="text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.5)]">
-                          {t("schedule", "slots")} ({day.slots.length})
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => updateDay(index, { openTime: day.openTime, closeTime: day.closeTime })}
-                          className="rounded-full bg-[rgba(15,107,99,0.08)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent)] hover:bg-[rgba(15,107,99,0.15)]"
-                        >
-                          ↻ Auto-generate
-                        </button>
-                      </div>
-                      <div className="flex flex-wrap gap-1 rounded-lg border border-[var(--line)] bg-white p-2 min-h-[36px]">
-                        {day.slots.length > 0 ? (
-                          day.slots.map((slot) => (
-                            <span key={slot} className="rounded-full bg-[rgba(15,107,99,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[var(--accent-strong)]">
-                              {slot}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-[11px] text-[rgba(19,49,58,0.35)]">
-                            Set open/close time to auto-generate
-                          </span>
-                        )}
-                      </div>
+                {/* Settings Row */}
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="card p-4 block">
+                    <span className="mb-1 block text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.5)]">{t("schedule", "slotInterval")}</span>
+                    <input type="number" value={slotInterval} onChange={e => setSlotInterval(Number(e.target.value) || 30)}
+                      className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-2 py-1.5 text-sm outline-none" />
+                  </label>
+                  <label className="card p-4 block">
+                    <span className="mb-1 block text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.5)]">{t("schedule", "maxPatients")}</span>
+                    <input type="number" value={maxPatients} onChange={e => setMaxPatients(Number(e.target.value) || 20)}
+                      className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-2 py-1.5 text-sm outline-none" />
+                  </label>
+                </div>
+
+                <button type="button" onClick={() => void handleSaveDefault()} disabled={saving}
+                  className="btn btn-primary btn-lg w-full">
+                  {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("common", "saving")}</> : `💾 ${t("schedule", "saveDefault")}`}
+                </button>
+              </div>
+            )}
+
+            {/* ═══ TAB: Today's Control ═══ */}
+            {tab === "today" && (
+              <div className="mt-6 space-y-4">
+                <div className="card p-4">
+                  <p className="text-sm font-semibold text-[var(--accent-strong)]">📅 {todayLabel}</p>
+                  {todayOverride && (
+                    <div className="mt-2 flex items-center gap-2 rounded-xl bg-[var(--warm-soft)] px-3 py-2">
+                      <AlertTriangle className="h-4 w-4 text-[var(--warm)]" />
+                      <p className="text-xs font-semibold text-[#8b4626]">{t("schedule", "overrideActive")}</p>
                     </div>
+                  )}
+                </div>
+
+                {!defaultExists ? (
+                  <div className="card p-6 text-center">
+                    <p className="text-sm text-[rgba(19,49,58,0.6)]">{t("schedule", "notSetup")}</p>
+                    <button type="button" onClick={() => setTab("default")} className="btn btn-primary btn-sm mt-3">
+                      {t("schedule", "setupNow")}
+                    </button>
                   </div>
+                ) : (
+                  <>
+                    {/* Shift toggles */}
+                    <div className="space-y-2">
+                      {shifts.map((shift, idx) => {
+                        if (!shift.enabled) return null;
+                        const Icon = SHIFT_ICONS[idx];
+                        const isClosed = todayOverride?.fullDayClosed || todayOverride?.closedShifts.includes(idx);
+                        return (
+                          <div key={idx} className={`card flex items-center justify-between p-4 ${isClosed ? "opacity-50" : ""}`}>
+                            <div className="flex items-center gap-3">
+                              <Icon className="h-4 w-4 text-[var(--accent)]" />
+                              <div>
+                                <p className="text-sm font-semibold">{shift.label}</p>
+                                <p className="text-[10px] text-[rgba(19,49,58,0.5)]">{shift.startTime} – {shift.endTime}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isClosed && <span className="rounded-full bg-[var(--danger-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--danger)]">{t("schedule", "shiftClosed")}</span>}
+                              <button type="button"
+                                onClick={() => {
+                                  const current = todayOverride?.closedShifts || [];
+                                  if (isClosed) {
+                                    handleOverride(current.filter(i => i !== idx), false);
+                                  } else {
+                                    handleOverride([...current, idx], false);
+                                  }
+                                }}
+                                className={`h-5 w-9 rounded-full transition ${!isClosed ? "bg-[var(--accent)]" : "bg-[rgba(19,49,58,0.15)]"}`}>
+                                <span className={`block h-4 w-4 rounded-full bg-white shadow transition-transform ${!isClosed ? "translate-x-4" : "translate-x-0.5"}`} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Full day close / reopen */}
+                    <div className="flex gap-2">
+                      {todayOverride?.fullDayClosed ? (
+                        <button type="button" onClick={() => void handleRemoveOverride()} className="btn btn-primary btn-sm w-full">
+                          🔓 {t("schedule", "reopenDay")}
+                        </button>
+                      ) : (
+                        <button type="button" onClick={() => void handleOverride([], true)} className="btn btn-sm w-full" style={{ background: "var(--danger)", color: "white" }}>
+                          🔴 {t("schedule", "closeFullDay")}
+                        </button>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
-            ))}
-          </div>
-        )}
+            )}
 
-        {/* Save */}
-        <div className="mt-6 flex justify-end">
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={saving}
-            className="focus-ring rounded-full bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:opacity-60"
-          >
-            {saving ? t("common", "saving") : t("schedule", "saveSchedule")}
-          </button>
-        </div>
+            {/* ═══ TAB: Weekly Schedule (Legacy) ═══ */}
+            {tab === "week" && (
+              <div className="mt-6 space-y-4">
+                <p className="text-xs text-[rgba(19,49,58,0.5)]">{t("schedule", "weekScheduleDesc")}</p>
+
+                {/* Week Nav */}
+                <div className="flex items-center justify-center gap-4">
+                  <button type="button" onClick={() => setWeekOffset(w => w - 1)} className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold">
+                    {t("schedule", "prevWeek")}
+                  </button>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-[var(--accent-strong)]">{t("schedule", "weekOf")} {weekStart}</p>
+                    {weekOffset === 0 && <p className="text-xs text-[rgba(19,49,58,0.5)]">{t("schedule", "thisWeek")}</p>}
+                  </div>
+                  <button type="button" onClick={() => setWeekOffset(w => w + 1)} className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold">
+                    {t("schedule", "nextWeek")}
+                  </button>
+                </div>
+
+                {/* Days */}
+                <div className="space-y-3">
+                  {weekDays.map((day, index) => (
+                    <div key={index} className={`rounded-xl border p-4 transition ${day.isOpen ? "border-[var(--line)] bg-white/70" : "border-[rgba(19,49,58,0.06)] bg-[rgba(19,49,58,0.02)] opacity-60"}`}>
+                      <div className="flex items-center gap-3">
+                        <button type="button" onClick={() => updateWeekDay(index, { isOpen: !day.isOpen })}
+                          className={`h-5 w-9 rounded-full transition ${day.isOpen ? "bg-[var(--accent)]" : "bg-[rgba(19,49,58,0.15)]"}`}>
+                          <span className={`block h-4 w-4 rounded-full bg-white shadow transition-transform ${day.isOpen ? "translate-x-4" : "translate-x-0.5"}`} />
+                        </button>
+                        <span className="font-semibold">{t("schedule", dayKeys[day.dayOfWeek])}</span>
+                        <span className="text-xs text-[rgba(19,49,58,0.5)]">{day.isOpen ? t("schedule", "open") : t("schedule", "closed")}</span>
+                      </div>
+                      {day.isOpen && (
+                        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                          <label className="block">
+                            <span className="mb-1 block text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.5)]">{t("schedule", "openTime")}</span>
+                            <input type="time" value={day.openTime} onChange={e => updateWeekDay(index, { openTime: e.target.value })}
+                              className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-2 py-1.5 text-sm outline-none" />
+                          </label>
+                          <label className="block">
+                            <span className="mb-1 block text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.5)]">{t("schedule", "closeTime")}</span>
+                            <input type="time" value={day.closeTime} onChange={e => updateWeekDay(index, { closeTime: e.target.value })}
+                              className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-2 py-1.5 text-sm outline-none" />
+                          </label>
+                          <label className="block">
+                            <span className="mb-1 block text-[10px] font-semibold uppercase text-[rgba(19,49,58,0.5)]">{t("schedule", "maxPatients")}</span>
+                            <input type="number" value={day.maxPatients} onChange={e => updateWeekDay(index, { maxPatients: Number(e.target.value) || 0 })}
+                              className="focus-ring w-full rounded-lg border border-[var(--line)] bg-white px-2 py-1.5 text-sm outline-none" />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <button type="button" onClick={() => void handleSaveWeek()} disabled={saving}
+                  className="btn btn-primary btn-lg w-full">
+                  {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("common", "saving")}</> : t("schedule", "saveSchedule")}
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
