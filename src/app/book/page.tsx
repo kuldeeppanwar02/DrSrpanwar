@@ -21,6 +21,21 @@ import { useLang } from "@/i18n/lang-provider";
 
 const dayOptions = ["Aaj", "Kal"] as const;
 
+/** Format date as localized string like "रवि, 26 अप्रैल 2026" */
+function formatDateLabel(date: Date, lang: string): string {
+  return date.toLocaleDateString(lang === "hi" ? "hi-IN" : "en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/** Get day name in English for schedule lookup */
+function getDayName(date: Date): string {
+  return ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][date.getDay()];
+}
+
 /**
  * Generate time slots between open and close times.
  * E.g. generateSlots("09:00", "13:00", 30) => ["09:00 AM","09:30 AM","10:00 AM",...]
@@ -101,6 +116,12 @@ type DayScheduleData = {
   maxPatients: number;
 };
 
+type DayAvailability = {
+  isOpen: boolean;
+  dateLabel: string;
+  dayName: string;
+};
+
 export default function BookPage() {
   const { activeClinic, activeClinicId, createBooking, isOnline, syncInFlight } = useClinic();
   const { t } = useLang();
@@ -154,56 +175,95 @@ export default function BookPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [scheduleSlots, setScheduleSlots] = useState<Record<string, string[]>>({});
   const [loadingSlots, setLoadingSlots] = useState(true);
+  const [dayAvailability, setDayAvailability] = useState<Record<string, DayAvailability>>({
+    Aaj: { isOpen: true, dateLabel: "", dayName: "" },
+    Kal: { isOpen: true, dateLabel: "", dayName: "" },
+  });
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Live clock — update every minute
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Fetch schedule and generate slots dynamically
   useEffect(() => {
     const fetchSchedule = async () => {
       setLoadingSlots(true);
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const todayName = getDayName(today);
+      const tomorrowName = getDayName(tomorrow);
+
+      // Get current language for date formatting
+      const lang = document.documentElement.lang || "hi";
+      const todayDateLabel = formatDateLabel(today, lang);
+      const tomorrowDateLabel = formatDateLabel(tomorrow, lang);
+
       try {
-        // Fetch this week (Aaj) and next week offset if needed (Kal might be next week)
         const res = await fetch(`/api/schedule?clinic=${activeClinicId}&weekOffset=0`);
         if (res.ok) {
           const data = await res.json();
           const schedule: DayScheduleData[] = data.schedule || [];
 
-          // Get today and tomorrow's day names
-          const today = new Date();
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-          const todayName = dayNames[today.getDay()];
-          const tomorrowName = dayNames[tomorrow.getDay()];
-
           const todaySchedule = schedule.find((d) => d.dayName === todayName);
           const tomorrowSchedule = schedule.find((d) => d.dayName === tomorrowName);
 
+          const todayIsOpen = todaySchedule?.isOpen ?? true;
+          const tomorrowIsOpen = tomorrowSchedule?.isOpen ?? true;
+
+          // Set availability info
+          setDayAvailability({
+            Aaj: { isOpen: todayIsOpen, dateLabel: todayDateLabel, dayName: todayName },
+            Kal: { isOpen: tomorrowIsOpen, dateLabel: tomorrowDateLabel, dayName: tomorrowName },
+          });
+
           const newSlots: Record<string, string[]> = {};
 
-          if (todaySchedule?.isOpen && todaySchedule.slots?.length > 0) {
+          if (todayIsOpen && todaySchedule?.slots?.length) {
             newSlots["Aaj"] = todaySchedule.slots;
-          } else if (todaySchedule?.isOpen && todaySchedule.openTime && todaySchedule.closeTime) {
+          } else if (todayIsOpen && todaySchedule?.openTime && todaySchedule?.closeTime) {
             newSlots["Aaj"] = generateSlots(todaySchedule.openTime, todaySchedule.closeTime);
-          } else {
+          } else if (todayIsOpen) {
             newSlots["Aaj"] = defaultSlots[activeClinicId] || [];
+          } else {
+            newSlots["Aaj"] = []; // Closed
           }
 
-          if (tomorrowSchedule?.isOpen && tomorrowSchedule.slots?.length > 0) {
+          if (tomorrowIsOpen && tomorrowSchedule?.slots?.length) {
             newSlots["Kal"] = tomorrowSchedule.slots;
-          } else if (tomorrowSchedule?.isOpen && tomorrowSchedule.openTime && tomorrowSchedule.closeTime) {
+          } else if (tomorrowIsOpen && tomorrowSchedule?.openTime && tomorrowSchedule?.closeTime) {
             newSlots["Kal"] = generateSlots(tomorrowSchedule.openTime, tomorrowSchedule.closeTime);
-          } else {
+          } else if (tomorrowIsOpen) {
             newSlots["Kal"] = defaultSlots[activeClinicId] || [];
+          } else {
+            newSlots["Kal"] = []; // Closed
           }
 
           setScheduleSlots(newSlots);
+
+          // Auto-select first available day
+          if (!todayIsOpen && tomorrowIsOpen) {
+            setDayLabel("Kal");
+          }
         } else {
-          // Fallback to defaults
+          // Fallback
+          setDayAvailability({
+            Aaj: { isOpen: true, dateLabel: todayDateLabel, dayName: todayName },
+            Kal: { isOpen: true, dateLabel: tomorrowDateLabel, dayName: tomorrowName },
+          });
           setScheduleSlots({
             Aaj: defaultSlots[activeClinicId] || [],
             Kal: defaultSlots[activeClinicId] || [],
           });
         }
       } catch {
+        setDayAvailability({
+          Aaj: { isOpen: true, dateLabel: todayDateLabel, dayName: todayName },
+          Kal: { isOpen: true, dateLabel: tomorrowDateLabel, dayName: tomorrowName },
+        });
         setScheduleSlots({
           Aaj: defaultSlots[activeClinicId] || [],
           Kal: defaultSlots[activeClinicId] || [],
@@ -352,26 +412,71 @@ export default function BookPage() {
                 <CalendarCheck className="h-3.5 w-3.5" />
                 {t("booking", "step")} 1 · {t("booking", "chooseDay")}
               </p>
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                {dayOptions.map((day) => (
-                  <button
-                    key={day}
-                    type="button"
-                    className={`rounded-xl px-4 py-3 text-left transition ${
-                      dayLabel === day
-                        ? "bg-[var(--accent)] text-white"
-                        : "border border-[var(--line)] hover:border-[var(--accent)]"
-                    }`}
-                    onClick={() => {
-                      setDayLabel(day);
-                    }}
-                  >
-                    <p className="text-lg font-semibold">
-                      {day === "Aaj" ? t("booking", "today") : t("booking", "tomorrow")}
-                    </p>
-                  </button>
-                ))}
+
+              {/* Live Date & Time Banner */}
+              <div className="mt-3 flex items-center gap-2 rounded-xl bg-[var(--surface-container-low,var(--accent-soft))] px-3 py-2">
+                <Clock className="h-3.5 w-3.5 text-[var(--accent)]" />
+                <p className="text-xs font-medium text-[var(--foreground)]">
+                  {currentTime.toLocaleDateString("hi-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                  {" · "}
+                  <span className="font-semibold text-[var(--accent)]">
+                    {currentTime.toLocaleTimeString("hi-IN", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </p>
               </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {dayOptions.map((day) => {
+                  const avail = dayAvailability[day];
+                  const isClosed = !avail?.isOpen;
+                  const isSelected = dayLabel === day;
+
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      disabled={isClosed}
+                      className={`rounded-xl px-4 py-3 text-left transition ${
+                        isClosed
+                          ? "opacity-50 cursor-not-allowed border border-[var(--line)] bg-[var(--surface-container,#f5eddf)]"
+                          : isSelected
+                            ? "bg-gradient-to-r from-[var(--accent-deep,var(--accent))] to-[var(--accent)] text-white shadow-md"
+                            : "border border-[var(--line)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                      }`}
+                      onClick={() => !isClosed && setDayLabel(day)}
+                    >
+                      <p className="text-lg font-semibold">
+                        {day === "Aaj" ? t("booking", "today") : t("booking", "tomorrow")}
+                      </p>
+                      {/* Show actual date below */}
+                      {avail?.dateLabel && (
+                        <p className={`mt-0.5 text-[10px] ${
+                          isSelected && !isClosed ? "text-[rgba(255,255,255,0.7)]" : "text-[rgba(19,49,58,0.45)]"
+                        }`}>
+                          {avail.dateLabel}
+                        </p>
+                      )}
+                      {/* Show closed label */}
+                      {isClosed && (
+                        <p className="mt-1 flex items-center gap-1 text-[10px] font-semibold text-[var(--danger)]">
+                          <AlertTriangle className="h-3 w-3" />
+                          {t("booking", "closed") || "बंद"}
+                        </p>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Both days closed warning */}
+              {!dayAvailability.Aaj?.isOpen && !dayAvailability.Kal?.isOpen && (
+                <div className="mt-3 flex items-center gap-2 rounded-xl bg-[var(--danger-soft)] px-3 py-2">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0 text-[var(--danger)]" />
+                  <p className="text-sm font-medium text-[var(--danger)]">
+                    {t("booking", "bothDaysClosed") || "आज और कल दोनों दिन क्लिनिक बंद है"}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Step 2: Slot */}

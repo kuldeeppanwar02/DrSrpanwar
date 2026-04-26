@@ -103,6 +103,7 @@ export const translations = {
     closed: { hi: "बंद", en: "Closed" },
     todayClosed: { hi: "आज के सभी स्लॉट बीत चुके हैं", en: "All today's slots have passed" },
     bookTomorrow: { hi: "कल के लिए बुक करें →", en: "Book for tomorrow →" },
+    bothDaysClosed: { hi: "आज और कल दोनों दिन क्लिनिक बंद है", en: "Clinic is closed both today and tomorrow" },
     nameRequired: {
       hi: "कृपया मरीज का नाम भरें",
       en: "Please enter patient name",
