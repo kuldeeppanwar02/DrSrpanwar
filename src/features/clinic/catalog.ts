@@ -13,7 +13,7 @@ export const CLINICS: ClinicDefinition[] = [
     hoursLabel: "9:00 AM - 6:00 PM",
     accentColor: "#0f6b63",
     hasBooking: true,
-    mapUrl: "https://maps.app.goo.gl/DjCHEufYs3a6PvS27",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=26.912695,70.905230",
   },
   {
     id: "dental",
