@@ -9,8 +9,11 @@ export async function POST(
   context: { params: Promise<{ clinicId: string }> },
 ) {
   try {
-    await requireStaffUser(request);
     const clinicId = await readClinicId(context.params);
+    await requireStaffUser(request, {
+      allowRoles: ["doctor"],
+      clinicId,
+    });
     const state = await resetRemoteClinicQueue(clinicId);
 
     return Response.json({ state });

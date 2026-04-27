@@ -84,6 +84,8 @@ export function createEmptyClinicState(clinicId: ClinicId): ClinicState {
     lastUpdated: new Date().toISOString(),
     lastSyncedAt: new Date().toISOString(),
     queue: [],
+    emergencyClosed: false,
+    emergencyMessage: "",
   };
 }
 
@@ -365,6 +367,17 @@ export function rescheduleQueueEntryState(state: ClinicState, entryId: string) {
 
 export function resetClinicState(clinicId: ClinicId) {
   return createInitialClinicState(clinicId);
+}
+
+export function setEmergencyStateState(
+  state: ClinicState,
+  input: { emergencyClosed: boolean; emergencyMessage?: string },
+) {
+  return touchState({
+    ...state,
+    emergencyClosed: input.emergencyClosed,
+    emergencyMessage: input.emergencyClosed ? input.emergencyMessage?.trim() || "" : "",
+  });
 }
 
 export function getQueueSummary(state: ClinicState): QueueSummary {

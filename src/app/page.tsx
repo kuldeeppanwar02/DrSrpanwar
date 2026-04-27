@@ -40,10 +40,11 @@ export default function HomePage() {
   const { activeClinic, activeClinicId, state, isOnline } = useClinic();
   const { t } = useLang();
   const summary = useMemo(() => getQueueSummary(state), [state]);
-  const [session, setSession] = useState<{ name: string; role: string; clinicAccess: string[] } | null>(null);
+  const [session, setSession] = useState<{ name: string; role: string; clinicAccess: string[] } | null>(
+    () => getStaffSession(),
+  );
 
   useEffect(() => {
-    setSession(getStaffSession());
     const sync = () => setSession(getStaffSession());
     window.addEventListener("staff-session-change", sync);
     return () => window.removeEventListener("staff-session-change", sync);
@@ -124,7 +125,6 @@ export default function HomePage() {
           {/* Clinic Hero Card */}
           <FocusedClinicCard
             clinic={activeClinic}
-            activeClinicId={activeClinicId}
             isLoggedIn={isLoggedIn}
             t={t}
           />
@@ -289,12 +289,10 @@ export default function HomePage() {
    ═══════════════════════════════════════════ */
 function FocusedClinicCard({
   clinic,
-  activeClinicId,
   isLoggedIn,
   t,
 }: {
   clinic: ClinicDefinition;
-  activeClinicId: string;
   isLoggedIn: boolean;
   t: (section: TranslationKey, key: string) => string;
 }) {

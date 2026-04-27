@@ -13,15 +13,17 @@ import {
   ClipboardList,
   CalendarClock,
   Phone,
-  UserCircle,
   Inbox,
   Lock,
-  Camera,
 } from "lucide-react";
 import { getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
-import { getStaffSession, setStaffSession, clearStaffSession } from "@/components/navbar";
+import {
+  getStaffSession,
+  setStaffAuthToken,
+  setStaffSession,
+} from "@/components/navbar";
 import { useToast } from "@/components/toast";
 import { PrescriptionModal } from "@/components/prescription-modal";
 
@@ -49,13 +51,14 @@ export default function StaffPage() {
     advanceQueue,
     resetClinicState,
     rescheduleQueueEntry,
+    setEmergencyState,
     updateQueueStatus,
   } = useClinic();
   const { t, lang } = useLang();
   const { toast } = useToast();
   const summary = useMemo(() => getQueueSummary(clinicState), [clinicState]);
 
-  const [session, setSession] = useState<StaffSessionData | null>(null);
+  const [session, setSession] = useState<StaffSessionData | null>(() => getStaffSession());
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -78,8 +81,9 @@ export default function StaffPage() {
   );
 
   useEffect(() => {
-    const stored = getStaffSession();
-    if (stored) setSession(stored);
+    const sync = () => setSession(getStaffSession());
+    window.addEventListener("staff-session-change", sync);
+    return () => window.removeEventListener("staff-session-change", sync);
   }, []);
 
   const login = async () => {
@@ -110,6 +114,7 @@ export default function StaffPage() {
         clinicAccess: data.member.clinicAccess,
       };
       setStaffSession(sessionData);
+      setStaffAuthToken(data.sessionToken || null);
       setSession(sessionData);
       window.dispatchEvent(new Event("staff-session-change"));
       setPin("");
@@ -120,12 +125,6 @@ export default function StaffPage() {
     } finally {
       setBusy(false);
     }
-  };
-
-  const logout = () => {
-    clearStaffSession();
-    setSession(null);
-    window.dispatchEvent(new Event("staff-session-change"));
   };
 
   const runAction = async (task: () => Promise<void>, successMsg?: string) => {
@@ -337,14 +336,19 @@ export default function StaffPage() {
                 type="button"
                 className={clinicState.emergencyClosed ? "btn btn-primary" : "btn btn-danger"}
                 onClick={() => {
-                  if (clinicState.emergencyClosed) {
-                    void runAction(async () => {
-                      clinicState.emergencyClosed = false;
-                      clinicState.emergencyMessage = "";
-                    });
-                  } else {
-                    setEmergencyMsg(t("emergency", "defaultMessage"));
-                    setShowEmergencyModal(true);
+                    if (clinicState.emergencyClosed) {
+                      void runAction(
+                        async () => {
+                          await setEmergencyState({
+                            emergencyClosed: false,
+                            emergencyMessage: "",
+                          });
+                        },
+                        t("emergency", "reopenClinic"),
+                      );
+                    } else {
+                      setEmergencyMsg(t("emergency", "defaultMessage"));
+                      setShowEmergencyModal(true);
                   }
                 }}
               >
@@ -376,9 +380,16 @@ export default function StaffPage() {
             <div className="mt-3 flex gap-2">
               <button type="button" className="btn btn-danger"
                 onClick={() => {
-                  clinicState.emergencyClosed = true;
-                  clinicState.emergencyMessage = emergencyMsg;
-                  setShowEmergencyModal(false);
+                  void runAction(
+                    async () => {
+                      await setEmergencyState({
+                        emergencyClosed: true,
+                        emergencyMessage: emergencyMsg,
+                      });
+                      setShowEmergencyModal(false);
+                    },
+                    t("emergency", "closeClinic"),
+                  );
                 }}>
                 <ShieldAlert className="h-4 w-4" /> {t("emergency", "closeClinic")}
               </button>

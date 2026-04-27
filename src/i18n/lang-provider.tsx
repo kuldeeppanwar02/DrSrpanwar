@@ -21,13 +21,11 @@ function readStoredLang(): Lang {
 }
 
 export function LangProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>("hi");
+  const [lang, setLangState] = useState<Lang>(() => readStoredLang());
 
   useEffect(() => {
-    const stored = readStoredLang();
-    setLangState(stored);
-    document.documentElement.setAttribute("data-lang", stored);
-  }, []);
+    document.documentElement.setAttribute("data-lang", lang);
+  }, [lang]);
 
   const setLang = useCallback((next: Lang) => {
     setLangState(next);

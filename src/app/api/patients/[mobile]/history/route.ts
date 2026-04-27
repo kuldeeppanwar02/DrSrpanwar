@@ -1,11 +1,13 @@
 import { jsonError } from "@/app/api/api-helpers";
 import { getPatientHistory, getPatientVisitSummary } from "@/lib/firebase/patient-history";
+import { requireStaffUser } from "@/lib/firebase/staff-auth";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ mobile: string }> },
 ) {
   try {
+    await requireStaffUser(request, { allowRoles: ["doctor", "staff"] });
     const { mobile } = await params;
 
     if (!mobile || mobile.replace(/\D/g, "").length < 10) {

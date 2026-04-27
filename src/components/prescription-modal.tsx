@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import {
   Camera,
   X,
-  RotateCcw,
   Send,
   SkipForward,
   Loader2,
@@ -18,9 +17,49 @@ type Props = {
   patientName: string;
   clinicId: string;
   createdBy: string;
-  onDone: () => void; // called after send OR skip
+  onDone: () => void;
   onClose: () => void;
 };
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Photo read failed."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function compressDataUrl(dataUrl: string) {
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const maxDimension = 1600;
+      const longestSide = Math.max(image.width, image.height);
+      const scale = longestSide > maxDimension ? maxDimension / longestSide : 1;
+      const canvas = document.createElement("canvas");
+
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+
+      const context = canvas.getContext("2d");
+      if (!context) {
+        reject(new Error("Canvas not supported."));
+        return;
+      }
+
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    image.onerror = () => reject(new Error("Image load failed."));
+    image.src = dataUrl;
+  });
+}
+
+async function compressImageFile(file: File) {
+  const dataUrl = await readFileAsDataUrl(file);
+  return compressDataUrl(dataUrl);
+}
 
 export function PrescriptionModal({
   tokenId,
@@ -35,22 +74,26 @@ export function PrescriptionModal({
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files?.length) return;
+  const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const availableSlots = Math.max(0, 3 - photos.length);
+    const selectedFiles = files.slice(0, availableSlots);
 
-    Array.from(files).forEach((file) => {
-      if (photos.length >= 3) return; // max 3 photos
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        setPhotos((prev) => [...prev.slice(0, 2), result]);
-      };
-      reader.readAsDataURL(file);
-    });
+    if (selectedFiles.length === 0) {
+      e.target.value = "";
+      return;
+    }
 
-    // Reset input so same file can be selected again
-    e.target.value = "";
+    try {
+      const compressed = await Promise.all(
+        selectedFiles.map((file) => compressImageFile(file)),
+      );
+      setPhotos((prev) => [...prev, ...compressed].slice(0, 3));
+    } catch {
+      window.alert("Photo prepare nahi ho payi. Dobara try karein.");
+    } finally {
+      e.target.value = "";
+    }
   };
 
   const removePhoto = (index: number) => {
@@ -72,36 +115,32 @@ export function PrescriptionModal({
           createdBy,
         }),
       });
-      if (res.ok) {
-        setSent(true);
-        setTimeout(() => {
-          onDone();
-        }, 1200);
-      } else {
-        alert("Failed to send prescription");
-        setSending(false);
+
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error || "Prescription send failed.");
       }
-    } catch {
-      alert("Network error — prescription not sent");
+
+      setSent(true);
+      window.setTimeout(() => {
+        onDone();
+      }, 1200);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Prescription send failed.");
       setSending(false);
     }
   };
 
-  const handleSkip = () => {
-    onDone();
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.5)] backdrop-blur-sm px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.5)] px-4 backdrop-blur-sm">
       <div className="card card-elevated w-full max-w-md overflow-hidden">
-        {/* Header */}
         <div className="flex items-center justify-between bg-[var(--accent-soft)] px-5 py-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-[var(--accent)]">
-              प्रिस्क्रिप्शन फोटो
+              Prescription Photo
             </p>
             <p className="mt-0.5 text-sm font-bold text-[var(--accent-strong)]">
-              {tokenId} — {patientName}
+              {tokenId} - {patientName}
             </p>
           </div>
           <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">
@@ -110,35 +149,33 @@ export function PrescriptionModal({
         </div>
 
         <div className="p-5">
-          {/* Success State */}
           {sent ? (
-            <div className="flex flex-col items-center py-6 text-center fade-up">
+            <div className="fade-up flex flex-col items-center py-6 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--success-soft)]">
                 <CheckCircle2 className="h-8 w-8 text-[var(--success)]" />
               </div>
               <p className="mt-3 text-base font-bold text-[var(--success)]">
-                फार्मेसी को भेज दिया! ✓
+                Pharmacy ko bhej diya
               </p>
               <p className="mt-1 text-xs text-[rgba(19,49,58,0.5)]">
-                {photos.length} फोटो · {tokenId}
+                {photos.length} photo - {tokenId}
               </p>
             </div>
           ) : (
             <>
-              {/* Photo Preview Grid */}
               {photos.length > 0 && (
                 <div className="mb-4 grid grid-cols-3 gap-2">
-                  {photos.map((photo, i) => (
-                    <div key={i} className="relative group">
+                  {photos.map((photo, index) => (
+                    <div key={`${photo}-${index}`} className="group relative">
                       <img
                         src={photo}
-                        alt={`Prescription ${i + 1}`}
-                        className="h-24 w-full rounded-lg object-cover border border-[var(--line)]"
+                        alt={`Prescription ${index + 1}`}
+                        className="h-24 w-full rounded-lg border border-[var(--line)] object-cover"
                       />
                       <button
                         type="button"
-                        onClick={() => removePhoto(i)}
-                        className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--danger)] text-white opacity-0 transition-opacity group-hover:opacity-100"
+                        onClick={() => removePhoto(index)}
+                        className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--danger)] text-white opacity-0 transition-opacity group-hover:opacity-100"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -147,17 +184,16 @@ export function PrescriptionModal({
                 </div>
               )}
 
-              {/* Camera Input */}
               <input
                 ref={fileRef}
                 type="file"
                 accept="image/*"
                 capture="environment"
+                multiple
                 onChange={handleCapture}
                 className="hidden"
               />
 
-              {/* Actions */}
               <div className="flex flex-col gap-2">
                 {photos.length < 3 && (
                   <button
@@ -166,9 +202,13 @@ export function PrescriptionModal({
                     onClick={() => fileRef.current?.click()}
                   >
                     {photos.length === 0 ? (
-                      <><Camera className="h-4 w-4" /> 📷 फोटो लें</>
+                      <>
+                        <Camera className="h-4 w-4" /> Photo lein
+                      </>
                     ) : (
-                      <><ImagePlus className="h-4 w-4" /> और फोटो जोड़ें ({photos.length}/3)</>
+                      <>
+                        <ImagePlus className="h-4 w-4" /> Aur photo jodein ({photos.length}/3)
+                      </>
                     )}
                   </button>
                 )}
@@ -177,13 +217,17 @@ export function PrescriptionModal({
                   <button
                     type="button"
                     className="btn btn-primary w-full"
-                    onClick={handleSend}
+                    onClick={() => void handleSend()}
                     disabled={sending}
                   >
                     {sending ? (
-                      <><Loader2 className="h-4 w-4 animate-spin-slow" /> भेज रहे हैं...</>
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin-slow" /> Bhej rahe hain...
+                      </>
                     ) : (
-                      <><Send className="h-4 w-4" /> फार्मेसी को भेजें</>
+                      <>
+                        <Send className="h-4 w-4" /> Pharmacy ko bhejein
+                      </>
                     )}
                   </button>
                 )}
@@ -191,15 +235,15 @@ export function PrescriptionModal({
                 <button
                   type="button"
                   className="btn btn-ghost w-full text-[rgba(19,49,58,0.5)]"
-                  onClick={handleSkip}
+                  onClick={onDone}
                   disabled={sending}
                 >
-                  <SkipForward className="h-4 w-4" /> स्किप करें
+                  <SkipForward className="h-4 w-4" /> Skip karein
                 </button>
               </div>
 
               <p className="mt-3 text-center text-[10px] text-[rgba(19,49,58,0.35)]">
-                फोटो सीधे फार्मेसी डैशबोर्ड पर दिखेगी
+                Photo seedhe pharmacy dashboard par dikhegi.
               </p>
             </>
           )}

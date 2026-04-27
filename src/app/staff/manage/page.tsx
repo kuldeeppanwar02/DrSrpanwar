@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { buildClinicHref } from "@/features/clinic/catalog";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
@@ -43,7 +43,7 @@ export default function StaffManagePage() {
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     setLoading(true);
     try {
       // Doctor sees only their clinic's staff
@@ -59,11 +59,14 @@ export default function StaffManagePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session?.clinicAccess]);
 
   useEffect(() => {
-    void fetchMembers();
-  }, []);
+    const initialLoad = window.setTimeout(() => {
+      void fetchMembers();
+    }, 0);
+    return () => window.clearTimeout(initialLoad);
+  }, [fetchMembers]);
 
   const openAddForm = () => {
     setEditing(null);

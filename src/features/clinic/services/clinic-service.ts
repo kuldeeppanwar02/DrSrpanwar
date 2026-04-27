@@ -8,6 +8,7 @@ import {
   createWalkInState,
   rescheduleQueueEntryState,
   resetClinicState as createResetState,
+  setEmergencyStateState,
   syncPendingState,
   updateQueueStatusState,
 } from "@/features/clinic/services/queue-engine";
@@ -258,5 +259,22 @@ export const clinicService = {
 
     const state = await readClinicState(clinicId);
     return persistState(sortQueueState(rescheduleQueueEntryState(state, entryId)));
+  },
+
+  async setEmergencyState(
+    clinicId: ClinicId,
+    input: { emergencyClosed: boolean; emergencyMessage?: string },
+    options: { online?: boolean } = {},
+  ) {
+    if ((options.online ?? true) && hasRemoteSyncConfig()) {
+      const response = await apiClient.post<{ state: ClinicState }>(
+        `/api/clinics/${clinicId}/state`,
+        input,
+      );
+      return persistState(sortQueueState(response.data.state));
+    }
+
+    const state = await readClinicState(clinicId);
+    return persistState(sortQueueState(setEmergencyStateState(state, input)));
   },
 };

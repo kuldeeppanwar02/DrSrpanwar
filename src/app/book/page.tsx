@@ -132,48 +132,8 @@ type DayAvailability = {
 };
 
 export default function BookPage() {
-  const { activeClinic, activeClinicId, createBooking, isOnline, syncInFlight } = useClinic();
+  const { activeClinic, activeClinicId, createBooking, syncInFlight } = useClinic();
   const { t } = useLang();
-
-  // Block pharmacy from booking
-  if (!activeClinic.hasBooking) {
-    return (
-      <div className="page-shell">
-        <div className="section-shell flex min-h-[50vh] items-center justify-center py-10">
-          <div className="mx-auto max-w-md text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-soft)]">
-              <Pill className="h-6 w-6 text-[var(--accent)]" />
-            </div>
-            <h1 className="display-type mt-4 text-xl text-[var(--accent-strong)]">
-              {t("pharmacy", "infoTitle")}
-            </h1>
-            <p className="mt-3 text-sm text-[rgba(19,49,58,0.6)]">
-              {t("pharmacy", "noBookingNeeded")}
-            </p>
-            <div className="card mt-4 p-4 text-left space-y-2">
-              <p className="flex items-center gap-2 text-sm text-[rgba(19,49,58,0.65)]">
-                <Clock className="h-3.5 w-3.5 text-[var(--accent)]" /> {activeClinic.locationLabel}
-              </p>
-              <p className="flex items-center gap-2 text-sm text-[rgba(19,49,58,0.65)]">
-                <Clock className="h-3.5 w-3.5 text-[var(--accent)]" /> {activeClinic.hoursLabel}
-              </p>
-              <p className="flex items-center gap-2 text-sm text-[rgba(19,49,58,0.65)]">
-                <Phone className="h-3.5 w-3.5 text-[var(--accent)]" /> {activeClinic.phone}
-              </p>
-            </div>
-            <div className="mt-5 flex flex-wrap justify-center gap-3">
-              <Link href={buildClinicHref("/walkin", activeClinicId)} className="btn btn-warm btn-lg">
-                {t("pharmacy", "pickupToken")}
-              </Link>
-              <Link href={buildClinicHref("/", activeClinicId)} className="btn btn-outline btn-lg">
-                {t("common", "back")}
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const [dayLabel, setDayLabel] = useState<"Aaj" | "Kal">("Aaj");
   const [name, setName] = useState("");
@@ -288,22 +248,12 @@ export default function BookPage() {
     void fetchSchedule();
   }, [activeClinicId]);
 
-  const currentSlots = useMemo(
-    () => {
-      const raw = scheduleSlots[dayLabel] || defaultSlots[activeClinicId] || [];
-      // For "Aaj" (Today), filter out time slots that have already passed
-      return dayLabel === "Aaj" ? filterPastSlots(raw) : raw;
-    },
-    [scheduleSlots, dayLabel, activeClinicId],
-  );
+  const currentSlots = useMemo(() => {
+    const raw = scheduleSlots[dayLabel] || defaultSlots[activeClinicId] || [];
+    return dayLabel === "Aaj" ? filterPastSlots(raw) : raw;
+  }, [scheduleSlots, dayLabel, activeClinicId]);
   const [slotLabel, setSlotLabel] = useState("");
-
-  // Auto-select first slot when slots change
-  useEffect(() => {
-    if (currentSlots.length > 0 && !currentSlots.includes(slotLabel)) {
-      setSlotLabel(currentSlots[0]);
-    }
-  }, [currentSlots, slotLabel]);
+  const selectedSlot = currentSlots.includes(slotLabel) ? slotLabel : (currentSlots[0] ?? "");
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -321,7 +271,7 @@ export default function BookPage() {
       const nextState = await createBooking({
         clinicId: activeClinicId,
         dayLabel,
-        slotLabel,
+        slotLabel: selectedSlot,
         name,
         mobile: mobile.trim() || "",
         requiresPharmacyFollowUp,
@@ -343,6 +293,45 @@ export default function BookPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (!activeClinic.hasBooking) {
+    return (
+      <div className="page-shell">
+        <div className="section-shell flex min-h-[50vh] items-center justify-center py-10">
+          <div className="mx-auto max-w-md text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-soft)]">
+              <Pill className="h-6 w-6 text-[var(--accent)]" />
+            </div>
+            <h1 className="display-type mt-4 text-xl text-[var(--accent-strong)]">
+              {t("pharmacy", "infoTitle")}
+            </h1>
+            <p className="mt-3 text-sm text-[rgba(19,49,58,0.6)]">
+              {t("pharmacy", "noBookingNeeded")}
+            </p>
+            <div className="card mt-4 space-y-2 p-4 text-left">
+              <p className="flex items-center gap-2 text-sm text-[rgba(19,49,58,0.65)]">
+                <Clock className="h-3.5 w-3.5 text-[var(--accent)]" /> {activeClinic.locationLabel}
+              </p>
+              <p className="flex items-center gap-2 text-sm text-[rgba(19,49,58,0.65)]">
+                <Clock className="h-3.5 w-3.5 text-[var(--accent)]" /> {activeClinic.hoursLabel}
+              </p>
+              <p className="flex items-center gap-2 text-sm text-[rgba(19,49,58,0.65)]">
+                <Phone className="h-3.5 w-3.5 text-[var(--accent)]" /> {activeClinic.phone}
+              </p>
+            </div>
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <Link href={buildClinicHref("/walkin", activeClinicId)} className="btn btn-warm btn-lg">
+                {t("pharmacy", "pickupToken")}
+              </Link>
+              <Link href={buildClinicHref("/", activeClinicId)} className="btn btn-outline btn-lg">
+                {t("common", "back")}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (confirmation) {
     return (

@@ -31,6 +31,7 @@ type StaffSession = {
 } | null;
 
 const SESSION_KEY = "clinic-staff-session";
+const TOKEN_KEY = "clinic-staff-jwt";
 
 export function getStaffSession(): StaffSession {
   if (typeof window === "undefined") return null;
@@ -52,19 +53,28 @@ export function setStaffSession(session: StaffSession) {
   }
 }
 
+export function setStaffAuthToken(token: string | null) {
+  if (typeof window === "undefined") return;
+  if (token) {
+    window.sessionStorage.setItem(TOKEN_KEY, token);
+  } else {
+    window.sessionStorage.removeItem(TOKEN_KEY);
+  }
+}
+
 export function clearStaffSession() {
   if (typeof window === "undefined") return;
   window.sessionStorage.removeItem(SESSION_KEY);
+  window.sessionStorage.removeItem(TOKEN_KEY);
 }
 
 export function Navbar() {
   const { activeClinicId, activeClinic, isOnline } = useClinic();
   const { lang, toggleLang, t } = useLang();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [session, setSession] = useState<StaffSession>(null);
+  const [session, setSession] = useState<StaffSession>(() => getStaffSession());
 
   useEffect(() => {
-    setSession(getStaffSession());
     const handleStorage = () => setSession(getStaffSession());
     window.addEventListener("storage", handleStorage);
     window.addEventListener("staff-session-change", handleStorage);
@@ -74,10 +84,16 @@ export function Navbar() {
     };
   }, []);
 
-  const handleLogout = () => {
-    clearStaffSession();
-    setSession(null);
-    window.dispatchEvent(new Event("staff-session-change"));
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // Best effort; local cleanup still happens below.
+    } finally {
+      clearStaffSession();
+      setSession(null);
+      window.dispatchEvent(new Event("staff-session-change"));
+    }
   };
 
   const isDoctor = session?.role === "doctor";
@@ -199,7 +215,9 @@ export function Navbar() {
               </span>
               <button
                 type="button"
-                onClick={handleLogout}
+                onClick={() => {
+                  void handleLogout();
+                }}
                 className="btn btn-danger btn-sm"
               >
                 <LogOut className="h-3 w-3" />
@@ -245,7 +263,9 @@ export function Navbar() {
             <div className="flex items-center gap-1 border-l border-[var(--line)] pl-2 sm:hidden">
               <button
                 type="button"
-                onClick={handleLogout}
+                onClick={() => {
+                  void handleLogout();
+                }}
                 className="btn btn-danger btn-sm"
               >
                 <LogOut className="h-3 w-3" />
@@ -302,7 +322,10 @@ export function Navbar() {
               </span>
               <button
                 type="button"
-                onClick={() => { handleLogout(); setMenuOpen(false); }}
+                onClick={() => {
+                  void handleLogout();
+                  setMenuOpen(false);
+                }}
                 className="btn btn-danger btn-sm"
               >
                 <LogOut className="h-3 w-3" />

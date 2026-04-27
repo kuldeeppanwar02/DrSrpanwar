@@ -33,10 +33,11 @@ export default function LivePage() {
   const current = summary.current;
   const next = summary.next;
 
-  const [session, setSession] = useState<{ name: string; role: string } | null>(null);
+  const [session, setSession] = useState<{ name: string; role: string } | null>(
+    () => getStaffSession(),
+  );
 
   useEffect(() => {
-    setSession(getStaffSession());
     const sync = () => setSession(getStaffSession());
     window.addEventListener("staff-session-change", sync);
     return () => window.removeEventListener("staff-session-change", sync);

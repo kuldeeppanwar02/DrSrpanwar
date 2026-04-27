@@ -19,8 +19,9 @@ It includes:
 
 - Next.js 16 App Router
 - Tailwind CSS 4
-- Firebase Authentication (staff login)
-- Firebase Firestore via server-side Admin SDK routes
+- Supabase Postgres
+- Supabase Storage
+- server-signed PIN session auth
 - IndexedDB/localStorage fallback for offline-safe patient flows
 
 ## Routes
@@ -44,67 +45,67 @@ npm run dev
 
 Copy `.env.example` to `.env.local` for local testing.
 
-Public Firebase web config:
+Public values:
 
-- `NEXT_PUBLIC_FIREBASE_API_KEY`
-- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- `NEXT_PUBLIC_FIREBASE_APP_ID`
-- `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`
+- `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_APP_BASE_URL`
 
 Server-only values:
 
-- `FIREBASE_SERVICE_ACCOUNT_JSON`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_DATABASE_URL`
+- `SUPABASE_STORAGE_BUCKET`
 - `STAFF_ALLOWED_EMAILS`
+- `STAFF_SESSION_SECRET`
+- `DOCTOR_PIN_SURGERY`
+- `DOCTOR_PIN_DENTAL`
+- `PHARMACY_PIN`
 
-## Manual Firebase Setup
+## Manual Supabase Setup
 
 Follow these steps in order. Yehi woh manual work hai jo aapko karna padega:
 
-1. Firebase console mein naya project banao.
-2. `Build > Authentication > Sign-in method` mein `Email/Password` enable karo.
-3. `Authentication > Users` mein staff users manually add karo.
-4. `Build > Firestore Database` mein database create karo.
-5. Firestore rules ko client-side access ke liye lock kar do, because app database ko server API routes se use karta hai:
-
-```txt
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
-```
-
-6. `Project settings > General` mein web app add karo aur Firebase web config copy karo.
-7. `Project settings > Service accounts` se service account JSON generate karo.
-8. `Authentication > Settings > Authorized domains` mein apna Vercel domain add karo.
+1. Supabase project create karo.
+2. `SQL Editor` kholo aur [supabase/schema.sql](/D:/my%20app/Dr.%20Sr%20panwar/clinic-pwa/supabase/schema.sql) ka poora SQL run karo.
+3. `Storage` mein private bucket banao:
+   `prescriptions`
+4. `Project Settings > API` se ye values copy karo:
+   `Project URL`
+   `service_role key`
+5. `Project Settings > Database` se pooled connection string copy karo.
+   Recommended: Supabase transaction/session pooler URL with `sslmode=require`
+6. Staff records do tareeqon se add kar sakte ho:
+   doctor aur pharmacy ke liye env PINs use honge
+   receptionist/staff ke liye app ke `/staff/manage` page se members create honge after first deploy
 
 ## Manual Vercel Setup
 
 Vercel project mein ye env vars add karo:
 
-- `NEXT_PUBLIC_FIREBASE_API_KEY`
-- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- `NEXT_PUBLIC_FIREBASE_APP_ID`
-- `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`
+- `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_APP_BASE_URL`
-- `FIREBASE_SERVICE_ACCOUNT_JSON`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_DATABASE_URL`
+- `SUPABASE_STORAGE_BUCKET`
 - `STAFF_ALLOWED_EMAILS`
+- `STAFF_SESSION_SECRET`
+- `DOCTOR_PIN_SURGERY`
+- `DOCTOR_PIN_DENTAL`
+- `PHARMACY_PIN`
+- `DOCTOR_NAME_SURGERY`
+- `DOCTOR_NAME_DENTAL`
+- `PHARMACY_NAME`
 
 Notes:
 
 - `NEXT_PUBLIC_APP_BASE_URL` mein final deployed URL dalo, for example `https://dr-srpanwar.vercel.app`
-- `FIREBASE_SERVICE_ACCOUNT_JSON` mein poora JSON paste karo
+- `NEXT_PUBLIC_SUPABASE_URL` format usually `https://<project-ref>.supabase.co` hota hai
+- `SUPABASE_SERVICE_ROLE_KEY` ko sirf server env mein rakho
+- `SUPABASE_DATABASE_URL` mein direct/pooled Postgres connection string paste karo
+- `SUPABASE_STORAGE_BUCKET` by default `prescriptions` rakho
 - `STAFF_ALLOWED_EMAILS` comma-separated list honi chahiye
+- `STAFF_SESSION_SECRET` random long secret rakho
+- doctor/pharmacy PINs strong 4-6 digit ya longer numeric PIN rakho
 
 ## First Live Test Checklist
 
@@ -126,12 +127,14 @@ Notes:
 3. `src/features/clinic/services`
    Queue engine and client orchestration
 4. `src/lib/firebase`
-   Firebase client/admin setup, staff auth verification, Firestore queue store
+   legacy path name, but now backed by Supabase Postgres + Storage store modules
+5. `src/lib/supabase`
+   Supabase database and storage helpers
 5. `src/services/api.ts`
    Axios client with bearer-token forwarding for staff actions
 
 ## Notes
 
 - Public patient actions use same-origin API routes.
-- Staff actions require Firebase ID token verification on the server.
-- If Firebase env vars are missing, patient-side local fallback still works for prototype-style testing.
+- Staff actions use signed server session cookies plus bearer token fallback.
+- If Supabase env vars are missing, patient-side local fallback still works for prototype-style testing.

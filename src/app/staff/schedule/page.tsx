@@ -63,7 +63,6 @@ export default function SchedulePage() {
   const [tab, setTab] = useState<"default" | "today" | "week">("default");
 
   // Default schedule
-  const [defaults, setDefaults] = useState<DefaultSched | null>(null);
   const [shifts, setShifts] = useState<[ShiftDef, ShiftDef, ShiftDef]>([
     { label: "Morning", startTime: "09:00", endTime: "12:00", enabled: true },
     { label: "Afternoon", startTime: "12:00", endTime: "15:00", enabled: true },
@@ -91,22 +90,24 @@ export default function SchedulePage() {
 
   // Fetch default schedule
   useEffect(() => {
-    setLoading(true);
-    fetch(`/api/schedule/default?clinic=${activeClinicId}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.exists && data.schedule) {
-          const s = data.schedule as DefaultSched;
-          setDefaults(s);
-          setShifts(s.shifts);
-          setWeeklyOff(s.weeklyOff || ["Sunday"]);
-          setSlotInterval(s.slotInterval || 30);
-          setMaxPatients(s.maxPatients || 20);
-          setDefaultExists(true);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const initialLoad = window.setTimeout(() => {
+      setLoading(true);
+      fetch(`/api/schedule/default?clinic=${activeClinicId}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.exists && data.schedule) {
+            const s = data.schedule as DefaultSched;
+            setShifts(s.shifts);
+            setWeeklyOff(s.weeklyOff || ["Sunday"]);
+            setSlotInterval(s.slotInterval || 30);
+            setMaxPatients(s.maxPatients || 20);
+            setDefaultExists(true);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    }, 0);
+    return () => window.clearTimeout(initialLoad);
   }, [activeClinicId]);
 
   // Fetch today override

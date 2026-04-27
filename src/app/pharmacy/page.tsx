@@ -32,9 +32,9 @@ type PrescriptionDetail = PrescriptionItem & {
 };
 
 export default function PharmacyPage() {
-  const { activeClinic } = useClinic();
+  useClinic();
   const { t } = useLang();
-  const [session, setSession] = useState<{ role: string } | null>(null);
+  const [session, setSession] = useState<{ role: string } | null>(() => getStaffSession());
   const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewing, setViewing] = useState<PrescriptionDetail | null>(null);
@@ -42,7 +42,6 @@ export default function PharmacyPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   useEffect(() => {
-    setSession(getStaffSession());
     const sync = () => setSession(getStaffSession());
     window.addEventListener("staff-session-change", sync);
     return () => window.removeEventListener("staff-session-change", sync);
@@ -67,12 +66,18 @@ export default function PharmacyPage() {
   // Initial + auto-refresh every 10s
   useEffect(() => {
     if (!isAuthorized) return;
-    void fetchPrescriptions();
+    const initialLoad = window.setTimeout(() => {
+      void fetchPrescriptions();
+    }, 0);
 
     if (autoRefresh) {
       const interval = setInterval(() => void fetchPrescriptions(), 10000);
-      return () => clearInterval(interval);
+      return () => {
+        window.clearTimeout(initialLoad);
+        clearInterval(interval);
+      };
     }
+    return () => window.clearTimeout(initialLoad);
   }, [isAuthorized, autoRefresh, fetchPrescriptions]);
 
   const viewPhotos = async (rx: PrescriptionItem) => {

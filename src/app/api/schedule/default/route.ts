@@ -1,6 +1,7 @@
 import { jsonError } from "@/app/api/api-helpers";
 import { isClinicId } from "@/features/clinic/catalog";
 import type { ClinicId } from "@/features/clinic/types";
+import { requireStaffUser } from "@/lib/firebase/staff-auth";
 import {
   getDefaultSchedule,
   saveDefaultSchedule,
@@ -16,6 +17,11 @@ export async function GET(request: Request) {
     if (!isClinicId(clinicId)) {
       return Response.json({ message: "Invalid clinic." }, { status: 400 });
     }
+
+    await requireStaffUser(request, {
+      allowRoles: ["doctor", "staff"],
+      clinicId: clinicId as ClinicId,
+    });
 
     const schedule = await getDefaultSchedule(clinicId as ClinicId);
 
@@ -45,6 +51,11 @@ export async function POST(request: Request) {
       return Response.json({ message: "Invalid clinic." }, { status: 400 });
     }
 
+    const session = await requireStaffUser(request, {
+      allowRoles: ["doctor", "staff"],
+      clinicId: clinicId as ClinicId,
+    });
+
     // Validate shifts
     if (!Array.isArray(shifts) || shifts.length !== 3) {
       return Response.json({ message: "Exactly 3 shifts required." }, { status: 400 });
@@ -61,7 +72,7 @@ export async function POST(request: Request) {
       weeklyOff: weeklyOff || ["Sunday"],
       slotInterval: slotInterval || 30,
       maxPatients: maxPatients || 20,
-      updatedBy: updatedBy || "staff",
+      updatedBy: updatedBy || session.name,
     });
 
     return Response.json({ schedule: saved });

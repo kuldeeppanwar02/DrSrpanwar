@@ -1,28 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase/admin";
-import type { PrescriptionDoc } from "@/lib/firebase/prescription-store";
+import { getPrescriptionById } from "@/lib/firebase/prescription-store";
+import { requireStaffUser, StaffAuthError } from "@/lib/firebase/staff-auth";
 
-// GET single prescription with full photo data
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const session = await requireStaffUser(req, { allowRoles: ["doctor", "pharmacist"] });
     const { id } = await params;
-    const db = getAdminDb();
-    const doc = await db.collection("prescriptions").doc(id).get();
+    const prescription = await getPrescriptionById(id);
 
-    if (!doc.exists) {
+    if (!prescription) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const data = doc.data() as Omit<PrescriptionDoc, "id">;
-    return NextResponse.json({ prescription: { id: doc.id, ...data } });
+    if (
+      session.role !== "pharmacist" &&
+      !session.clinicAccess.includes(prescription.clinicId)
+    ) {
+      throw new StaffAuthError("You do not have access to this prescription.", 403);
+    }
+
+    return NextResponse.json({ prescription });
   } catch (error) {
     console.error("[GET /api/prescriptions/:id]", error);
-    return NextResponse.json(
-      { error: "Failed to fetch prescription" },
-      { status: 500 },
-    );
+    if (error instanceof StaffAuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    return NextResponse.json({ error: "Failed to fetch prescription" }, { status: 500 });
   }
 }

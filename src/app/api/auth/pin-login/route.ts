@@ -1,15 +1,13 @@
+import { NextResponse } from "next/server";
 import { jsonError } from "@/app/api/api-helpers";
 import { verifyPin } from "@/lib/firebase/pin-auth";
+import { createSessionCookie, createStaffSessionToken } from "@/lib/staff-session";
 
-/**
- * In-memory rate limiter for PIN login attempts.
- * Tracks failed attempts per IP. Blocks after 5 failed attempts for 5 minutes.
- */
 const attempts = new Map<string, { count: number; firstAttempt: number; blockedUntil: number }>();
 
 const MAX_ATTEMPTS = 5;
-const WINDOW_MS = 5 * 60 * 1000; // 5 minutes
-const BLOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes block
+const WINDOW_MS = 5 * 60 * 1000;
+const BLOCK_DURATION_MS = 5 * 60 * 1000;
 
 function getClientIp(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for");
@@ -25,7 +23,6 @@ function checkRateLimit(ip: string): { allowed: boolean; retryAfterSec?: number;
 
   if (!record) return { allowed: true, remaining: MAX_ATTEMPTS };
 
-  // If blocked, check if block has expired
   if (record.blockedUntil > now) {
     return {
       allowed: false,
@@ -33,7 +30,6 @@ function checkRateLimit(ip: string): { allowed: boolean; retryAfterSec?: number;
     };
   }
 
-  // If window expired, reset
   if (now - record.firstAttempt > WINDOW_MS) {
     attempts.delete(ip);
     return { allowed: true, remaining: MAX_ATTEMPTS };
@@ -56,7 +52,7 @@ function recordFailedAttempt(ip: string) {
   if (!record) {
     attempts.set(ip, { count: 1, firstAttempt: now, blockedUntil: 0 });
   } else {
-    record.count++;
+    record.count += 1;
   }
 }
 
@@ -64,7 +60,6 @@ function clearAttempts(ip: string) {
   attempts.delete(ip);
 }
 
-// Clean up stale entries every 10 minutes
 setInterval(() => {
   const now = Date.now();
   for (const [ip, record] of attempts.entries()) {
@@ -77,13 +72,12 @@ setInterval(() => {
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
-
-    // Rate limit check
     const rateCheck = checkRateLimit(ip);
+
     if (!rateCheck.allowed) {
-      return Response.json(
+      return NextResponse.json(
         {
-          message: `बहुत ज़्यादा कोशिशें। ${rateCheck.retryAfterSec} सेकंड बाद दोबारा कोशिश करें।`,
+          message: `Bahut zyada koshishe hui hain. ${rateCheck.retryAfterSec} second baad phir try karein.`,
           retryAfter: rateCheck.retryAfterSec,
         },
         {
@@ -99,33 +93,39 @@ export async function POST(request: Request) {
     const pin = body.pin?.trim();
 
     if (!pin) {
-      return Response.json(
-        { message: "PIN is required." },
-        { status: 400 },
-      );
+      return NextResponse.json({ message: "PIN is required." }, { status: 400 });
     }
 
     const result = await verifyPin(pin);
 
     if (!result) {
       recordFailedAttempt(ip);
-      const remaining = (rateCheck.remaining ?? MAX_ATTEMPTS) - 1;
-      return Response.json(
+      const remaining = Math.max((rateCheck.remaining ?? MAX_ATTEMPTS) - 1, 0);
+      return NextResponse.json(
         {
-          message: remaining > 0
-            ? `गलत PIN। ${remaining} कोशिशें बाकी हैं।`
-            : "गलत PIN। बहुत ज़्यादा कोशिशें, कृपया 5 मिनट बाद दोबारा कोशिश करें।",
+          message:
+            remaining > 0
+              ? `Galat PIN. ${remaining} koshishe baaki hain.`
+              : "Galat PIN. Kripya 5 minute baad dobara koshish karein.",
           attemptsRemaining: remaining,
         },
         { status: 401 },
       );
     }
 
-    // Success — clear any failed attempts
     clearAttempts(ip);
 
-    return Response.json({
+    const sessionToken = createStaffSessionToken({
+      id: result.member.id,
+      name: result.member.name,
+      role: result.member.role,
+      designation: result.member.designation,
+      clinicAccess: result.member.clinicAccess,
+    });
+
+    const response = NextResponse.json({
       success: true,
+      sessionToken,
       member: {
         id: result.member.id,
         name: result.member.name,
@@ -135,6 +135,9 @@ export async function POST(request: Request) {
         status: result.member.status,
       },
     });
+
+    response.headers.append("Set-Cookie", createSessionCookie(sessionToken));
+    return response;
   } catch (error) {
     return jsonError(error);
   }

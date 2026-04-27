@@ -1,6 +1,7 @@
 import "server-only";
 
-import { getAdminDb } from "@/lib/firebase/admin";
+import { randomUUID } from "crypto";
+import { getDb, toIsoString } from "@/lib/supabase/db";
 import type { ClinicId } from "@/features/clinic/types";
 
 export type PatientVisit = {
@@ -18,9 +19,38 @@ export type PatientVisit = {
   createdAt: string;
 };
 
-/**
- * Save a visit record when a patient's queue entry is marked "done".
- */
+type PatientVisitRow = {
+  id: string;
+  mobile: string;
+  name: string;
+  clinic_id: ClinicId;
+  token: string;
+  booking_id: string;
+  source: "booking" | "walk-in";
+  day_label: string;
+  slot_label: string;
+  status: string;
+  visit_date: string | Date;
+  created_at: string | Date;
+};
+
+function mapVisit(row: PatientVisitRow): PatientVisit {
+  return {
+    id: row.id,
+    mobile: row.mobile,
+    name: row.name,
+    clinicId: row.clinic_id,
+    token: row.token,
+    bookingId: row.booking_id,
+    source: row.source,
+    dayLabel: row.day_label,
+    slotLabel: row.slot_label,
+    status: row.status,
+    visitDate: new Date(row.visit_date).toISOString().split("T")[0],
+    createdAt: toIsoString(row.created_at),
+  };
+}
+
 export async function saveVisitRecord(
   mobile: string,
   name: string,
@@ -33,65 +63,87 @@ export async function saveVisitRecord(
     slotLabel: string;
   },
 ): Promise<void> {
-  if (!mobile || mobile.length < 10) return;
+  if (!mobile || mobile.length < 10) {
+    return;
+  }
 
-  const db = getAdminDb();
+  const db = getDb();
   const now = new Date();
 
-  await db.collection("patient_visits").add({
-    mobile: mobile.replace(/\D/g, "").slice(-10),
-    name,
-    clinicId,
-    token: data.token,
-    bookingId: data.bookingId,
-    source: data.source,
-    dayLabel: data.dayLabel,
-    slotLabel: data.slotLabel,
-    status: "done",
-    visitDate: now.toISOString().split("T")[0],
-    createdAt: now.toISOString(),
-  });
+  await db`
+    insert into patient_visits (
+      id,
+      mobile,
+      name,
+      clinic_id,
+      token,
+      booking_id,
+      source,
+      day_label,
+      slot_label,
+      status,
+      visit_date,
+      created_at
+    )
+    values (
+      ${randomUUID()},
+      ${mobile.replace(/\D/g, "").slice(-10)},
+      ${name},
+      ${clinicId},
+      ${data.token},
+      ${data.bookingId},
+      ${data.source},
+      ${data.dayLabel},
+      ${data.slotLabel},
+      ${"done"},
+      ${now.toISOString().split("T")[0]},
+      ${now.toISOString()}
+    )
+  `;
 }
 
-/**
- * Get patient visit history for last 6 months by mobile number.
- */
 export async function getPatientHistory(
   mobile: string,
 ): Promise<PatientVisit[]> {
-  if (!mobile || mobile.replace(/\D/g, "").length < 10) return [];
+  if (!mobile || mobile.replace(/\D/g, "").length < 10) {
+    return [];
+  }
 
-  const db = getAdminDb();
+  const db = getDb();
   const normalizedMobile = mobile.replace(/\D/g, "").slice(-10);
-
-  // 6 months ago
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const cutoffDate = sixMonthsAgo.toISOString();
 
-  const snapshot = await db
-    .collection("patient_visits")
-    .where("mobile", "==", normalizedMobile)
-    .where("createdAt", ">=", cutoffDate)
-    .orderBy("createdAt", "desc")
-    .limit(50)
-    .get();
+  const rows = await db<PatientVisitRow[]>`
+    select
+      id,
+      mobile,
+      name,
+      clinic_id,
+      token,
+      booking_id,
+      source,
+      day_label,
+      slot_label,
+      status,
+      visit_date,
+      created_at
+    from patient_visits
+    where mobile = ${normalizedMobile}
+      and created_at >= ${sixMonthsAgo.toISOString()}
+    order by created_at desc
+    limit 50
+  `;
 
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...(doc.data() as Omit<PatientVisit, "id">),
-  }));
+  return rows.map(mapVisit);
 }
 
-/**
- * Get visit count summary for a patient.
- */
 export async function getPatientVisitSummary(
   mobile: string,
 ): Promise<{ totalVisits: number; lastVisitDate: string | null; clinicBreakdown: Record<string, number> }> {
   const visits = await getPatientHistory(mobile);
-
   const clinicBreakdown: Record<string, number> = {};
+
   for (const visit of visits) {
     clinicBreakdown[visit.clinicId] = (clinicBreakdown[visit.clinicId] || 0) + 1;
   }

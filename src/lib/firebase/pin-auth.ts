@@ -1,7 +1,7 @@
 import "server-only";
 
-import { createHash } from "crypto";
-import { getAdminDb } from "@/lib/firebase/admin";
+import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "crypto";
+import { getDb, toIsoString } from "@/lib/supabase/db";
 import { serverEnv } from "@/config/server-env";
 import type { ClinicId } from "@/features/clinic/types";
 
@@ -22,19 +22,75 @@ export type StaffMember = {
   createdBy: string;
 };
 
+type StaffMemberRow = {
+  id: string;
+  name: string;
+  role: StaffRole;
+  pin_hash: string;
+  phone: string;
+  email: string;
+  designation: string;
+  clinic_access: ClinicId[];
+  status: "active" | "hold" | "removed";
+  joined_at: string | Date;
+  last_login_at: string | Date | null;
+  created_by: string;
+};
+
+function mapStaffMember(row: StaffMemberRow): StaffMember {
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role,
+    pinHash: row.pin_hash,
+    phone: row.phone,
+    email: row.email,
+    designation: row.designation,
+    clinicAccess: row.clinic_access ?? [],
+    status: row.status,
+    joinedAt: toIsoString(row.joined_at),
+    lastLoginAt: row.last_login_at ? toIsoString(row.last_login_at) : "",
+    createdBy: row.created_by,
+  };
+}
+
 export function hashPin(pin: string): string {
   return createHash("sha256").update(pin.trim()).digest("hex");
+}
+
+function hashPinSecure(pin: string, salt = randomBytes(16).toString("hex")) {
+  const derived = scryptSync(pin.trim(), salt, 32).toString("hex");
+  return `scrypt$${salt}$${derived}`;
+}
+
+function verifyStoredPinHash(pin: string, storedHash: string) {
+  if (storedHash.startsWith("scrypt$")) {
+    const [, salt, expectedHash] = storedHash.split("$");
+
+    if (!salt || !expectedHash) {
+      return false;
+    }
+
+    const derived = scryptSync(pin.trim(), salt, 32).toString("hex");
+    const provided = Buffer.from(derived, "hex");
+    const expected = Buffer.from(expectedHash, "hex");
+
+    return provided.length === expected.length && timingSafeEqual(provided, expected);
+  }
+
+  return hashPin(pin) === storedHash;
 }
 
 export async function verifyPin(
   pin: string,
 ): Promise<{ member: StaffMember; role: StaffRole } | null> {
-  const db = getAdminDb();
+  const db = getDb();
   const trimmedPin = pin.trim();
 
-  // Check each clinic's doctor PIN
   for (const [clinicId, config] of Object.entries(serverEnv.doctors)) {
     if (config.pin && trimmedPin === config.pin) {
+      const now = new Date().toISOString();
+
       return {
         member: {
           id: `doctor-${clinicId}`,
@@ -46,8 +102,8 @@ export async function verifyPin(
           designation: "Doctor",
           clinicAccess: [clinicId as ClinicId],
           status: "active",
-          joinedAt: new Date().toISOString(),
-          lastLoginAt: new Date().toISOString(),
+          joinedAt: now,
+          lastLoginAt: now,
           createdBy: "system",
         },
         role: "doctor",
@@ -55,8 +111,9 @@ export async function verifyPin(
     }
   }
 
-  // Check pharmacy PIN
   if (serverEnv.pharmacy.pin && trimmedPin === serverEnv.pharmacy.pin) {
+    const now = new Date().toISOString();
+
     return {
       member: {
         id: "pharmacist-pharmacy",
@@ -66,33 +123,52 @@ export async function verifyPin(
         phone: "",
         email: "",
         designation: "Pharmacist",
-        clinicAccess: ["pharmacy" as ClinicId],
+        clinicAccess: ["pharmacy"],
         status: "active",
-        joinedAt: new Date().toISOString(),
-        lastLoginAt: new Date().toISOString(),
+        joinedAt: now,
+        lastLoginAt: now,
         createdBy: "system",
       },
       role: "pharmacist",
     };
   }
 
-  // Check staff_members collection in Firestore
-  const pinHashed = hashPin(trimmedPin);
-  const snapshot = await db
-    .collection("staff_members")
-    .where("pinHash", "==", pinHashed)
-    .where("status", "==", "active")
-    .limit(1)
-    .get();
+  const rows = await db<StaffMemberRow[]>`
+    select
+      id,
+      name,
+      role,
+      pin_hash,
+      phone,
+      email,
+      designation,
+      clinic_access,
+      status,
+      joined_at,
+      last_login_at,
+      created_by
+    from staff_members
+    where status = 'active'
+    order by joined_at desc
+  `;
 
-  if (snapshot.empty) return null;
+  const matchingRow = rows.find((row) => verifyStoredPinHash(trimmedPin, row.pin_hash));
 
-  const doc = snapshot.docs[0];
-  const data = doc.data() as Omit<StaffMember, "id">;
-  const member: StaffMember = { id: doc.id, ...data };
+  if (!matchingRow) {
+    return null;
+  }
 
-  // Update last login
-  await doc.ref.update({ lastLoginAt: new Date().toISOString() });
+  const lastLoginAt = new Date().toISOString();
+  await db`
+    update staff_members
+    set last_login_at = ${lastLoginAt}
+    where id = ${matchingRow.id}
+  `;
+
+  const member = mapStaffMember({
+    ...matchingRow,
+    last_login_at: lastLoginAt,
+  });
 
   return { member, role: member.role };
 }
@@ -100,71 +176,148 @@ export async function verifyPin(
 export async function listStaffMembers(
   clinicFilter?: ClinicId,
 ): Promise<StaffMember[]> {
-  const db = getAdminDb();
-  const snapshot = await db
-    .collection("staff_members")
-    .orderBy("joinedAt", "desc")
-    .get();
+  const db = getDb();
+  const rows = await db<StaffMemberRow[]>`
+    select
+      id,
+      name,
+      role,
+      pin_hash,
+      phone,
+      email,
+      designation,
+      clinic_access,
+      status,
+      joined_at,
+      last_login_at,
+      created_by
+    from staff_members
+    order by joined_at desc
+  `;
 
-  const members = snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...(doc.data() as Omit<StaffMember, "id">),
-  }));
+  const members = rows.map(mapStaffMember);
 
-  // If clinicFilter provided, only return staff with access to that clinic
-  if (clinicFilter) {
-    return members.filter(
-      (m) => m.clinicAccess && m.clinicAccess.includes(clinicFilter),
-    );
+  if (!clinicFilter) {
+    return members;
   }
 
-  return members;
+  return members.filter((member) => member.clinicAccess.includes(clinicFilter));
 }
 
 export async function createStaffMember(
   input: Omit<StaffMember, "id" | "pinHash" | "joinedAt" | "lastLoginAt"> & { pin: string },
 ): Promise<StaffMember> {
-  const db = getAdminDb();
+  const db = getDb();
+  const id = randomUUID();
   const now = new Date().toISOString();
+  const clinicAccess: ClinicId[] = input.clinicAccess?.length
+    ? input.clinicAccess
+    : ["surgery"];
+  const status = input.status || "active";
 
-  const data = {
+  await db`
+    insert into staff_members (
+      id,
+      name,
+      role,
+      pin_hash,
+      phone,
+      email,
+      designation,
+      clinic_access,
+      status,
+      joined_at,
+      last_login_at,
+      created_by
+    )
+    values (
+      ${id},
+      ${input.name},
+      ${input.role},
+      ${hashPinSecure(input.pin)},
+      ${input.phone || ""},
+      ${input.email || ""},
+      ${input.designation || ""},
+      ${db.array(clinicAccess)},
+      ${status},
+      ${now},
+      ${null},
+      ${input.createdBy || "doctor"}
+    )
+  `;
+
+  return {
+    id,
     name: input.name,
     role: input.role,
-    pinHash: hashPin(input.pin),
+    pinHash: "",
     phone: input.phone || "",
     email: input.email || "",
     designation: input.designation || "",
-    clinicAccess: input.clinicAccess || ["surgery"],
-    status: input.status || "active",
+    clinicAccess,
+    status,
     joinedAt: now,
     lastLoginAt: "",
     createdBy: input.createdBy || "doctor",
   };
-
-  const ref = await db.collection("staff_members").add(data);
-  return { id: ref.id, ...data };
 }
 
 export async function updateStaffMember(
   staffId: string,
-  updates: Partial<Pick<StaffMember, "name" | "phone" | "email" | "designation" | "clinicAccess" | "status" | "role">> & { pin?: string },
+  updates: Partial<
+    Pick<
+      StaffMember,
+      "name" | "phone" | "email" | "designation" | "clinicAccess" | "status" | "role"
+    >
+  > & { pin?: string },
 ): Promise<void> {
-  const db = getAdminDb();
-  const updateData: Record<string, unknown> = {};
+  const db = getDb();
+  const [currentRow] = await db<StaffMemberRow[]>`
+    select
+      id,
+      name,
+      role,
+      pin_hash,
+      phone,
+      email,
+      designation,
+      clinic_access,
+      status,
+      joined_at,
+      last_login_at,
+      created_by
+    from staff_members
+    where id = ${staffId}
+    limit 1
+  `;
 
-  if (updates.name !== undefined) updateData.name = updates.name;
-  if (updates.phone !== undefined) updateData.phone = updates.phone;
-  if (updates.email !== undefined) updateData.email = updates.email;
-  if (updates.designation !== undefined) updateData.designation = updates.designation;
-  if (updates.clinicAccess !== undefined) updateData.clinicAccess = updates.clinicAccess;
-  if (updates.status !== undefined) updateData.status = updates.status;
-  if (updates.role !== undefined) updateData.role = updates.role;
-  if (updates.pin) updateData.pinHash = hashPin(updates.pin);
+  if (!currentRow) {
+    throw new Error("Staff member not found.");
+  }
 
-  await db.collection("staff_members").doc(staffId).update(updateData);
+  const nextClinicAccess: ClinicId[] = updates.clinicAccess ??
+    currentRow.clinic_access ??
+    ["surgery"];
+
+  await db`
+    update staff_members
+    set
+      name = ${updates.name ?? currentRow.name},
+      role = ${updates.role ?? currentRow.role},
+      pin_hash = ${updates.pin ? hashPinSecure(updates.pin) : currentRow.pin_hash},
+      phone = ${updates.phone ?? currentRow.phone},
+      email = ${updates.email ?? currentRow.email},
+      designation = ${updates.designation ?? currentRow.designation},
+      clinic_access = ${db.array(nextClinicAccess)},
+      status = ${updates.status ?? currentRow.status}
+    where id = ${staffId}
+  `;
 }
 
 export async function deleteStaffMember(staffId: string): Promise<void> {
-  const db = getAdminDb();
-  await db.collection("staff_members").doc(staffId).delete();
+  const db = getDb();
+  await db`
+    delete from staff_members
+    where id = ${staffId}
+  `;
 }

@@ -40,6 +40,10 @@ type ClinicContextValue = {
   updateQueueStatus: (entryId: string, status: QueueStatus) => Promise<ClinicState>;
   rescheduleQueueEntry: (entryId: string) => Promise<ClinicState>;
   resetClinicState: () => Promise<ClinicState>;
+  setEmergencyState: (input: {
+    emergencyClosed: boolean;
+    emergencyMessage?: string;
+  }) => Promise<ClinicState>;
 };
 
 const ClinicContext = createContext<ClinicContextValue | null>(null);
@@ -244,6 +248,12 @@ function ClinicProviderInner({
     },
     resetClinicState: async () => {
       const nextState = await clinicService.resetState(requestedClinicId, {
+        online: isOnline,
+      });
+      return applyState(requestedClinicId, nextState);
+    },
+    setEmergencyState: async (input) => {
+      const nextState = await clinicService.setEmergencyState(requestedClinicId, input, {
         online: isOnline,
       });
       return applyState(requestedClinicId, nextState);

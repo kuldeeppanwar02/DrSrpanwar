@@ -1,6 +1,7 @@
 import { jsonError } from "@/app/api/api-helpers";
 import { isClinicId } from "@/features/clinic/catalog";
 import type { ClinicId } from "@/features/clinic/types";
+import { requireStaffUser } from "@/lib/firebase/staff-auth";
 import {
   getDayOverride,
   saveDayOverride,
@@ -19,6 +20,11 @@ export async function GET(request: Request) {
     if (!date) {
       return Response.json({ message: "date parameter required." }, { status: 400 });
     }
+
+    await requireStaffUser(request, {
+      allowRoles: ["doctor", "staff"],
+      clinicId: clinicId as ClinicId,
+    });
 
     const override = await getDayOverride(clinicId as ClinicId, date);
 
@@ -43,6 +49,11 @@ export async function POST(request: Request) {
       return Response.json({ message: "date is required." }, { status: 400 });
     }
 
+    const session = await requireStaffUser(request, {
+      allowRoles: ["doctor", "staff"],
+      clinicId: clinicId as ClinicId,
+    });
+
     // If removing override (reopening)
     if (body.remove === true) {
       await deleteDayOverride(clinicId as ClinicId, date);
@@ -53,7 +64,7 @@ export async function POST(request: Request) {
       closedShifts: closedShifts || [],
       fullDayClosed: fullDayClosed || false,
       reason: reason || "",
-      createdBy: createdBy || "staff",
+      createdBy: createdBy || session.name,
     });
 
     return Response.json({ override });

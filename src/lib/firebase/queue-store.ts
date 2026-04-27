@@ -12,14 +12,45 @@ import type {
   QueueSource,
   QueueStatus,
 } from "@/features/clinic/types";
-import { getAdminDb } from "@/lib/firebase/admin";
+import { getDb, toIsoString } from "@/lib/supabase/db";
 
-const CLINICS_COLLECTION = "clinics";
-const QUEUE_SUBCOLLECTION = "queue";
+type QueryableDb = {
+  <T = unknown>(strings: TemplateStringsArray, ...values: unknown[]): PromiseLike<T>;
+};
 
-type ClinicDocument = Omit<ClinicState, "queue"> & {
-  nextTokenNumber: number;
-  nextQueueOrder: number;
+type ClinicStateRow = {
+  clinic_id: ClinicId;
+  clinic_name: string;
+  clinic_subtitle: string;
+  clinic_prefix: string;
+  doctor_message: string;
+  next_token_number: number;
+  next_queue_order: number;
+  emergency_closed: boolean;
+  emergency_message: string;
+  last_updated: string | Date;
+  last_synced_at: string | Date;
+};
+
+type QueueEntryRow = {
+  id: string;
+  clinic_id: ClinicId;
+  client_request_id: string;
+  queue_order: number;
+  token: string;
+  booking_id: string;
+  name: string;
+  mobile: string;
+  source: QueueSource;
+  day_label: string;
+  slot_label: string;
+  status: QueueStatus;
+  sync_state: "synced" | "pending";
+  created_at: string | Date;
+  updated_at: string | Date;
+  notes: string | null;
+  requires_pharmacy_follow_up: boolean;
+  pharmacy_status: "not-needed" | "pending" | "done";
 };
 
 type PendingSyncEntry = {
@@ -51,112 +82,154 @@ function getBookingIdPrefix(clinicId: ClinicId, source: QueueSource) {
   return source === "booking" ? "BK" : "WI";
 }
 
-function createClinicDocument(clinicId: ClinicId): ClinicDocument {
+function createClinicDocument(clinicId: ClinicId): ClinicStateRow {
   const baseState = createEmptyClinicState(clinicId);
 
   return {
-    ...baseState,
-    nextTokenNumber: 1,
-    nextQueueOrder: 1,
+    clinic_id: clinicId,
+    clinic_name: baseState.clinicName,
+    clinic_subtitle: baseState.clinicSubtitle,
+    clinic_prefix: baseState.clinicPrefix,
+    doctor_message: baseState.doctorMessage,
+    next_token_number: 1,
+    next_queue_order: 1,
+    emergency_closed: false,
+    emergency_message: "",
+    last_updated: baseState.lastUpdated,
+    last_synced_at: baseState.lastSyncedAt ?? baseState.lastUpdated,
   };
 }
 
-function clinicDocRef(clinicId: ClinicId) {
-  return getAdminDb().collection(CLINICS_COLLECTION).doc(clinicId);
-}
-
-function queueCollectionRef(clinicId: ClinicId) {
-  return clinicDocRef(clinicId).collection(QUEUE_SUBCOLLECTION);
-}
-
-async function ensureClinicInitialized(clinicId: ClinicId) {
-  const clinicRef = clinicDocRef(clinicId);
-
-  await getAdminDb().runTransaction(async (transaction) => {
-    const clinicSnapshot = await transaction.get(clinicRef);
-
-    if (!clinicSnapshot.exists) {
-      transaction.set(clinicRef, createClinicDocument(clinicId));
-    }
-  });
+function mapQueueEntry(row: QueueEntryRow): QueueEntry {
+  return {
+    id: row.id,
+    clinicId: row.clinic_id,
+    clientRequestId: row.client_request_id,
+    queueOrder: row.queue_order,
+    token: row.token,
+    bookingId: row.booking_id,
+    name: row.name,
+    mobile: row.mobile,
+    source: row.source,
+    dayLabel: row.day_label,
+    slotLabel: row.slot_label,
+    status: row.status,
+    syncState: row.sync_state,
+    createdAt: toIsoString(row.created_at),
+    updatedAt: toIsoString(row.updated_at),
+    notes: row.notes ?? undefined,
+    requiresPharmacyFollowUp: row.requires_pharmacy_follow_up,
+    pharmacyStatus: row.pharmacy_status,
+  };
 }
 
 function normalizeClinicState(
   clinicId: ClinicId,
-  clinicDocument: Partial<ClinicDocument> | undefined,
+  clinicDocument: ClinicStateRow | undefined,
   queue: QueueEntry[],
 ): ClinicState {
   const clinic = getClinicDefinition(clinicId);
 
   return {
     clinicId,
-    clinicName: clinicDocument?.clinicName ?? clinic.title,
-    clinicSubtitle: clinicDocument?.clinicSubtitle ?? clinic.subtitle,
-    clinicPrefix: clinicDocument?.clinicPrefix ?? clinic.prefix,
+    clinicName: clinicDocument?.clinic_name ?? clinic.title,
+    clinicSubtitle: clinicDocument?.clinic_subtitle ?? clinic.subtitle,
+    clinicPrefix: clinicDocument?.clinic_prefix ?? clinic.prefix,
     doctorMessage:
-      clinicDocument?.doctorMessage ??
+      clinicDocument?.doctor_message ??
       (clinicId === "pharmacy"
         ? "Medicines aur follow-up pickup ke liye token lein."
         : "Appointment aur walk-in dono available hain."),
-    lastUpdated: clinicDocument?.lastUpdated ?? new Date().toISOString(),
-    lastSyncedAt: clinicDocument?.lastSyncedAt ?? new Date().toISOString(),
-    queue: queue
-      .map((entry, index) => ({
-        ...entry,
-        queueOrder: entry.queueOrder ?? index + 1,
-      }))
-      .sort((first, second) => {
-        const firstOrder = first.queueOrder ?? Number.MAX_SAFE_INTEGER;
-        const secondOrder = second.queueOrder ?? Number.MAX_SAFE_INTEGER;
+    lastUpdated: clinicDocument ? toIsoString(clinicDocument.last_updated) : new Date().toISOString(),
+    lastSyncedAt: clinicDocument
+      ? toIsoString(clinicDocument.last_synced_at)
+      : new Date().toISOString(),
+    emergencyClosed: clinicDocument?.emergency_closed ?? false,
+    emergencyMessage: clinicDocument?.emergency_message ?? "",
+    queue: queue.sort((first, second) => {
+      const firstOrder = first.queueOrder ?? Number.MAX_SAFE_INTEGER;
+      const secondOrder = second.queueOrder ?? Number.MAX_SAFE_INTEGER;
 
-        if (firstOrder === secondOrder) {
-          return first.createdAt.localeCompare(second.createdAt);
-        }
+      if (firstOrder === secondOrder) {
+        return first.createdAt.localeCompare(second.createdAt);
+      }
 
-        return firstOrder - secondOrder;
-      }),
+      return firstOrder - secondOrder;
+    }),
   };
 }
 
-async function readClinicQueue(clinicId: ClinicId) {
-  const queueSnapshot = await queueCollectionRef(clinicId)
-    .orderBy("queueOrder", "asc")
-    .get();
+async function ensureClinicInitialized(sql: QueryableDb, clinicId: ClinicId) {
+  const document = createClinicDocument(clinicId);
 
-  return queueSnapshot.docs.map((document) => {
-    const data = document.data() as QueueEntry;
-
-    return {
-      ...data,
-      id: data.id || document.id,
-      clientRequestId: data.clientRequestId || document.id,
-      clinicId,
-    };
-  });
+  await sql`
+    insert into clinic_states (
+      clinic_id,
+      clinic_name,
+      clinic_subtitle,
+      clinic_prefix,
+      doctor_message,
+      next_token_number,
+      next_queue_order,
+      emergency_closed,
+      emergency_message,
+      last_updated,
+      last_synced_at
+    )
+    values (
+      ${document.clinic_id},
+      ${document.clinic_name},
+      ${document.clinic_subtitle},
+      ${document.clinic_prefix},
+      ${document.doctor_message},
+      ${document.next_token_number},
+      ${document.next_queue_order},
+      ${document.emergency_closed},
+      ${document.emergency_message},
+      ${toIsoString(document.last_updated)},
+      ${toIsoString(document.last_synced_at)}
+    )
+    on conflict (clinic_id) do nothing
+  `;
 }
 
-export async function getRemoteClinicState(clinicId: ClinicId) {
-  await ensureClinicInitialized(clinicId);
-  const [clinicSnapshot, queue] = await Promise.all([
-    clinicDocRef(clinicId).get(),
-    readClinicQueue(clinicId),
-  ]);
+async function readClinicQueueFrom(sql: QueryableDb, clinicId: ClinicId) {
+  const rows = (await sql<QueueEntryRow[]>`
+    select
+      id,
+      clinic_id,
+      client_request_id,
+      queue_order,
+      token,
+      booking_id,
+      name,
+      mobile,
+      source,
+      day_label,
+      slot_label,
+      status,
+      sync_state,
+      created_at,
+      updated_at,
+      notes,
+      requires_pharmacy_follow_up,
+      pharmacy_status
+    from queue_entries
+    where clinic_id = ${clinicId}
+    order by queue_order asc
+  `) as QueueEntryRow[];
 
-  return normalizeClinicState(
-    clinicId,
-    clinicSnapshot.data() as Partial<ClinicDocument> | undefined,
-    queue,
-  );
+  return rows.map(mapQueueEntry);
 }
 
 function createQueueEntry(
   clinicId: ClinicId,
-  clinicDocument: ClinicDocument,
+  clinicDocument: ClinicStateRow,
   input: PendingSyncEntry,
 ) {
   const clinic = getClinicDefinition(clinicId);
-  const tokenNumber = clinicDocument.nextTokenNumber;
-  const queueOrder = clinicDocument.nextQueueOrder;
+  const tokenNumber = clinicDocument.next_token_number;
+  const queueOrder = clinicDocument.next_queue_order;
   const token = `${clinic.prefix}-${padSequence(tokenNumber)}`;
   const bookingId = `${getBookingIdPrefix(clinicId, input.source)}-${clinic.prefix}-${padSequence(
     tokenNumber,
@@ -166,77 +239,172 @@ function createQueueEntry(
   return {
     entry: {
       id: input.clientRequestId,
-      clinicId,
-      clientRequestId: input.clientRequestId,
-      queueOrder,
+      clinic_id: clinicId,
+      client_request_id: input.clientRequestId,
+      queue_order: queueOrder,
       token,
-      bookingId,
+      booking_id: bookingId,
       name: input.name.trim() || "Walk-in Patient",
       mobile: sanitizeMobile(input.mobile),
       source: input.source,
-      dayLabel: input.dayLabel,
-      slotLabel: input.slotLabel,
+      day_label: input.dayLabel,
+      slot_label: input.slotLabel,
       status: "waiting" as const,
-      syncState: "synced" as const,
-      createdAt,
-      updatedAt: createdAt,
+      sync_state: "synced" as const,
+      created_at: createdAt,
+      updated_at: createdAt,
       notes: input.provisionalToken
         ? `Synced from ${input.provisionalToken}`
-        : undefined,
-      requiresPharmacyFollowUp: Boolean(input.requiresPharmacyFollowUp),
-      pharmacyStatus: input.requiresPharmacyFollowUp ? "pending" : "not-needed",
-    } satisfies QueueEntry,
+        : null,
+      requires_pharmacy_follow_up: Boolean(input.requiresPharmacyFollowUp),
+      pharmacy_status: input.requiresPharmacyFollowUp ? "pending" : "not-needed",
+    } satisfies QueueEntryRow,
     nextClinicDocument: {
       ...clinicDocument,
-      nextTokenNumber: tokenNumber + 1,
-      nextQueueOrder: queueOrder + 1,
+      next_token_number: tokenNumber + 1,
+      next_queue_order: queueOrder + 1,
     },
   };
 }
 
+export async function getRemoteClinicState(clinicId: ClinicId) {
+  const db = getDb();
+  await ensureClinicInitialized(db, clinicId);
+
+  const [clinicDocument] = await db<ClinicStateRow[]>`
+    select
+      clinic_id,
+      clinic_name,
+      clinic_subtitle,
+      clinic_prefix,
+      doctor_message,
+      next_token_number,
+      next_queue_order,
+      emergency_closed,
+      emergency_message,
+      last_updated,
+      last_synced_at
+    from clinic_states
+    where clinic_id = ${clinicId}
+    limit 1
+  `;
+
+  const queue = await readClinicQueueFrom(db, clinicId);
+  return normalizeClinicState(clinicId, clinicDocument, queue);
+}
+
 async function upsertRemoteEntries(clinicId: ClinicId, entries: PendingSyncEntry[]) {
-  const clinicRef = clinicDocRef(clinicId);
-  const queueRef = queueCollectionRef(clinicId);
+  const db = getDb();
   const syncTimestamp = new Date().toISOString();
 
-  await ensureClinicInitialized(clinicId);
+  await db.begin(async (tx) => {
+    await ensureClinicInitialized(tx, clinicId);
+    const [clinicDocument] = await tx<ClinicStateRow[]>`
+      select
+        clinic_id,
+        clinic_name,
+        clinic_subtitle,
+        clinic_prefix,
+        doctor_message,
+        next_token_number,
+        next_queue_order,
+        emergency_closed,
+        emergency_message,
+        last_updated,
+        last_synced_at
+      from clinic_states
+      where clinic_id = ${clinicId}
+      for update
+    `;
 
-  await getAdminDb().runTransaction(async (transaction) => {
-    const clinicSnapshot = await transaction.get(clinicRef);
-    let clinicDocument = clinicSnapshot.exists
-      ? (clinicSnapshot.data() as ClinicDocument)
-      : createClinicDocument(clinicId);
+    let nextClinicDocument = clinicDocument ?? createClinicDocument(clinicId);
     let touched = false;
 
     for (const pendingEntry of entries) {
       const requestId = pendingEntry.clientRequestId || `request-${randomUUID()}`;
-      const entryRef = queueRef.doc(requestId);
-      const entrySnapshot = await transaction.get(entryRef);
+      const existing = await tx<{ id: string }[]>`
+        select id
+        from queue_entries
+        where client_request_id = ${requestId}
+        limit 1
+      `;
 
-      if (entrySnapshot.exists) {
+      if (existing.length > 0) {
         continue;
       }
 
-      const { entry, nextClinicDocument } = createQueueEntry(clinicId, clinicDocument, {
-        ...pendingEntry,
-        clientRequestId: requestId,
-      });
+      const { entry, nextClinicDocument: updatedClinicDocument } = createQueueEntry(
+        clinicId,
+        nextClinicDocument,
+        {
+          ...pendingEntry,
+          clientRequestId: requestId,
+        },
+      );
 
-      transaction.set(entryRef, entry);
-      clinicDocument = nextClinicDocument;
+      await tx`
+        insert into queue_entries (
+          id,
+          clinic_id,
+          client_request_id,
+          queue_order,
+          token,
+          booking_id,
+          name,
+          mobile,
+          source,
+          day_label,
+          slot_label,
+          status,
+          sync_state,
+          created_at,
+          updated_at,
+          notes,
+          requires_pharmacy_follow_up,
+          pharmacy_status
+        )
+        values (
+          ${entry.id},
+          ${entry.clinic_id},
+          ${entry.client_request_id},
+          ${entry.queue_order},
+          ${entry.token},
+          ${entry.booking_id},
+          ${entry.name},
+          ${entry.mobile},
+          ${entry.source},
+          ${entry.day_label},
+          ${entry.slot_label},
+          ${entry.status},
+          ${entry.sync_state},
+          ${entry.created_at},
+          ${entry.updated_at},
+          ${entry.notes},
+          ${entry.requires_pharmacy_follow_up},
+          ${entry.pharmacy_status}
+        )
+      `;
+
+      nextClinicDocument = updatedClinicDocument;
       touched = true;
     }
 
-    if (touched || !clinicSnapshot.exists) {
-      transaction.set(
-        clinicRef,
-        {
-          ...clinicDocument,
-          lastUpdated: syncTimestamp,
-          lastSyncedAt: syncTimestamp,
-        },
-        { merge: true },
-      );
+    if (touched || !clinicDocument) {
+      await tx`
+        update clinic_states
+        set
+          clinic_name = ${nextClinicDocument.clinic_name},
+          clinic_subtitle = ${nextClinicDocument.clinic_subtitle},
+          clinic_prefix = ${nextClinicDocument.clinic_prefix},
+          doctor_message = ${nextClinicDocument.doctor_message},
+          next_token_number = ${nextClinicDocument.next_token_number},
+          next_queue_order = ${nextClinicDocument.next_queue_order},
+          emergency_closed = ${nextClinicDocument.emergency_closed},
+          emergency_message = ${nextClinicDocument.emergency_message},
+          last_updated = ${syncTimestamp},
+          last_synced_at = ${syncTimestamp}
+        where clinic_id = ${clinicId}
+      `;
     }
   });
 
@@ -283,45 +451,58 @@ export async function syncRemotePendingEntries(
 }
 
 export async function advanceRemoteQueue(clinicId: ClinicId) {
-  const clinicRef = clinicDocRef(clinicId);
-  const queueQuery = queueCollectionRef(clinicId).orderBy("queueOrder", "asc");
+  const db = getDb();
   const updateTimestamp = new Date().toISOString();
 
-  await ensureClinicInitialized(clinicId);
+  await db.begin(async (tx) => {
+    await ensureClinicInitialized(tx, clinicId);
+    await tx`
+      select clinic_id
+      from clinic_states
+      where clinic_id = ${clinicId}
+      for update
+    `;
 
-  await getAdminDb().runTransaction(async (transaction) => {
-    const queueSnapshot = await transaction.get(queueQuery);
-    const currentEntry = queueSnapshot.docs.find(
-      (document) => (document.data() as QueueEntry).status === "in-progress",
-    );
+    const [currentEntry] = await tx<{ id: string }[]>`
+      select id
+      from queue_entries
+      where clinic_id = ${clinicId} and status = 'in-progress'
+      order by queue_order asc
+      limit 1
+      for update
+    `;
 
     if (currentEntry) {
-      transaction.update(currentEntry.ref, {
-        status: "done",
-        updatedAt: updateTimestamp,
-      });
+      await tx`
+        update queue_entries
+        set status = 'done', updated_at = ${updateTimestamp}
+        where id = ${currentEntry.id}
+      `;
     }
 
-    const nextEntry = queueSnapshot.docs.find(
-      (document) => (document.data() as QueueEntry).status === "waiting",
-    );
+    const [nextEntry] = await tx<{ id: string }[]>`
+      select id
+      from queue_entries
+      where clinic_id = ${clinicId} and status = 'waiting'
+      order by queue_order asc
+      limit 1
+      for update
+    `;
 
     if (nextEntry) {
-      transaction.update(nextEntry.ref, {
-        status: "in-progress",
-        updatedAt: updateTimestamp,
-      });
+      await tx`
+        update queue_entries
+        set status = 'in-progress', updated_at = ${updateTimestamp}
+        where id = ${nextEntry.id}
+      `;
     }
 
     if (currentEntry || nextEntry) {
-      transaction.set(
-        clinicRef,
-        {
-          lastUpdated: updateTimestamp,
-          lastSyncedAt: updateTimestamp,
-        },
-        { merge: true },
-      );
+      await tx`
+        update clinic_states
+        set last_updated = ${updateTimestamp}, last_synced_at = ${updateTimestamp}
+        where clinic_id = ${clinicId}
+      `;
     }
   });
 
@@ -333,114 +514,171 @@ export async function updateRemoteQueueEntryStatus(
   entryId: string,
   status: QueueStatus,
 ) {
-  const clinicRef = clinicDocRef(clinicId);
-  const queueRef = queueCollectionRef(clinicId).doc(entryId);
-  const queueQuery = queueCollectionRef(clinicId).orderBy("queueOrder", "asc");
+  const db = getDb();
   const updateTimestamp = new Date().toISOString();
 
-  await ensureClinicInitialized(clinicId);
+  await db.begin(async (tx) => {
+    await ensureClinicInitialized(tx, clinicId);
+    await tx`
+      select clinic_id
+      from clinic_states
+      where clinic_id = ${clinicId}
+      for update
+    `;
 
-  await getAdminDb().runTransaction(async (transaction) => {
-    const entrySnapshot = await transaction.get(queueRef);
+    const [entrySnapshot] = await tx<{ id: string }[]>`
+      select id
+      from queue_entries
+      where clinic_id = ${clinicId} and id = ${entryId}
+      limit 1
+      for update
+    `;
 
-    if (!entrySnapshot.exists) {
+    if (!entrySnapshot) {
       throw new Error("Queue entry not found.");
     }
 
     if (status === "in-progress") {
-      const queueSnapshot = await transaction.get(queueQuery);
-
-      for (const document of queueSnapshot.docs) {
-        if (
-          document.id !== entryId &&
-          (document.data() as QueueEntry).status === "in-progress"
-        ) {
-          transaction.update(document.ref, {
-            status: "done",
-            updatedAt: updateTimestamp,
-          });
-        }
-      }
+      await tx`
+        update queue_entries
+        set status = 'done', updated_at = ${updateTimestamp}
+        where clinic_id = ${clinicId}
+          and status = 'in-progress'
+          and id <> ${entryId}
+      `;
     }
 
-    transaction.update(queueRef, {
-      status,
-      updatedAt: updateTimestamp,
-    });
+    await tx`
+      update queue_entries
+      set status = ${status}, updated_at = ${updateTimestamp}
+      where id = ${entryId}
+    `;
 
-    transaction.set(
-      clinicRef,
-      {
-        lastUpdated: updateTimestamp,
-        lastSyncedAt: updateTimestamp,
-      },
-      { merge: true },
-    );
+    await tx`
+      update clinic_states
+      set last_updated = ${updateTimestamp}, last_synced_at = ${updateTimestamp}
+      where clinic_id = ${clinicId}
+    `;
   });
 
   return getRemoteClinicState(clinicId);
 }
 
 export async function rescheduleRemoteQueueEntry(clinicId: ClinicId, entryId: string) {
-  const clinicRef = clinicDocRef(clinicId);
-  const queueRef = queueCollectionRef(clinicId).doc(entryId);
+  const db = getDb();
   const updateTimestamp = new Date().toISOString();
 
-  await ensureClinicInitialized(clinicId);
+  await db.begin(async (tx) => {
+    await ensureClinicInitialized(tx, clinicId);
+    const [clinicDocument] = await tx<ClinicStateRow[]>`
+      select
+        clinic_id,
+        clinic_name,
+        clinic_subtitle,
+        clinic_prefix,
+        doctor_message,
+        next_token_number,
+        next_queue_order,
+        emergency_closed,
+        emergency_message,
+        last_updated,
+        last_synced_at
+      from clinic_states
+      where clinic_id = ${clinicId}
+      for update
+    `;
 
-  await getAdminDb().runTransaction(async (transaction) => {
-    const [clinicSnapshot, entrySnapshot] = await Promise.all([
-      transaction.get(clinicRef),
-      transaction.get(queueRef),
-    ]);
+    const [entrySnapshot] = await tx<{ id: string }[]>`
+      select id
+      from queue_entries
+      where clinic_id = ${clinicId} and id = ${entryId}
+      limit 1
+      for update
+    `;
 
-    if (!entrySnapshot.exists) {
+    if (!entrySnapshot) {
       throw new Error("Queue entry not found.");
     }
 
-    const clinicDocument = clinicSnapshot.exists
-      ? (clinicSnapshot.data() as ClinicDocument)
-      : createClinicDocument(clinicId);
-    const nextQueueOrder = clinicDocument.nextQueueOrder;
+    const nextQueueOrder = clinicDocument?.next_queue_order ?? 1;
 
-    transaction.update(queueRef, {
-      dayLabel: "Kal",
-      slotLabel: clinicId === "pharmacy" ? "Pickup" : "11:30 AM",
-      status: "waiting",
-      queueOrder: nextQueueOrder,
-      updatedAt: updateTimestamp,
-      notes:
-        clinicId === "pharmacy"
-          ? "Medicine pickup kept for next availability."
-          : "Kal 11:30 AM par rescheduled",
-    });
+    await tx`
+      update queue_entries
+      set
+        day_label = 'Kal',
+        slot_label = ${clinicId === "pharmacy" ? "Pickup" : "11:30 AM"},
+        status = 'waiting',
+        queue_order = ${nextQueueOrder},
+        updated_at = ${updateTimestamp},
+        notes = ${
+          clinicId === "pharmacy"
+            ? "Medicine pickup kept for next availability."
+            : "Kal 11:30 AM par rescheduled"
+        }
+      where id = ${entryId}
+    `;
 
-    transaction.set(
-      clinicRef,
-      {
-        nextQueueOrder: nextQueueOrder + 1,
-        lastUpdated: updateTimestamp,
-        lastSyncedAt: updateTimestamp,
-      },
-      { merge: true },
-    );
+    await tx`
+      update clinic_states
+      set
+        next_queue_order = ${nextQueueOrder + 1},
+        last_updated = ${updateTimestamp},
+        last_synced_at = ${updateTimestamp}
+      where clinic_id = ${clinicId}
+    `;
   });
 
   return getRemoteClinicState(clinicId);
 }
 
 export async function resetRemoteClinicQueue(clinicId: ClinicId) {
-  await ensureClinicInitialized(clinicId);
+  const db = getDb();
+  const document = createClinicDocument(clinicId);
 
-  const queueSnapshot = await queueCollectionRef(clinicId).get();
-  const batch = getAdminDb().batch();
+  await db.begin(async (tx) => {
+    await ensureClinicInitialized(tx, clinicId);
+    await tx`
+      delete from queue_entries
+      where clinic_id = ${clinicId}
+    `;
 
-  for (const document of queueSnapshot.docs) {
-    batch.delete(document.ref);
-  }
+    await tx`
+      update clinic_states
+      set
+        clinic_name = ${document.clinic_name},
+        clinic_subtitle = ${document.clinic_subtitle},
+        clinic_prefix = ${document.clinic_prefix},
+        doctor_message = ${document.doctor_message},
+        next_token_number = ${document.next_token_number},
+        next_queue_order = ${document.next_queue_order},
+        emergency_closed = ${document.emergency_closed},
+        emergency_message = ${document.emergency_message},
+        last_updated = ${toIsoString(document.last_updated)},
+        last_synced_at = ${toIsoString(document.last_synced_at)}
+      where clinic_id = ${clinicId}
+    `;
+  });
 
-  batch.set(clinicDocRef(clinicId), createClinicDocument(clinicId));
-  await batch.commit();
+  return getRemoteClinicState(clinicId);
+}
+
+export async function setRemoteClinicEmergencyState(
+  clinicId: ClinicId,
+  input: { emergencyClosed: boolean; emergencyMessage?: string },
+) {
+  const db = getDb();
+  const timestamp = new Date().toISOString();
+
+  await ensureClinicInitialized(db, clinicId);
+  await db`
+    update clinic_states
+    set
+      emergency_closed = ${input.emergencyClosed},
+      emergency_message = ${input.emergencyClosed ? input.emergencyMessage?.trim() || "" : ""},
+      last_updated = ${timestamp},
+      last_synced_at = ${timestamp}
+    where clinic_id = ${clinicId}
+  `;
 
   return getRemoteClinicState(clinicId);
 }

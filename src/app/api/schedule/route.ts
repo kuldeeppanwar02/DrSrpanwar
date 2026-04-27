@@ -1,6 +1,7 @@
 import { jsonError } from "@/app/api/api-helpers";
 import { isClinicId } from "@/features/clinic/catalog";
 import type { ClinicId } from "@/features/clinic/types";
+import { requireStaffUser } from "@/lib/firebase/staff-auth";
 import {
   getWeekSchedule,
   saveWeekSchedule,
@@ -106,6 +107,11 @@ export async function POST(request: Request) {
       return Response.json({ message: "weekStart and days are required." }, { status: 400 });
     }
 
+    const session = await requireStaffUser(request, {
+      allowRoles: ["doctor", "staff"],
+      clinicId: clinicId as ClinicId,
+    });
+
     const daysRecord: Record<string, DaySchedule> = {};
     (days as Array<{ dayOfWeek: number; isOpen: boolean; openTime: string; closeTime: string; slots: string[]; maxPatients: number; notes: string }>).forEach(
       (day) => {
@@ -127,7 +133,7 @@ export async function POST(request: Request) {
       clinicId as ClinicId,
       weekStart,
       daysRecord,
-      updatedBy || "staff",
+      updatedBy || session.name,
     );
 
     return Response.json({ schedule });
