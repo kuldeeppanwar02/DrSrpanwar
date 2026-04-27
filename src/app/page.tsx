@@ -311,10 +311,17 @@ function FocusedClinicCard({
             <p className="label-type text-[var(--accent)]">
               {clinic.shortName}
             </p>
-            <h2 className="heading-serif mt-0.5 text-lg text-[var(--accent-strong)] leading-tight">
+            <h2 className="heading-serif mt-1 text-xl leading-tight text-[var(--accent-strong)] sm:text-[1.75rem]">
               {clinic.title}
             </h2>
-            <p className="mt-0.5 text-xs text-[rgba(19,49,58,0.55)]">{clinic.subtitle}</p>
+            <p className="mt-1 max-w-2xl text-sm font-medium leading-6 text-[var(--accent-deep)] sm:text-[0.95rem]">
+              {clinic.subtitle}
+            </p>
+            {clinic.metaLine && (
+              <p className="mt-2 inline-flex rounded-full bg-[rgba(15,107,99,0.08)] px-3 py-1 text-[11px] font-semibold tracking-[0.12em] text-[var(--accent-strong)]">
+                {clinic.metaLine}
+              </p>
+            )}
           </div>
         </div>
 

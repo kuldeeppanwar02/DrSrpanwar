@@ -61,6 +61,11 @@ export default function LivePage() {
                 {t("live", "waitingArea")}
               </p>
               <h1 className="display-type mt-1 text-3xl sm:text-4xl">{activeClinic.title}</h1>
+              {activeClinic.metaLine && (
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.2em] text-[rgba(255,255,255,0.72)]">
+                  {activeClinic.metaLine}
+                </p>
+              )}
               <p className="mt-1 text-sm text-[rgba(255,255,255,0.6)]">{t("live", "refreshNote")}</p>
             </div>
             <div className="flex items-center gap-3">

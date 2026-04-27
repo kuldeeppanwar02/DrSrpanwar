@@ -15,6 +15,7 @@ export type ClinicDefinition = {
   shortName: string;
   title: string;
   subtitle: string;
+  metaLine?: string;
   prefix: string;
   phone: string;
   email?: string;

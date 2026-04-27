@@ -100,6 +100,11 @@ export function PrototypeShell({
                   {activeClinic.title}
                 </p>
                 <p>{activeClinic.subtitle}</p>
+                {activeClinic.metaLine && (
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+                    {activeClinic.metaLine}
+                  </p>
+                )}
                 <p>{activeClinic.locationLabel}</p>
                 <p>क्लिनिक समय: {activeClinic.hoursLabel}</p>
                 <p>फोन / WhatsApp: {activeClinic.phone}</p>
