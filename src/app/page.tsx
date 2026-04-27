@@ -321,13 +321,9 @@ function FocusedClinicCard({
   return (
     <div className="card-elevated overflow-hidden rounded-[2rem] border border-[rgba(255,255,255,0.78)]">
       <div className="p-4 sm:p-6">
-        <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-[1.35rem] bg-[linear-gradient(145deg,rgba(15,107,99,0.12),rgba(255,243,220,0.92))] shadow-[0_12px_28px_rgba(15,107,99,0.08)]">
-            <ClinicIcon id={clinic.id} className="h-6 w-6 text-[var(--accent)]" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="label-type text-[var(--accent)]">{clinic.shortName}</p>
-            <h2 className="display-type mt-2 text-[2.05rem] leading-[0.92] tracking-[-0.035em] text-[#17130f] sm:text-[3.5rem]">
+        <div className="min-w-0">
+          <div className="min-w-0">
+            <h2 className="display-type whitespace-nowrap text-[1.62rem] leading-[0.92] tracking-[-0.05em] text-[#17130f] sm:mt-1 sm:text-[3.25rem]">
               {clinic.title}
             </h2>
 
@@ -349,7 +345,7 @@ function FocusedClinicCard({
           </div>
         </div>
 
-        <div className="mt-5 grid gap-2 text-sm leading-6 text-[rgba(19,49,58,0.72)]">
+        <div className="mt-4 grid gap-2 text-sm leading-6 text-[rgba(19,49,58,0.72)]">
           <p className="flex items-start gap-2.5">
             <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
             <span>{clinic.hoursLabel}</span>
