@@ -6,6 +6,7 @@ import { buildClinicHref } from "@/features/clinic/catalog";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
 import { getStaffSession } from "@/components/navbar";
+import { apiClient } from "@/services/api";
 
 type StaffMember = {
   id: string;
@@ -25,7 +26,9 @@ const clinicOptions = ["surgery", "dental", "pharmacy"];
 export default function StaffManagePage() {
   const { activeClinicId } = useClinic();
   const { t } = useLang();
-  const session = typeof window !== "undefined" ? getStaffSession() : null;
+  const [session, setSession] = useState(() =>
+    typeof window !== "undefined" ? getStaffSession() : null,
+  );
 
   const [members, setMembers] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,24 +45,33 @@ export default function StaffManagePage() {
   const [fError, setFError] = useState("");
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+  const [pageError, setPageError] = useState("");
+  const primaryClinic = session?.clinicAccess?.[0] || "";
+
+  useEffect(() => {
+    const syncSession = () => setSession(getStaffSession());
+    window.addEventListener("storage", syncSession);
+    window.addEventListener("staff-session-change", syncSession);
+    return () => {
+      window.removeEventListener("storage", syncSession);
+      window.removeEventListener("staff-session-change", syncSession);
+    };
+  }, []);
 
   const fetchMembers = useCallback(async () => {
     setLoading(true);
+    setPageError("");
     try {
       // Doctor sees only their clinic's staff
-      const clinicParam = session?.clinicAccess?.[0] || "";
-      const url = clinicParam ? `/api/staff?clinic=${clinicParam}` : "/api/staff";
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setMembers(data.members || []);
-      }
-    } catch {
-      // pass
+      const url = primaryClinic ? `/api/staff?clinic=${primaryClinic}` : "/api/staff";
+      const { data } = await apiClient.get<{ members?: StaffMember[] }>(url);
+      setMembers(data.members || []);
+    } catch (error) {
+      setPageError(error instanceof Error ? error.message : "Failed to load staff");
     } finally {
       setLoading(false);
     }
-  }, [session?.clinicAccess]);
+  }, [primaryClinic]);
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => {
@@ -116,32 +128,24 @@ export default function StaffManagePage() {
     setFError("");
     try {
       if (editing) {
-        await fetch(`/api/staff/${editing.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: fName.trim(),
-            phone: fPhone.trim(),
-            email: fEmail.trim(),
-            designation: fDesignation,
-            clinicAccess: fClinics,
-            ...(fPin.trim() ? { pin: fPin.trim() } : {}),
-          }),
+        await apiClient.patch(`/api/staff/${editing.id}`, {
+          name: fName.trim(),
+          phone: fPhone.trim(),
+          email: fEmail.trim(),
+          designation: fDesignation,
+          clinicAccess: fClinics,
+          ...(fPin.trim() ? { pin: fPin.trim() } : {}),
         });
         setSuccessMsg(t("staffMgmt", "updateSuccess"));
       } else {
-        await fetch("/api/staff", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: fName.trim(),
-            phone: fPhone.trim(),
-            email: fEmail.trim(),
-            designation: fDesignation,
-            pin: fPin.trim(),
-            clinicAccess: fClinics,
-            createdBy: session?.name || "doctor",
-          }),
+        await apiClient.post("/api/staff", {
+          name: fName.trim(),
+          phone: fPhone.trim(),
+          email: fEmail.trim(),
+          designation: fDesignation,
+          pin: fPin.trim(),
+          clinicAccess: fClinics,
+          createdBy: session?.name || "doctor",
         });
         setSuccessMsg(t("staffMgmt", "addSuccess"));
       }
@@ -156,17 +160,15 @@ export default function StaffManagePage() {
   };
 
   const updateStatus = async (id: string, status: string) => {
-    await fetch(`/api/staff/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
+    setPageError("");
+    await apiClient.patch(`/api/staff/${id}`, { status });
     await fetchMembers();
   };
 
   const removeStaff = async (id: string) => {
     if (!confirm(t("staffMgmt", "removeConfirm"))) return;
-    await fetch(`/api/staff/${id}`, { method: "DELETE" });
+    setPageError("");
+    await apiClient.delete(`/api/staff/${id}`);
     await fetchMembers();
   };
 
@@ -218,6 +220,12 @@ export default function StaffManagePage() {
         {successMsg && (
           <div className="mt-4 rounded-lg bg-[rgba(15,107,99,0.08)] px-3 py-2 text-sm font-semibold text-[var(--accent-strong)]">
             ✓ {successMsg}
+          </div>
+        )}
+
+        {pageError && (
+          <div className="mt-4 rounded-lg bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]">
+            {pageError}
           </div>
         )}
 
