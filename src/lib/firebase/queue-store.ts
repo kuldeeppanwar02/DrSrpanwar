@@ -15,7 +15,7 @@ import type {
 import { getDb, toIsoString } from "@/lib/supabase/db";
 
 type QueryableDb = {
-  <T = unknown>(strings: TemplateStringsArray, ...values: unknown[]): PromiseLike<T>;
+  <T = unknown>(strings: TemplateStringsArray, ...values: unknown[]): T;
 };
 
 type ClinicStateRow = {
