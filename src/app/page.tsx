@@ -65,7 +65,7 @@ function ClinicIcon({ id, className }: { id: string; className?: string }) {
 
 export default function HomePage() {
   const { activeClinic, activeClinicId, state, isOnline } = useClinic();
-  const { t } = useLang();
+  const { lang, t } = useLang();
   const summary = useMemo(() => getQueueSummary(state), [state]);
   const [session, setSession] = useState<{ name: string; role: string; clinicAccess: string[] } | null>(
     () => getStaffSession(),
@@ -80,6 +80,7 @@ export default function HomePage() {
   const isDoctor = session?.role === "doctor";
   const isStaff = session?.role === "staff";
   const isLoggedIn = isDoctor || isStaff;
+  const heroTitle = lang === "hi" ? "पंवार स्मार्टकेयर" : "Panwar SmartCare";
 
   return (
     <div className="page-shell">
@@ -110,7 +111,7 @@ export default function HomePage() {
 
             <div className="mt-4 max-w-4xl">
               <h1 className="display-type text-[2.25rem] leading-[0.92] tracking-[-0.04em] text-[#1c1913] sm:text-[3.6rem]">
-                {t("common", "appName")}
+                {heroTitle}
               </h1>
               {isLoggedIn ? (
                 <p className="mt-2 max-w-2xl text-sm text-[rgba(19,49,58,0.68)] sm:text-base">
@@ -118,11 +119,7 @@ export default function HomePage() {
                   {isDoctor ? t("staff", "doctor") : t("staff", "staffRole")} access active for{" "}
                   <strong>{activeClinic.shortName}</strong>.
                 </p>
-              ) : (
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-[rgba(19,49,58,0.64)] sm:text-base">
-                  Book appointment, take token, or track queue live.
-                </p>
-              )}
+              ) : null}
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
