@@ -6,6 +6,7 @@ import { buildClinicHref } from "@/features/clinic/catalog";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
 import { getStaffSession } from "@/components/navbar";
+import { apiClient } from "@/services/api";
 import {
   Sun, CloudSun, Moon, AlertTriangle, Loader2,
 } from "lucide-react";
@@ -90,47 +91,86 @@ export default function SchedulePage() {
 
   // Fetch default schedule
   useEffect(() => {
+    let active = true;
     const initialLoad = window.setTimeout(() => {
       setLoading(true);
-      fetch(`/api/schedule/default?clinic=${activeClinicId}`)
-        .then(r => r.json())
-        .then(data => {
+      apiClient.get<{ exists: boolean; schedule?: DefaultSched }>(
+        `/api/schedule/default?clinic=${activeClinicId}`,
+      )
+        .then(({ data }) => {
+          if (!active) return;
           if (data.exists && data.schedule) {
-            const s = data.schedule as DefaultSched;
+            const s = data.schedule;
             setShifts(s.shifts);
             setWeeklyOff(s.weeklyOff || ["Sunday"]);
             setSlotInterval(s.slotInterval || 30);
             setMaxPatients(s.maxPatients || 20);
             setDefaultExists(true);
+          } else {
+            setDefaultExists(false);
           }
         })
-        .catch(() => {})
-        .finally(() => setLoading(false));
+        .catch((loadError) => {
+          if (!active) return;
+          setError(loadError instanceof Error ? loadError.message : "Schedule load failed");
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
     }, 0);
-    return () => window.clearTimeout(initialLoad);
+    return () => {
+      active = false;
+      window.clearTimeout(initialLoad);
+    };
   }, [activeClinicId]);
 
   // Fetch today override
   useEffect(() => {
-    fetch(`/api/schedule/override?clinic=${activeClinicId}&date=${todayStr()}`)
-      .then(r => r.json())
-      .then(data => {
+    let active = true;
+    apiClient
+      .get<{
+        exists: boolean;
+        override?: { closedShifts?: number[]; fullDayClosed?: boolean } | null;
+      }>(`/api/schedule/override?clinic=${activeClinicId}&date=${todayStr()}`)
+      .then(({ data }) => {
+        if (!active) return;
         if (data.exists && data.override) {
-          setTodayOverride({ closedShifts: data.override.closedShifts || [], fullDayClosed: data.override.fullDayClosed || false });
+          setTodayOverride({
+            closedShifts: data.override.closedShifts || [],
+            fullDayClosed: data.override.fullDayClosed || false,
+          });
         } else {
           setTodayOverride(null);
         }
       })
-      .catch(() => {});
+      .catch((loadError) => {
+        if (!active) return;
+        setTodayOverride(null);
+        setError(loadError instanceof Error ? loadError.message : "Today control load failed");
+      });
+    return () => {
+      active = false;
+    };
   }, [activeClinicId]);
 
   // Fetch week schedule (legacy)
   useEffect(() => {
     if (!showWeek) return;
-    fetch(`/api/schedule?clinic=${activeClinicId}&weekOffset=${weekOffset}`)
-      .then(r => r.json())
-      .then(data => { if (data.schedule) setWeekDays(data.schedule); })
-      .catch(() => {});
+    let active = true;
+    apiClient
+      .get<{ schedule?: DayScheduleLegacy[] }>(
+        `/api/schedule?clinic=${activeClinicId}&weekOffset=${weekOffset}`,
+      )
+      .then(({ data }) => {
+        if (active && data.schedule) setWeekDays(data.schedule);
+      })
+      .catch((loadError) => {
+        if (!active) return;
+        setError(loadError instanceof Error ? loadError.message : "Week schedule load failed");
+      });
+    return () => {
+      active = false;
+    };
   }, [activeClinicId, weekOffset, showWeek]);
 
   const updateShift = (idx: number, changes: Partial<ShiftDef>) => {
@@ -144,55 +184,55 @@ export default function SchedulePage() {
   const handleSaveDefault = async () => {
     setSaving(true); setError(""); setSaved(false);
     try {
-      const res = await fetch("/api/schedule/default", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await apiClient.post("/api/schedule/default", {
           clinicId: activeClinicId, shifts, weeklyOff, slotInterval, maxPatients,
           updatedBy: session?.name || "staff",
-        }),
       });
-      if (!res.ok) { const d = await res.json(); setError(d.message || "Save failed"); }
-      else { setSaved(true); setDefaultExists(true); setTimeout(() => setSaved(false), 3000); }
+      setSaved(true);
+      setDefaultExists(true);
+      setTimeout(() => setSaved(false), 3000);
     } catch (e) { setError(e instanceof Error ? e.message : "Error"); }
     finally { setSaving(false); }
   };
 
   const handleOverride = async (closedShifts: number[], fullDayClosed: boolean) => {
     try {
-      await fetch("/api/schedule/override", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await apiClient.post("/api/schedule/override", {
           clinicId: activeClinicId, date: todayStr(), closedShifts, fullDayClosed,
           reason: "", createdBy: session?.name || "staff",
-        }),
       });
       setTodayOverride({ closedShifts, fullDayClosed });
-    } catch {}
+      setError("");
+    } catch (overrideError) {
+      setError(overrideError instanceof Error ? overrideError.message : "Override update failed");
+    }
   };
 
   const handleRemoveOverride = async () => {
     try {
-      await fetch("/api/schedule/override", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clinicId: activeClinicId, date: todayStr(), remove: true }),
+      await apiClient.post("/api/schedule/override", {
+        clinicId: activeClinicId,
+        date: todayStr(),
+        remove: true,
       });
       setTodayOverride(null);
-    } catch {}
+      setError("");
+    } catch (overrideError) {
+      setError(overrideError instanceof Error ? overrideError.message : "Override removal failed");
+    }
   };
 
   const handleSaveWeek = async () => {
     setSaving(true); setError("");
     try {
-      const res = await fetch("/api/schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clinicId: activeClinicId, weekStart, days: weekDays, updatedBy: session?.name || "staff" }),
+      await apiClient.post("/api/schedule", {
+        clinicId: activeClinicId,
+        weekStart,
+        days: weekDays,
+        updatedBy: session?.name || "staff",
       });
-      if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
-      else { const d = await res.json(); setError(d.message || "Failed"); }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
     } catch (e) { setError(e instanceof Error ? e.message : "Error"); }
     finally { setSaving(false); }
   };
