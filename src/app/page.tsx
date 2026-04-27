@@ -3,21 +3,22 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
-  CalendarCheck,
-  Ticket,
-  Search,
-  Phone,
-  MapPin,
-  Clock,
-  Mail,
-  ExternalLink,
-  Activity,
-  Users,
-  CheckCircle2,
-  Stethoscope,
-  Pill,
   ArrowRight,
+  Award,
+  CalendarCheck,
+  Clock,
+  ExternalLink,
+  HeartPulse,
+  Mail,
+  MapPin,
   Monitor,
+  Phone,
+  Pill,
+  Search,
+  ShieldCheck,
+  Stethoscope,
+  Ticket,
+  type LucideIcon,
 } from "lucide-react";
 import { CLINICS, buildClinicHref } from "@/features/clinic/catalog";
 import { getQueueSummary } from "@/features/clinic/services/queue-engine";
@@ -25,14 +26,40 @@ import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
 import { type TranslationKey } from "@/i18n/translations";
 import { getStaffSession } from "@/components/navbar";
-import type { ClinicDefinition } from "@/features/clinic/types";
+import type { ClinicDefinition, ClinicId } from "@/features/clinic/types";
 
-/** Pick the best icon for a clinic */
+type TrustPoint = {
+  label: string;
+  detail: string;
+  icon: LucideIcon;
+};
+
+const TRUST_POINTS: Record<ClinicId, TrustPoint[]> = {
+  surgery: [
+    { label: "10+ Years", detail: "Clinical Experience", icon: Award },
+    { label: "ATLS", detail: "Trauma Certified", icon: ShieldCheck },
+    { label: "Jaisalmer", detail: "Specialist Surgical Care", icon: HeartPulse },
+  ],
+  dental: [
+    { label: "Dental Care", detail: "Appointments Available", icon: Award },
+    { label: "Family", detail: "Comfort-focused Visits", icon: ShieldCheck },
+    { label: "Daily", detail: "Clean & Guided Follow-up", icon: HeartPulse },
+  ],
+  pharmacy: [
+    { label: "Trusted", detail: "Post-consult Pickup", icon: Award },
+    { label: "Support", detail: "Follow-up Medicines", icon: ShieldCheck },
+    { label: "Daily", detail: "Easy Local Access", icon: HeartPulse },
+  ],
+};
+
 function ClinicIcon({ id, className }: { id: string; className?: string }) {
   switch (id) {
-    case "surgery": return <Stethoscope className={className} />;
-    case "pharmacy": return <Pill className={className} />;
-    default: return <CalendarCheck className={className} />;
+    case "surgery":
+      return <Stethoscope className={className} />;
+    case "pharmacy":
+      return <Pill className={className} />;
+    default:
+      return <CalendarCheck className={className} />;
   }
 }
 
@@ -56,12 +83,11 @@ export default function HomePage() {
 
   return (
     <div className="page-shell">
-      {/* Emergency Banner */}
       {state.emergencyClosed && (
-        <div className="bg-[var(--danger-soft)] border-b border-[rgba(192,57,43,0.15)]">
+        <div className="border-b border-[rgba(192,57,43,0.15)] bg-[var(--danger-soft)]">
           <div className="section-shell py-3 text-center">
             <p className="text-sm font-semibold text-[var(--danger)]">
-              ⚠️ {t("emergency", "closedTitle")} — {activeClinic.shortName}
+              {t("emergency", "closedTitle")} - {activeClinic.shortName}
             </p>
             <p className="mt-1 text-xs text-[rgba(192,57,43,0.7)]">
               {state.emergencyMessage || t("emergency", "defaultMessage")}
@@ -70,210 +96,161 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ═══ Hero Section ═══ */}
-      <section className="section-shell pt-8 pb-2">
-        <div className="fade-up text-center">
-          <p className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--accent-strong)]">
-            <Activity className="h-3 w-3" />
-            {isOnline ? t("home", "syncOnline") : t("home", "syncOffline")}
-          </p>
-          <h1 className="display-type mt-5 text-3xl text-[var(--accent-strong)] sm:text-4xl balance-text">
-            {t("common", "appName")}
-          </h1>
+      <section className="section-shell pt-6 pb-4">
+        <div className="relative overflow-hidden rounded-[2.2rem] border border-[rgba(255,255,255,0.85)] bg-[linear-gradient(180deg,rgba(255,252,246,0.98),rgba(248,239,223,0.95))] px-5 py-6 shadow-[0_24px_60px_rgba(30,27,19,0.08)] sm:px-7 sm:py-8">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(15,107,99,0.06),transparent)]" />
+          <div className="pointer-events-none absolute -left-10 top-22 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(234,192,124,0.24),transparent_70%)] blur-xl" />
+          <div className="pointer-events-none absolute -right-12 -top-10 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(15,107,99,0.12),transparent_72%)] blur-xl" />
 
-          {isLoggedIn ? (
-            <div className="mt-3">
-              <p className="text-sm text-[rgba(19,49,58,0.65)]">
-                {t("staff", "welcomeBack")}, <strong>{session?.name}</strong>
-              </p>
-              <p className="mt-1 text-xs text-[rgba(19,49,58,0.45)]">
-                {isDoctor ? t("staff", "doctor") : t("staff", "staffRole")} · {activeClinic.title}
-              </p>
-            </div>
-          ) : (
-            <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-[rgba(19,49,58,0.65)] balance-text">
-              {t("home", "tagline")}
+          <div className="relative z-10">
+            <p className="inline-flex items-center gap-2 rounded-full border border-[rgba(73,181,109,0.3)] bg-[rgba(220,250,228,0.9)] px-4 py-2 text-sm font-semibold text-[var(--success)] shadow-[0_10px_24px_rgba(73,181,109,0.08)]">
+              <span className={`h-2.5 w-2.5 rounded-full ${isOnline ? "bg-emerald-500" : "bg-red-400"}`} />
+              {isOnline ? "Now Online" : "Offline Cached Mode"}
             </p>
-          )}
-        </div>
-      </section>
 
-      {/* ═══ Clinic Switcher Tabs ═══ */}
-      <section className="section-shell pb-2">
-        <div className="flex gap-2 overflow-x-auto py-2 scrollbar-hide">
-          {CLINICS.map((clinic) => (
-            <Link
-              key={clinic.id}
-              href={buildClinicHref("/", clinic.id)}
-              className={`flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold transition-all ${
-                clinic.id === activeClinicId
-                  ? "bg-gradient-to-r from-[var(--accent-deep)] to-[var(--accent)] text-white shadow-md scale-[1.02]"
-                  : "card hover:shadow-md"
-              }`}
-            >
-              <ClinicIcon id={clinic.id} className="h-4 w-4" />
-              {clinic.shortName}
-            </Link>
-          ))}
-        </div>
-      </section>
+            <div className="mt-5 max-w-4xl">
+              <h1 className="display-type balance-text text-[2.6rem] leading-[0.96] text-[#1c1913] sm:text-[4rem]">
+                {t("common", "appName")}
+              </h1>
+              {isLoggedIn ? (
+                <p className="mt-4 max-w-2xl text-base text-[rgba(19,49,58,0.68)]">
+                  {t("staff", "welcomeBack")}, <strong>{session?.name}</strong>.{" "}
+                  {isDoctor ? t("staff", "doctor") : t("staff", "staffRole")} access active for{" "}
+                  <strong>{activeClinic.shortName}</strong>.
+                </p>
+              ) : (
+                <p className="mt-4 max-w-2xl text-base leading-7 text-[rgba(19,49,58,0.68)]">
+                  Choose your clinic, book an appointment, take a walk-in token, or track live queue status without waiting at reception.
+                </p>
+              )}
+            </div>
 
-      {/* ═══ Focused Clinic View ═══ */}
-      <section className="section-shell grid gap-5 pb-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        {/* Left — Active Clinic Detail */}
-        <div className="space-y-5">
-          {/* Clinic Hero Card */}
-          <FocusedClinicCard
-            clinic={activeClinic}
-            isLoggedIn={isLoggedIn}
-            t={t}
-          />
-
-          {/* Other Clinics — mini switcher row */}
-          {!isLoggedIn && (
-            <div>
-              <p className="label-type text-[rgba(19,49,58,0.4)]">
-                {t("home", "otherClinics") || "Other Clinics"}
-              </p>
-              <div className="mt-2 grid grid-cols-2 gap-2 stagger-children">
-                {CLINICS.filter((c) => c.id !== activeClinicId).map((clinic) => (
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {CLINICS.map((clinic) => {
+                const active = clinic.id === activeClinicId;
+                return (
                   <Link
                     key={clinic.id}
                     href={buildClinicHref("/", clinic.id)}
-                    className="card fade-up flex items-center gap-3 p-3 transition-all hover:card-active"
+                    className={`focus-ring flex min-h-[4rem] items-center justify-center rounded-full border px-4 py-3 text-lg font-semibold transition-all ${
+                      active
+                        ? "border-transparent bg-[linear-gradient(135deg,var(--accent-deep),var(--accent))] text-white shadow-[0_18px_38px_rgba(15,107,99,0.26)]"
+                        : "border-[rgba(12,86,81,0.55)] bg-[rgba(255,252,246,0.84)] text-[var(--accent-strong)] shadow-[0_8px_24px_rgba(30,27,19,0.04)] hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(15,107,99,0.12)]"
+                    }`}
                   >
-                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)]">
-                      <ClinicIcon id={clinic.id} className="h-4 w-4 text-[var(--accent)]" />
+                    {clinic.shortName}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="section-shell grid gap-5 pb-8 xl:grid-cols-[minmax(0,1.1fr)_0.9fr]">
+        <FocusedClinicCard clinic={activeClinic} isLoggedIn={isLoggedIn} t={t} />
+
+        <div className="space-y-4">
+          <QueueSnapshotCard
+            clinic={activeClinic}
+            currentToken={summary.current?.token ?? `${activeClinic.prefix}-000`}
+            nextToken={summary.next?.token ?? "--"}
+            waitingCount={summary.waiting.length}
+            currentName={summary.current?.name ?? "Queue preparing"}
+            t={t}
+          />
+
+          {!isLoggedIn && (
+            <div className="card-elevated rounded-[1.9rem] p-5">
+              <p className="label-type text-[var(--accent)]">Other Clinics</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                {CLINICS.filter((clinic) => clinic.id !== activeClinicId).map((clinic) => (
+                  <Link
+                    key={clinic.id}
+                    href={buildClinicHref("/", clinic.id)}
+                    className="flex items-center gap-3 rounded-[1.4rem] border border-[rgba(12,86,81,0.08)] bg-[rgba(255,255,255,0.84)] px-4 py-4 shadow-[0_12px_28px_rgba(30,27,19,0.05)] transition-transform hover:-translate-y-0.5"
+                  >
+                    <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-[var(--accent-soft)]">
+                      <ClinicIcon id={clinic.id} className="h-5 w-5 text-[var(--accent)]" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-[var(--accent-strong)] truncate">{clinic.shortName}</p>
-                      <p className="text-[10px] text-[rgba(19,49,58,0.5)] truncate">{clinic.title}</p>
+                      <p className="text-lg font-semibold text-[var(--accent-strong)]">{clinic.shortName}</p>
+                      <p className="truncate text-xs text-[rgba(19,49,58,0.52)]">{clinic.title}</p>
                     </div>
-                    <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 text-[rgba(19,49,58,0.25)]" />
+                    <ArrowRight className="h-4 w-4 text-[rgba(19,49,58,0.35)]" />
                   </Link>
                 ))}
               </div>
             </div>
           )}
         </div>
-
-        {/* Right — Live Queue Status */}
-        <div className="fade-up-delay space-y-3">
-          {/* Current Token — hero card */}
-          <div className="card-elevated overflow-hidden rounded-2xl">
-            <div className="bg-gradient-to-br from-[rgba(15,107,99,0.94)] to-[rgba(8,63,70,0.97)] p-5 text-white">
-              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.24em] text-[rgba(255,255,255,0.55)]">
-                <Activity className="h-3 w-3 animate-pulse-dot" />
-                {t("home", "currentToken")}
-              </p>
-              <p className="display-type mt-3 text-5xl tracking-tight">
-                {summary.current?.token ?? `${activeClinic.prefix}-000`}
-              </p>
-              <p className="mt-2 text-sm text-[rgba(255,255,255,0.7)]">
-                {summary.current?.name ?? t("home", "queueStart")}
-              </p>
-            </div>
-          </div>
-
-          {/* Mini stats */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="card p-3 text-center">
-              <p className="text-[9px] font-semibold uppercase tracking-widest text-[var(--accent)]">
-                {t("home", "nextToken")}
-              </p>
-              <p className="mt-1 text-xl font-bold">{summary.next?.token ?? "--"}</p>
-            </div>
-            <div className="card p-3 text-center">
-              <p className="text-[9px] font-semibold uppercase tracking-widest text-[var(--accent)]">
-                <Users className="mx-auto mb-0.5 h-3 w-3" />
-                {t("home", "waiting")}
-              </p>
-              <p className="mt-1 text-xl font-bold">{summary.waiting.length}</p>
-            </div>
-            <div className="card p-3 text-center">
-              <p className="text-[9px] font-semibold uppercase tracking-widest text-[var(--accent)]">
-                <CheckCircle2 className="mx-auto mb-0.5 h-3 w-3" />
-                {t("queue", "completedCount")}
-              </p>
-              <p className="mt-1 text-xl font-bold text-[var(--success)]">
-                {state.queue.filter((e) => e.status === "done").length}
-              </p>
-            </div>
-          </div>
-
-          {/* Sync indicator */}
-          <div className="card p-3 text-xs text-[rgba(19,49,58,0.6)]">
-            <p className="flex items-center gap-1.5">
-              <span className={`h-2 w-2 rounded-full ${isOnline ? "bg-emerald-500 animate-pulse-dot" : "bg-red-400"}`} />
-              {t("common", "clinic")}: <strong>{activeClinic.shortName}</strong> ·{" "}
-              {isOnline ? t("home", "syncOnline") : t("home", "syncOffline")}
-            </p>
-          </div>
-        </div>
       </section>
 
-      {/* ═══ Contact + Map — Patients only ═══ */}
       {!isLoggedIn && (
         <section className="section-shell pb-10">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="card p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
-                {t("home", "contact")} · {activeClinic.shortName}
+            <div className="card-elevated rounded-[1.9rem] p-5">
+              <p className="label-type text-[var(--accent)]">
+                {t("home", "contact")} - {activeClinic.shortName}
               </p>
-              <div className="mt-4 space-y-2.5">
-                <p className="flex items-center gap-2.5 text-sm text-[rgba(19,49,58,0.7)]">
-                  <MapPin className="h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
-                  {activeClinic.locationLabel}
+              <div className="mt-4 space-y-3 text-sm leading-6 text-[rgba(19,49,58,0.72)]">
+                <p className="flex items-start gap-2.5">
+                  <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
+                  <span>{activeClinic.locationLabel}</span>
                 </p>
-                <p className="flex items-center gap-2.5 text-sm text-[rgba(19,49,58,0.7)]">
+                <p className="flex items-center gap-2.5">
                   <Phone className="h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
-                  {activeClinic.phone}
+                  <span>{activeClinic.phone}</span>
                 </p>
                 {activeClinic.email && (
-                  <p className="flex items-center gap-2.5 text-sm text-[rgba(19,49,58,0.7)]">
+                  <p className="flex items-center gap-2.5">
                     <Mail className="h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
-                    {activeClinic.email}
+                    <span>{activeClinic.email}</span>
                   </p>
                 )}
-                <p className="flex items-center gap-2.5 text-sm text-[rgba(19,49,58,0.7)]">
+                <p className="flex items-center gap-2.5">
                   <Clock className="h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
-                  {activeClinic.hoursLabel}
+                  <span>{activeClinic.hoursLabel}</span>
                 </p>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
+
+              <div className="mt-5 flex flex-wrap gap-2">
                 <a href={`tel:+91${activeClinic.phone}`} className="btn btn-primary btn-sm">
                   <Phone className="h-3 w-3" /> {t("home", "callNow")}
                 </a>
                 {activeClinic.mapUrl && (
-                  <a href={activeClinic.mapUrl} target="_blank" rel="noopener noreferrer"
-                    className="btn btn-outline btn-sm">
+                  <a
+                    href={activeClinic.mapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-outline btn-sm"
+                  >
                     <ExternalLink className="h-3 w-3" /> Google Maps
                   </a>
                 )}
               </div>
             </div>
+
             {activeClinic.mapUrl ? (
-              <div className="card overflow-hidden">
+              <div className="card overflow-hidden rounded-[1.9rem]">
                 <iframe
                   title={`${activeClinic.title} map`}
                   src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3574.0!2d70.905228!3d26.9126519!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3947bf85998998d1%3A0x9b5b327f625d9421!2sDR%20SATTARAM%20PANWAR!5e0!3m2!1sen!2sin!4v1"
-                  className="min-h-[220px] w-full border-0"
+                  className="min-h-[260px] w-full border-0"
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
                   allowFullScreen
                 />
               </div>
             ) : (
-              <div className="card flex flex-col items-center justify-center p-6 text-center">
+              <div className="card-elevated flex min-h-[260px] flex-col items-center justify-center rounded-[1.9rem] p-6 text-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-soft)]">
                   <ClinicIcon id={activeClinicId} className="h-6 w-6 text-[var(--accent)]" />
                 </div>
-                <p className="mt-3 text-sm font-semibold text-[var(--accent-strong)]">{activeClinic.title}</p>
-                <p className="mt-1 text-xs leading-5 text-[rgba(19,49,58,0.6)]">{activeClinic.subtitle}</p>
+                <p className="mt-4 text-lg font-semibold text-[var(--accent-strong)]">{activeClinic.title}</p>
+                <p className="mt-2 max-w-xs text-sm leading-6 text-[rgba(19,49,58,0.62)]">{activeClinic.subtitle}</p>
                 {!activeClinic.hasBooking && (
-                  <span className="badge badge-booking mt-3">
-                    {t("pharmacy", "noBookingNeeded")}
-                  </span>
+                  <span className="badge badge-booking mt-4">{t("pharmacy", "noBookingNeeded")}</span>
                 )}
               </div>
             )}
@@ -284,9 +261,54 @@ export default function HomePage() {
   );
 }
 
-/* ═══════════════════════════════════════════
-   FOCUSED CLINIC CARD — main content block
-   ═══════════════════════════════════════════ */
+function QueueSnapshotCard({
+  clinic,
+  currentToken,
+  nextToken,
+  waitingCount,
+  currentName,
+  t,
+}: {
+  clinic: ClinicDefinition;
+  currentToken: string;
+  nextToken: string;
+  waitingCount: number;
+  currentName: string;
+  t: (section: TranslationKey, key: string) => string;
+}) {
+  return (
+    <div className="card-elevated overflow-hidden rounded-[1.9rem]">
+      <div className="bg-[linear-gradient(145deg,rgba(10,78,83,0.98),rgba(15,107,99,0.96))] p-5 text-white">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[rgba(255,255,255,0.58)]">
+          Queue Snapshot
+        </p>
+        <p className="display-type mt-3 text-5xl tracking-tight">{currentToken}</p>
+        <p className="mt-2 text-sm text-[rgba(255,255,255,0.76)]">{currentName}</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 p-4">
+        <MiniStat label={t("home", "nextToken")} value={nextToken} />
+        <MiniStat label={t("home", "waiting")} value={`${waitingCount}`} />
+      </div>
+
+      <div className="px-4 pb-4">
+        <Link href={buildClinicHref("/live", clinic.id)} className="btn btn-outline w-full justify-center">
+          <Monitor className="h-4 w-4" /> {t("nav", "live")}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.35rem] border border-[rgba(12,86,81,0.08)] bg-[rgba(255,255,255,0.84)] p-4 text-center">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{label}</p>
+      <p className="mt-2 text-2xl font-bold text-[var(--accent-strong)]">{value}</p>
+    </div>
+  );
+}
+
 function FocusedClinicCard({
   clinic,
   isLoggedIn,
@@ -297,111 +319,110 @@ function FocusedClinicCard({
   t: (section: TranslationKey, key: string) => string;
 }) {
   const isSurgeryClinic = clinic.id === "surgery";
+  const trustPoints = TRUST_POINTS[clinic.id];
 
   return (
-    <div className="card card-active fade-up overflow-hidden">
-      {/* Accent bar */}
-      <div className="h-1 bg-gradient-to-r from-[var(--accent)] via-[var(--warm)] to-[var(--gold)]" />
-
-      <div className="p-5 sm:p-6">
-        {/* Header */}
-        <div className="flex items-start gap-3">
-          <div
-            className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl ${
-              isSurgeryClinic
-                ? "bg-[linear-gradient(145deg,rgba(15,107,99,0.16),rgba(234,192,124,0.22))] shadow-[0_10px_24px_rgba(15,107,99,0.12)]"
-                : "bg-[var(--accent-soft)]"
-            }`}
-          >
-            <ClinicIcon id={clinic.id} className="h-5 w-5 text-[var(--accent)]" />
+    <div className="card-elevated overflow-hidden rounded-[2rem] border border-[rgba(255,255,255,0.78)]">
+      <div className="p-5 sm:p-7">
+        <div className="flex items-start gap-4">
+          <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-[1.35rem] bg-[linear-gradient(145deg,rgba(15,107,99,0.12),rgba(255,243,220,0.92))] shadow-[0_12px_28px_rgba(15,107,99,0.08)]">
+            <ClinicIcon id={clinic.id} className="h-6 w-6 text-[var(--accent)]" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className={`label-type ${isSurgeryClinic ? "text-[var(--accent-deep)]" : "text-[var(--accent)]"}`}>
-              {clinic.shortName}
-            </p>
-            <h2
-              className={`heading-serif mt-1 leading-tight sm:text-[1.75rem] ${
-                isSurgeryClinic
-                  ? "premium-doctor-name text-[1.9rem] text-[var(--accent-strong)]"
-                  : "text-xl text-[var(--accent-strong)]"
-              }`}
-            >
+            <p className="label-type text-[var(--accent)]">{clinic.shortName}</p>
+            <h2 className="display-type mt-3 text-[2.45rem] leading-[0.94] text-[#17130f] sm:text-[4rem]">
               {clinic.title}
             </h2>
-            {isSurgeryClinic ? (
-              <div className="premium-subtitle-wrap mt-2">
-                <p className="premium-subtitle-text">{clinic.subtitle}</p>
-              </div>
-            ) : (
-              <p className="mt-1 max-w-2xl text-sm font-medium leading-6 text-[var(--accent-deep)] sm:text-[0.95rem]">
-                {clinic.subtitle}
-              </p>
-            )}
+
+            <div
+              className={`mt-4 inline-flex max-w-3xl rounded-full px-5 py-3 text-center shadow-[0_14px_32px_rgba(183,138,63,0.16)] ${
+                isSurgeryClinic
+                  ? "bg-[linear-gradient(135deg,#b99043,#d9bc73)] text-white"
+                  : "bg-[linear-gradient(135deg,rgba(15,107,99,0.12),rgba(15,107,99,0.2))] text-[var(--accent-strong)]"
+              }`}
+            >
+              <p className="w-full text-lg font-medium leading-7 sm:text-[1.3rem] sm:leading-8">{clinic.subtitle}</p>
+            </div>
+
             {clinic.metaLine && (
-              <p
-                className={`mt-2 inline-flex rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.12em] ${
-                  isSurgeryClinic
-                    ? "border border-[rgba(183,138,63,0.22)] bg-[linear-gradient(135deg,rgba(255,248,236,0.98),rgba(245,231,205,0.88))] text-[var(--accent-strong)] shadow-[0_10px_20px_rgba(183,138,63,0.12)]"
-                    : "bg-[rgba(15,107,99,0.08)] text-[var(--accent-strong)]"
-                }`}
-              >
+              <p className="mt-4 text-xl font-semibold tracking-[0.02em] text-[#17130f]">
                 {clinic.metaLine}
               </p>
             )}
           </div>
         </div>
 
-        {/* Info row */}
-        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5">
-          <p className="flex items-center gap-1.5 text-xs text-[rgba(19,49,58,0.6)]">
-            <Clock className="h-3 w-3 text-[var(--accent)]" /> {clinic.hoursLabel}
+        <div className="mt-6 grid gap-2.5 text-sm leading-6 text-[rgba(19,49,58,0.72)]">
+          <p className="flex items-start gap-2.5">
+            <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
+            <span>{clinic.hoursLabel}</span>
           </p>
-          <p className="flex items-center gap-1.5 text-xs text-[rgba(19,49,58,0.6)]">
-            <MapPin className="h-3 w-3 text-[var(--accent)]" /> {clinic.locationLabel}
+          <p className="flex items-start gap-2.5">
+            <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
+            <span>{clinic.locationLabel}</span>
           </p>
-          <a href={`tel:+91${clinic.phone}`} className="flex items-center gap-1.5 text-xs text-[var(--accent)] font-semibold hover:underline">
-            <Phone className="h-3 w-3" /> {clinic.phone}
+          <a
+            href={`tel:+91${clinic.phone}`}
+            className="flex items-center gap-2.5 font-semibold text-[var(--accent-strong)] hover:underline"
+          >
+            <Phone className="h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
+            <span>{clinic.phone}</span>
           </a>
-          {clinic.email && (
-            <p className="flex items-center gap-1.5 text-xs text-[rgba(19,49,58,0.6)]">
-              <Mail className="h-3 w-3 text-[var(--accent)]" /> {clinic.email}
-            </p>
-          )}
         </div>
 
-        {/* CTA Buttons */}
         {!isLoggedIn && (
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-7 space-y-3">
             {clinic.hasBooking ? (
               <>
-                <Link href={buildClinicHref("/book", clinic.id)} className="btn btn-primary">
-                  <CalendarCheck className="h-4 w-4" /> {t("home", "bookBtn")}
+                <Link href={buildClinicHref("/book", clinic.id)} className="btn btn-primary min-h-[4rem] w-full justify-center text-xl">
+                  <CalendarCheck className="h-5 w-5" /> {t("home", "bookBtn")}
                 </Link>
-                <Link href={buildClinicHref("/walkin", clinic.id)} className="btn btn-warm">
-                  <Ticket className="h-4 w-4" /> {t("home", "walkinBtn")}
-                </Link>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Link href={buildClinicHref("/walkin", clinic.id)} className="btn btn-warm min-h-[4rem] justify-center text-lg">
+                    <Ticket className="h-5 w-5" /> {t("home", "walkinBtn")}
+                  </Link>
+                  <Link href={buildClinicHref("/status", clinic.id)} className="btn btn-outline min-h-[4rem] justify-center text-lg">
+                    <Search className="h-5 w-5" /> {t("home", "checkStatus")}
+                  </Link>
+                </div>
               </>
             ) : (
-              <Link href={buildClinicHref("/walkin", clinic.id)} className="btn btn-warm">
-                <Ticket className="h-4 w-4" /> {t("pharmacy", "pickupToken")}
-              </Link>
+              <>
+                <Link href={buildClinicHref("/walkin", clinic.id)} className="btn btn-warm min-h-[4rem] w-full justify-center text-xl">
+                  <Ticket className="h-5 w-5" /> {t("pharmacy", "pickupToken")}
+                </Link>
+                <Link href={buildClinicHref("/status", clinic.id)} className="btn btn-outline min-h-[4rem] w-full justify-center text-lg">
+                  <Search className="h-5 w-5" /> {t("home", "checkStatus")}
+                </Link>
+              </>
             )}
-            <Link href={buildClinicHref("/status", clinic.id)} className="btn btn-outline">
-              <Search className="h-4 w-4" /> {t("home", "checkStatus")}
-            </Link>
-            <Link href={buildClinicHref("/live", clinic.id)} className="btn btn-ghost">
-              <Monitor className="h-4 w-4" /> {t("nav", "live")}
-            </Link>
           </div>
         )}
 
-        {/* Pharmacy note */}
+        <div className="mt-8 border-t border-[rgba(12,86,81,0.08)] pt-5">
+          <p className="text-sm font-semibold text-[rgba(19,49,58,0.82)]">Trust Strip</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            {trustPoints.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.label} className="flex items-start gap-3 rounded-[1.3rem] bg-[rgba(255,249,240,0.9)] px-3 py-3">
+                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[var(--gold-soft)] text-[#bb9447]">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-[#17130f]">{item.label}</p>
+                    <p className="text-sm leading-5 text-[rgba(19,49,58,0.72)]">{item.detail}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         {!clinic.hasBooking && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl bg-[var(--accent-soft)] px-3 py-2">
+          <div className="mt-5 flex items-center gap-2 rounded-xl bg-[var(--accent-soft)] px-3 py-2">
             <Pill className="h-4 w-4 text-[var(--accent)]" />
-            <p className="text-xs font-medium text-[var(--accent-strong)]">
-              {t("pharmacy", "noBookingNeeded")}
-            </p>
+            <p className="text-xs font-medium text-[var(--accent-strong)]">{t("pharmacy", "noBookingNeeded")}</p>
           </div>
         )}
       </div>
