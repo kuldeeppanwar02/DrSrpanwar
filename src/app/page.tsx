@@ -296,6 +296,8 @@ function FocusedClinicCard({
   isLoggedIn: boolean;
   t: (section: TranslationKey, key: string) => string;
 }) {
+  const isSurgeryClinic = clinic.id === "surgery";
+
   return (
     <div className="card card-active fade-up overflow-hidden">
       {/* Accent bar */}
@@ -304,21 +306,45 @@ function FocusedClinicCard({
       <div className="p-5 sm:p-6">
         {/* Header */}
         <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)]">
+          <div
+            className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl ${
+              isSurgeryClinic
+                ? "bg-[linear-gradient(145deg,rgba(15,107,99,0.16),rgba(234,192,124,0.22))] shadow-[0_10px_24px_rgba(15,107,99,0.12)]"
+                : "bg-[var(--accent-soft)]"
+            }`}
+          >
             <ClinicIcon id={clinic.id} className="h-5 w-5 text-[var(--accent)]" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="label-type text-[var(--accent)]">
+            <p className={`label-type ${isSurgeryClinic ? "text-[var(--accent-deep)]" : "text-[var(--accent)]"}`}>
               {clinic.shortName}
             </p>
-            <h2 className="heading-serif mt-1 text-xl leading-tight text-[var(--accent-strong)] sm:text-[1.75rem]">
+            <h2
+              className={`heading-serif mt-1 leading-tight sm:text-[1.75rem] ${
+                isSurgeryClinic
+                  ? "premium-doctor-name text-[1.9rem] text-[var(--accent-strong)]"
+                  : "text-xl text-[var(--accent-strong)]"
+              }`}
+            >
               {clinic.title}
             </h2>
-            <p className="mt-1 max-w-2xl text-sm font-medium leading-6 text-[var(--accent-deep)] sm:text-[0.95rem]">
-              {clinic.subtitle}
-            </p>
+            {isSurgeryClinic ? (
+              <div className="premium-subtitle-wrap mt-2">
+                <p className="premium-subtitle-text">{clinic.subtitle}</p>
+              </div>
+            ) : (
+              <p className="mt-1 max-w-2xl text-sm font-medium leading-6 text-[var(--accent-deep)] sm:text-[0.95rem]">
+                {clinic.subtitle}
+              </p>
+            )}
             {clinic.metaLine && (
-              <p className="mt-2 inline-flex rounded-full bg-[rgba(15,107,99,0.08)] px-3 py-1 text-[11px] font-semibold tracking-[0.12em] text-[var(--accent-strong)]">
+              <p
+                className={`mt-2 inline-flex rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.12em] ${
+                  isSurgeryClinic
+                    ? "border border-[rgba(183,138,63,0.22)] bg-[linear-gradient(135deg,rgba(255,248,236,0.98),rgba(245,231,205,0.88))] text-[var(--accent-strong)] shadow-[0_10px_20px_rgba(183,138,63,0.12)]"
+                    : "bg-[rgba(15,107,99,0.08)] text-[var(--accent-strong)]"
+                }`}
+              >
                 {clinic.metaLine}
               </p>
             )}
