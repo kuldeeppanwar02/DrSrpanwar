@@ -96,43 +96,43 @@ export default function HomePage() {
         </div>
       )}
 
-      <section className="section-shell pt-6 pb-4">
-        <div className="relative overflow-hidden rounded-[2.2rem] border border-[rgba(255,255,255,0.85)] bg-[linear-gradient(180deg,rgba(255,252,246,0.98),rgba(248,239,223,0.95))] px-5 py-6 shadow-[0_24px_60px_rgba(30,27,19,0.08)] sm:px-7 sm:py-8">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(15,107,99,0.06),transparent)]" />
-          <div className="pointer-events-none absolute -left-10 top-22 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(234,192,124,0.24),transparent_70%)] blur-xl" />
-          <div className="pointer-events-none absolute -right-12 -top-10 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(15,107,99,0.12),transparent_72%)] blur-xl" />
+      <section className="section-shell pt-5 pb-1">
+        <div className="relative overflow-hidden rounded-[2rem] border border-[rgba(255,255,255,0.85)] bg-[linear-gradient(180deg,rgba(255,252,246,0.98),rgba(248,239,223,0.95))] px-4 py-4 shadow-[0_20px_46px_rgba(30,27,19,0.07)] sm:px-6 sm:py-5">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-[linear-gradient(180deg,rgba(15,107,99,0.06),transparent)]" />
+          <div className="pointer-events-none absolute -left-10 top-18 h-32 w-32 rounded-full bg-[radial-gradient(circle,rgba(234,192,124,0.24),transparent_70%)] blur-xl" />
+          <div className="pointer-events-none absolute -right-12 -top-10 h-36 w-36 rounded-full bg-[radial-gradient(circle,rgba(15,107,99,0.12),transparent_72%)] blur-xl" />
 
           <div className="relative z-10">
-            <p className="inline-flex items-center gap-2 rounded-full border border-[rgba(73,181,109,0.3)] bg-[rgba(220,250,228,0.9)] px-4 py-2 text-sm font-semibold text-[var(--success)] shadow-[0_10px_24px_rgba(73,181,109,0.08)]">
+            <p className="inline-flex items-center gap-2 rounded-full border border-[rgba(73,181,109,0.3)] bg-[rgba(220,250,228,0.9)] px-3.5 py-1.5 text-sm font-semibold text-[var(--success)] shadow-[0_10px_24px_rgba(73,181,109,0.08)]">
               <span className={`h-2.5 w-2.5 rounded-full ${isOnline ? "bg-emerald-500" : "bg-red-400"}`} />
               {isOnline ? "Now Online" : "Offline Cached Mode"}
             </p>
 
-            <div className="mt-5 max-w-4xl">
-              <h1 className="display-type balance-text text-[2.6rem] leading-[0.96] text-[#1c1913] sm:text-[4rem]">
+            <div className="mt-4 max-w-4xl">
+              <h1 className="display-type text-[2.25rem] leading-[0.92] tracking-[-0.04em] text-[#1c1913] sm:text-[3.6rem]">
                 {t("common", "appName")}
               </h1>
               {isLoggedIn ? (
-                <p className="mt-4 max-w-2xl text-base text-[rgba(19,49,58,0.68)]">
+                <p className="mt-2 max-w-2xl text-sm text-[rgba(19,49,58,0.68)] sm:text-base">
                   {t("staff", "welcomeBack")}, <strong>{session?.name}</strong>.{" "}
                   {isDoctor ? t("staff", "doctor") : t("staff", "staffRole")} access active for{" "}
                   <strong>{activeClinic.shortName}</strong>.
                 </p>
               ) : (
-                <p className="mt-4 max-w-2xl text-base leading-7 text-[rgba(19,49,58,0.68)]">
-                  Choose your clinic, book an appointment, take a walk-in token, or track live queue status without waiting at reception.
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[rgba(19,49,58,0.64)] sm:text-base">
+                  Book appointment, take token, or track queue live.
                 </p>
               )}
             </div>
 
-            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
               {CLINICS.map((clinic) => {
                 const active = clinic.id === activeClinicId;
                 return (
                   <Link
                     key={clinic.id}
                     href={buildClinicHref("/", clinic.id)}
-                    className={`focus-ring flex min-h-[4rem] items-center justify-center rounded-full border px-4 py-3 text-lg font-semibold transition-all ${
+                    className={`focus-ring flex min-h-[3.35rem] items-center justify-center rounded-full border px-3 py-2 text-base font-semibold transition-all sm:min-h-[3.6rem] sm:text-lg ${
                       active
                         ? "border-transparent bg-[linear-gradient(135deg,var(--accent-deep),var(--accent))] text-white shadow-[0_18px_38px_rgba(15,107,99,0.26)]"
                         : "border-[rgba(12,86,81,0.55)] bg-[rgba(255,252,246,0.84)] text-[var(--accent-strong)] shadow-[0_8px_24px_rgba(30,27,19,0.04)] hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(15,107,99,0.12)]"
@@ -147,7 +147,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="section-shell grid gap-5 pb-8 xl:grid-cols-[minmax(0,1.1fr)_0.9fr]">
+      <section className="section-shell -mt-1 grid gap-4 pb-8 xl:grid-cols-[minmax(0,1.1fr)_0.9fr]">
         <FocusedClinicCard clinic={activeClinic} isLoggedIn={isLoggedIn} t={t} />
 
         <div className="space-y-4">
@@ -323,36 +323,36 @@ function FocusedClinicCard({
 
   return (
     <div className="card-elevated overflow-hidden rounded-[2rem] border border-[rgba(255,255,255,0.78)]">
-      <div className="p-5 sm:p-7">
+      <div className="p-4 sm:p-6">
         <div className="flex items-start gap-4">
           <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-[1.35rem] bg-[linear-gradient(145deg,rgba(15,107,99,0.12),rgba(255,243,220,0.92))] shadow-[0_12px_28px_rgba(15,107,99,0.08)]">
             <ClinicIcon id={clinic.id} className="h-6 w-6 text-[var(--accent)]" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="label-type text-[var(--accent)]">{clinic.shortName}</p>
-            <h2 className="display-type mt-3 text-[2.45rem] leading-[0.94] text-[#17130f] sm:text-[4rem]">
+            <h2 className="display-type mt-2 text-[2.05rem] leading-[0.92] tracking-[-0.035em] text-[#17130f] sm:text-[3.5rem]">
               {clinic.title}
             </h2>
 
             <div
-              className={`mt-4 inline-flex max-w-3xl rounded-full px-5 py-3 text-center shadow-[0_14px_32px_rgba(183,138,63,0.16)] ${
+              className={`mt-3 inline-flex max-w-3xl rounded-full px-4 py-2.5 text-center shadow-[0_14px_32px_rgba(183,138,63,0.16)] ${
                 isSurgeryClinic
                   ? "bg-[linear-gradient(135deg,#b99043,#d9bc73)] text-white"
                   : "bg-[linear-gradient(135deg,rgba(15,107,99,0.12),rgba(15,107,99,0.2))] text-[var(--accent-strong)]"
               }`}
             >
-              <p className="w-full text-lg font-medium leading-7 sm:text-[1.3rem] sm:leading-8">{clinic.subtitle}</p>
+              <p className="w-full text-base font-medium leading-6 sm:text-[1.2rem] sm:leading-7">{clinic.subtitle}</p>
             </div>
 
             {clinic.metaLine && (
-              <p className="mt-4 text-xl font-semibold tracking-[0.02em] text-[#17130f]">
+              <p className="mt-3 text-lg font-semibold tracking-[0.02em] text-[#17130f] sm:text-xl">
                 {clinic.metaLine}
               </p>
             )}
           </div>
         </div>
 
-        <div className="mt-6 grid gap-2.5 text-sm leading-6 text-[rgba(19,49,58,0.72)]">
+        <div className="mt-5 grid gap-2 text-sm leading-6 text-[rgba(19,49,58,0.72)]">
           <p className="flex items-start gap-2.5">
             <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
             <span>{clinic.hoursLabel}</span>
@@ -371,7 +371,7 @@ function FocusedClinicCard({
         </div>
 
         {!isLoggedIn && (
-          <div className="mt-7 space-y-3">
+          <div className="mt-6 space-y-3">
             {clinic.hasBooking ? (
               <>
                 <Link href={buildClinicHref("/book", clinic.id)} className="btn btn-primary min-h-[4rem] w-full justify-center text-xl">
@@ -399,7 +399,7 @@ function FocusedClinicCard({
           </div>
         )}
 
-        <div className="mt-8 border-t border-[rgba(12,86,81,0.08)] pt-5">
+        <div className="mt-7 border-t border-[rgba(12,86,81,0.08)] pt-4">
           <p className="text-sm font-semibold text-[rgba(19,49,58,0.82)]">Trust Strip</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
             {trustPoints.map((item) => {
