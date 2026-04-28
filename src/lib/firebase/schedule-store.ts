@@ -376,7 +376,7 @@ export async function saveDayOverride(
       ${id},
       ${clinicId},
       ${date},
-      ${db.array(override.closedShifts)},
+      ${db.array(override.closedShifts)}::integer[],
       ${override.fullDayClosed},
       ${override.reason},
       ${override.createdBy},
