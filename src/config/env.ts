@@ -4,5 +4,5 @@ export const env = {
 };
 
 export function hasRemoteSyncConfig() {
-  return Boolean(env.supabaseUrl || env.appBaseUrl);
+  return Boolean(env.supabaseUrl);
 }
