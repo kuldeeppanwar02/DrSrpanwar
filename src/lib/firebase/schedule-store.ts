@@ -97,6 +97,18 @@ function cloneDefaultShifts(): [ShiftDefinition, ShiftDefinition, ShiftDefinitio
   ];
 }
 
+function parseJsonLike(value: unknown) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
 function normalizeShift(value: unknown, fallback: ShiftDefinition): ShiftDefinition {
   if (!value || typeof value !== "object") {
     return { ...fallback };
@@ -122,18 +134,38 @@ function normalizeShift(value: unknown, fallback: ShiftDefinition): ShiftDefinit
 }
 
 function normalizeShifts(value: unknown): [ShiftDefinition, ShiftDefinition, ShiftDefinition] {
-  const source = Array.isArray(value) ? value : [];
+  const parsed = parseJsonLike(value);
+  const source = Array.isArray(parsed) ? parsed : [];
   return cloneDefaultShifts().map((fallback, index) =>
     normalizeShift(source[index], fallback),
   ) as [ShiftDefinition, ShiftDefinition, ShiftDefinition];
 }
 
 function normalizeWeeklyOff(value: unknown) {
-  if (!Array.isArray(value)) {
+  const parsed = parseJsonLike(value);
+
+  if (Array.isArray(parsed)) {
+    const days = parsed.filter(
+      (day): day is string => typeof day === "string" && day.trim().length > 0,
+    );
+    return days.length > 0 ? days : ["Sunday"];
+  }
+
+  if (typeof parsed === "string" && parsed.startsWith("{") && parsed.endsWith("}")) {
+    const days = parsed
+      .slice(1, -1)
+      .split(",")
+      .map((day) => day.trim())
+      .filter(Boolean);
+
+    return days.length > 0 ? days : ["Sunday"];
+  }
+
+  if (!Array.isArray(parsed)) {
     return ["Sunday"];
   }
 
-  const days = value.filter((day): day is string => typeof day === "string" && day.trim().length > 0);
+  const days = parsed.filter((day): day is string => typeof day === "string" && day.trim().length > 0);
   return days.length > 0 ? days : ["Sunday"];
 }
 
@@ -550,9 +582,10 @@ function normalizeDaySchedule(value: unknown): DaySchedule {
 
 function normalizeWeekDays(value: unknown) {
   const defaults = createDefaultWeek();
+  const parsed = parseJsonLike(value);
   const source =
-    value && typeof value === "object" && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
+    parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
       : {};
 
   return Object.fromEntries(

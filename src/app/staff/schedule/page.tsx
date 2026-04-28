@@ -33,6 +33,18 @@ const DEFAULT_SHIFTS: [ShiftDef, ShiftDef, ShiftDef] = [
   { label: "Evening", startTime: "15:00", endTime: "18:00", enabled: false },
 ];
 
+function parseJsonLike(value: unknown) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
 function normalizeShift(value: unknown, fallback: ShiftDef): ShiftDef {
   if (!value || typeof value !== "object") {
     return { ...fallback };
@@ -57,7 +69,8 @@ function normalizeShift(value: unknown, fallback: ShiftDef): ShiftDef {
 }
 
 function normalizeShifts(value: unknown): [ShiftDef, ShiftDef, ShiftDef] {
-  const source = Array.isArray(value) ? value : [];
+  const parsed = parseJsonLike(value);
+  const source = Array.isArray(parsed) ? parsed : [];
   return DEFAULT_SHIFTS.map((fallback, index) =>
     normalizeShift(source[index], fallback),
   ) as [ShiftDef, ShiftDef, ShiftDef];
@@ -117,8 +130,32 @@ function normalizeWeekDay(value: unknown, fallback: DayScheduleLegacy): DaySched
 
 function normalizeWeekDays(value: unknown): DayScheduleLegacy[] {
   const fallback = createFallbackWeekDays();
-  const source = Array.isArray(value) ? value : [];
+  const parsed = parseJsonLike(value);
+  const source = Array.isArray(parsed) ? parsed : [];
   return fallback.map((day, index) => normalizeWeekDay(source[index], day));
+}
+
+function normalizeWeeklyOff(value: unknown): string[] {
+  const parsed = parseJsonLike(value);
+
+  if (Array.isArray(parsed)) {
+    const days = parsed.filter(
+      (day): day is string => typeof day === "string" && day.trim().length > 0,
+    );
+    return days.length > 0 ? days : ["Sunday"];
+  }
+
+  if (typeof parsed === "string" && parsed.startsWith("{") && parsed.endsWith("}")) {
+    const days = parsed
+      .slice(1, -1)
+      .split(",")
+      .map((day: string) => day.trim())
+      .filter(Boolean);
+
+    return days.length > 0 ? days : ["Sunday"];
+  }
+
+  return ["Sunday"];
 }
 
 function generateSlots(open: string, close: string, interval = 30): string[] {
@@ -195,7 +232,7 @@ export default function SchedulePage() {
           if (data.exists && data.schedule) {
             const s = data.schedule;
             setShifts(normalizeShifts(s.shifts));
-            setWeeklyOff(Array.isArray(s.weeklyOff) ? s.weeklyOff : ["Sunday"]);
+            setWeeklyOff(normalizeWeeklyOff(s.weeklyOff));
             setSlotInterval(s.slotInterval || 30);
             setMaxPatients(s.maxPatients || 20);
             setDefaultExists(true);
@@ -283,7 +320,7 @@ export default function SchedulePage() {
       });
       if (data.schedule) {
         setShifts(normalizeShifts(data.schedule.shifts));
-        setWeeklyOff(Array.isArray(data.schedule.weeklyOff) ? data.schedule.weeklyOff : ["Sunday"]);
+        setWeeklyOff(normalizeWeeklyOff(data.schedule.weeklyOff));
         setSlotInterval(data.schedule.slotInterval || 30);
         setMaxPatients(data.schedule.maxPatients || 20);
       }
