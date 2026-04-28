@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       // Return empty default template
       return Response.json({
         exists: false,
-        schedule: createEmptyDefaultSchedule(),
+        schedule: createEmptyDefaultSchedule(clinicId as ClinicId),
       });
     }
 

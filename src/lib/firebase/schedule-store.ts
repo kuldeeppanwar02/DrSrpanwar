@@ -89,21 +89,63 @@ const DEFAULT_SHIFTS: [ShiftDefinition, ShiftDefinition, ShiftDefinition] = [
   { label: "Evening", startTime: "15:00", endTime: "18:00", enabled: false },
 ];
 
+function cloneDefaultShifts(): [ShiftDefinition, ShiftDefinition, ShiftDefinition] {
+  return DEFAULT_SHIFTS.map((shift) => ({ ...shift })) as [
+    ShiftDefinition,
+    ShiftDefinition,
+    ShiftDefinition,
+  ];
+}
+
+function normalizeShift(value: unknown, fallback: ShiftDefinition): ShiftDefinition {
+  if (!value || typeof value !== "object") {
+    return { ...fallback };
+  }
+
+  const candidate = value as Partial<ShiftDefinition>;
+
+  return {
+    label:
+      typeof candidate.label === "string" && candidate.label.trim().length > 0
+        ? candidate.label
+        : fallback.label,
+    startTime:
+      typeof candidate.startTime === "string" && candidate.startTime.trim().length > 0
+        ? candidate.startTime
+        : fallback.startTime,
+    endTime:
+      typeof candidate.endTime === "string" && candidate.endTime.trim().length > 0
+        ? candidate.endTime
+        : fallback.endTime,
+    enabled: typeof candidate.enabled === "boolean" ? candidate.enabled : fallback.enabled,
+  };
+}
+
+function normalizeShifts(value: unknown): [ShiftDefinition, ShiftDefinition, ShiftDefinition] {
+  const source = Array.isArray(value) ? value : [];
+  return cloneDefaultShifts().map((fallback, index) =>
+    normalizeShift(source[index], fallback),
+  ) as [ShiftDefinition, ShiftDefinition, ShiftDefinition];
+}
+
+function normalizeWeeklyOff(value: unknown) {
+  if (!Array.isArray(value)) {
+    return ["Sunday"];
+  }
+
+  const days = value.filter((day): day is string => typeof day === "string" && day.trim().length > 0);
+  return days.length > 0 ? days : ["Sunday"];
+}
+
 function toDateString(value: string | Date) {
   return new Date(value).toISOString().split("T")[0];
 }
 
 function mapDefaultSchedule(row: DefaultScheduleRow): DefaultSchedule {
-  const shifts = (row.shifts ?? DEFAULT_SHIFTS) as [
-    ShiftDefinition,
-    ShiftDefinition,
-    ShiftDefinition,
-  ];
-
   return {
     clinicId: row.clinic_id,
-    shifts,
-    weeklyOff: row.weekly_off ?? [],
+    shifts: normalizeShifts(row.shifts),
+    weeklyOff: normalizeWeeklyOff(row.weekly_off),
     slotInterval: row.slot_interval,
     maxPatients: row.max_patients,
     updatedAt: toIsoString(row.updated_at),
@@ -130,7 +172,7 @@ function mapWeekSchedule(row: WeekScheduleRow): WeekSchedule {
     clinicId: row.clinic_id,
     weekStart: toDateString(row.week_start),
     weekEnd: toDateString(row.week_end),
-    days: row.days,
+    days: normalizeWeekDays(row.days),
     updatedAt: toIsoString(row.updated_at),
     updatedBy: row.updated_by,
   };
@@ -234,14 +276,10 @@ export async function saveDefaultSchedule(
   };
 }
 
-export function createEmptyDefaultSchedule(): DefaultSchedule {
+export function createEmptyDefaultSchedule(clinicId: ClinicId = "surgery"): DefaultSchedule {
   return {
-    clinicId: "surgery",
-    shifts: DEFAULT_SHIFTS.map((shift) => ({ ...shift })) as [
-      ShiftDefinition,
-      ShiftDefinition,
-      ShiftDefinition,
-    ],
+    clinicId,
+    shifts: cloneDefaultShifts(),
     weeklyOff: ["Sunday"],
     slotInterval: 30,
     maxPatients: 20,
@@ -479,6 +517,47 @@ function createDefaultWeek(): Record<string, DaySchedule> {
     }
   }
   return days;
+}
+
+function normalizeDaySchedule(value: unknown): DaySchedule {
+  const fallback = defaultDaySchedule();
+
+  if (!value || typeof value !== "object") {
+    return fallback;
+  }
+
+  const candidate = value as Partial<DaySchedule>;
+  return {
+    isOpen: typeof candidate.isOpen === "boolean" ? candidate.isOpen : fallback.isOpen,
+    openTime:
+      typeof candidate.openTime === "string" && candidate.openTime.trim().length > 0
+        ? candidate.openTime
+        : fallback.openTime,
+    closeTime:
+      typeof candidate.closeTime === "string" && candidate.closeTime.trim().length > 0
+        ? candidate.closeTime
+        : fallback.closeTime,
+    slots: Array.isArray(candidate.slots)
+      ? candidate.slots.filter((slot): slot is string => typeof slot === "string")
+      : fallback.slots,
+    maxPatients:
+      typeof candidate.maxPatients === "number" && Number.isFinite(candidate.maxPatients)
+        ? candidate.maxPatients
+        : fallback.maxPatients,
+    notes: typeof candidate.notes === "string" ? candidate.notes : fallback.notes,
+  };
+}
+
+function normalizeWeekDays(value: unknown) {
+  const defaults = createDefaultWeek();
+  const source =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+
+  return Object.fromEntries(
+    DAY_NAMES.map((day) => [day, normalizeDaySchedule(source[day] ?? defaults[day])]),
+  ) as Record<string, DaySchedule>;
 }
 
 function getWeekId(clinicId: ClinicId, weekStart: string): string {

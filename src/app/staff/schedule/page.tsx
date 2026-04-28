@@ -27,6 +27,100 @@ const SHIFT_ICONS = [Sun, CloudSun, Moon];
 const ALL_DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const dayKeys = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"] as const;
 
+const DEFAULT_SHIFTS: [ShiftDef, ShiftDef, ShiftDef] = [
+  { label: "Morning", startTime: "09:00", endTime: "12:00", enabled: true },
+  { label: "Afternoon", startTime: "12:00", endTime: "15:00", enabled: true },
+  { label: "Evening", startTime: "15:00", endTime: "18:00", enabled: false },
+];
+
+function normalizeShift(value: unknown, fallback: ShiftDef): ShiftDef {
+  if (!value || typeof value !== "object") {
+    return { ...fallback };
+  }
+
+  const candidate = value as Partial<ShiftDef>;
+  return {
+    label:
+      typeof candidate.label === "string" && candidate.label.trim().length > 0
+        ? candidate.label
+        : fallback.label,
+    startTime:
+      typeof candidate.startTime === "string" && candidate.startTime.trim().length > 0
+        ? candidate.startTime
+        : fallback.startTime,
+    endTime:
+      typeof candidate.endTime === "string" && candidate.endTime.trim().length > 0
+        ? candidate.endTime
+        : fallback.endTime,
+    enabled: typeof candidate.enabled === "boolean" ? candidate.enabled : fallback.enabled,
+  };
+}
+
+function normalizeShifts(value: unknown): [ShiftDef, ShiftDef, ShiftDef] {
+  const source = Array.isArray(value) ? value : [];
+  return DEFAULT_SHIFTS.map((fallback, index) =>
+    normalizeShift(source[index], fallback),
+  ) as [ShiftDef, ShiftDef, ShiftDef];
+}
+
+function createFallbackWeekDays(): DayScheduleLegacy[] {
+  return ALL_DAYS.map((name, index) => {
+    const isOpen = index > 0;
+    return {
+      dayOfWeek: index,
+      isOpen,
+      openTime: "09:00",
+      closeTime: "17:00",
+      slots: isOpen ? generateSlots("09:00", "17:00") : [],
+      maxPatients: 30,
+      notes: name === "Sunday" ? "Closed" : "",
+    };
+  });
+}
+
+function normalizeWeekDay(value: unknown, fallback: DayScheduleLegacy): DayScheduleLegacy {
+  if (!value || typeof value !== "object") {
+    return { ...fallback };
+  }
+
+  const candidate = value as Partial<DayScheduleLegacy>;
+  const openTime =
+    typeof candidate.openTime === "string" && candidate.openTime.trim().length > 0
+      ? candidate.openTime
+      : fallback.openTime;
+  const closeTime =
+    typeof candidate.closeTime === "string" && candidate.closeTime.trim().length > 0
+      ? candidate.closeTime
+      : fallback.closeTime;
+  const isOpen = typeof candidate.isOpen === "boolean" ? candidate.isOpen : fallback.isOpen;
+
+  return {
+    dayOfWeek:
+      typeof candidate.dayOfWeek === "number" && Number.isFinite(candidate.dayOfWeek)
+        ? candidate.dayOfWeek
+        : fallback.dayOfWeek,
+    isOpen,
+    openTime,
+    closeTime,
+    slots: Array.isArray(candidate.slots)
+      ? candidate.slots.filter((slot): slot is string => typeof slot === "string")
+      : isOpen
+        ? generateSlots(openTime, closeTime)
+        : [],
+    maxPatients:
+      typeof candidate.maxPatients === "number" && Number.isFinite(candidate.maxPatients)
+        ? candidate.maxPatients
+        : fallback.maxPatients,
+    notes: typeof candidate.notes === "string" ? candidate.notes : fallback.notes,
+  };
+}
+
+function normalizeWeekDays(value: unknown): DayScheduleLegacy[] {
+  const fallback = createFallbackWeekDays();
+  const source = Array.isArray(value) ? value : [];
+  return fallback.map((day, index) => normalizeWeekDay(source[index], day));
+}
+
 function generateSlots(open: string, close: string, interval = 30): string[] {
   if (!open || !close) return [];
   const slots: string[] = [];
@@ -65,9 +159,7 @@ export default function SchedulePage() {
 
   // Default schedule
   const [shifts, setShifts] = useState<[ShiftDef, ShiftDef, ShiftDef]>([
-    { label: "Morning", startTime: "09:00", endTime: "12:00", enabled: true },
-    { label: "Afternoon", startTime: "12:00", endTime: "15:00", enabled: true },
-    { label: "Evening", startTime: "15:00", endTime: "18:00", enabled: false },
+    ...DEFAULT_SHIFTS,
   ]);
   const [weeklyOff, setWeeklyOff] = useState<string[]>(["Sunday"]);
   const [slotInterval, setSlotInterval] = useState(30);
@@ -101,8 +193,8 @@ export default function SchedulePage() {
           if (!active) return;
           if (data.exists && data.schedule) {
             const s = data.schedule;
-            setShifts(s.shifts);
-            setWeeklyOff(s.weeklyOff || ["Sunday"]);
+            setShifts(normalizeShifts(s.shifts));
+            setWeeklyOff(Array.isArray(s.weeklyOff) ? s.weeklyOff : ["Sunday"]);
             setSlotInterval(s.slotInterval || 30);
             setMaxPatients(s.maxPatients || 20);
             setDefaultExists(true);
@@ -136,7 +228,7 @@ export default function SchedulePage() {
         if (!active) return;
         if (data.exists && data.override) {
           setTodayOverride({
-            closedShifts: data.override.closedShifts || [],
+            closedShifts: Array.isArray(data.override.closedShifts) ? data.override.closedShifts : [],
             fullDayClosed: data.override.fullDayClosed || false,
           });
         } else {
@@ -162,7 +254,7 @@ export default function SchedulePage() {
         `/api/schedule?clinic=${activeClinicId}&weekOffset=${weekOffset}`,
       )
       .then(({ data }) => {
-        if (active && data.schedule) setWeekDays(data.schedule);
+        if (active) setWeekDays(normalizeWeekDays(data.schedule));
       })
       .catch((loadError) => {
         if (!active) return;
