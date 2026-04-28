@@ -1,4 +1,4 @@
-const CACHE_NAME = "dr-panwar-clinic-v1";
+const CACHE_NAME = "dr-panwar-clinic-v2";
 const APP_SHELL = [
   "/",
   "/book",
@@ -42,6 +42,12 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (request.method !== "GET" || url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Dynamic API responses must always come fresh from the network.
+  // Caching them causes stale queue/schedule data after staff updates.
+  if (url.pathname.startsWith("/api/")) {
     return;
   }
 

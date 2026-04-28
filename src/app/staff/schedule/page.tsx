@@ -276,10 +276,16 @@ export default function SchedulePage() {
   const handleSaveDefault = async () => {
     setSaving(true); setError(""); setSaved(false);
     try {
-      await apiClient.post("/api/schedule/default", {
+      const { data } = await apiClient.post<{ schedule?: DefaultSched }>("/api/schedule/default", {
           clinicId: activeClinicId, shifts, weeklyOff, slotInterval, maxPatients,
           updatedBy: session?.name || "staff",
       });
+      if (data.schedule) {
+        setShifts(normalizeShifts(data.schedule.shifts));
+        setWeeklyOff(Array.isArray(data.schedule.weeklyOff) ? data.schedule.weeklyOff : ["Sunday"]);
+        setSlotInterval(data.schedule.slotInterval || 30);
+        setMaxPatients(data.schedule.maxPatients || 20);
+      }
       setSaved(true);
       setDefaultExists(true);
       setTimeout(() => setSaved(false), 3000);
