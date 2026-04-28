@@ -147,6 +147,7 @@ function getMonday(offset = 0) {
 }
 
 function todayStr() { return new Date().toISOString().slice(0, 10); }
+function cacheBust() { return `t=${Date.now()}`; }
 
 /* ═══ Main Component ═══ */
 export default function SchedulePage() {
@@ -187,7 +188,7 @@ export default function SchedulePage() {
     const initialLoad = window.setTimeout(() => {
       setLoading(true);
       apiClient.get<{ exists: boolean; schedule?: DefaultSched }>(
-        `/api/schedule/default?clinic=${activeClinicId}`,
+        `/api/schedule/default?clinic=${activeClinicId}&${cacheBust()}`,
       )
         .then(({ data }) => {
           if (!active) return;
@@ -223,7 +224,7 @@ export default function SchedulePage() {
       .get<{
         exists: boolean;
         override?: { closedShifts?: number[]; fullDayClosed?: boolean } | null;
-      }>(`/api/schedule/override?clinic=${activeClinicId}&date=${todayStr()}`)
+      }>(`/api/schedule/override?clinic=${activeClinicId}&date=${todayStr()}&${cacheBust()}`)
       .then(({ data }) => {
         if (!active) return;
         if (data.exists && data.override) {
@@ -251,7 +252,7 @@ export default function SchedulePage() {
     let active = true;
     apiClient
       .get<{ schedule?: DayScheduleLegacy[] }>(
-        `/api/schedule?clinic=${activeClinicId}&weekOffset=${weekOffset}`,
+        `/api/schedule?clinic=${activeClinicId}&weekOffset=${weekOffset}&${cacheBust()}`,
       )
       .then(({ data }) => {
         if (active) setWeekDays(normalizeWeekDays(data.schedule));

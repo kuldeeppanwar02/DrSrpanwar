@@ -7,9 +7,13 @@ import {
   saveDayOverride,
   deleteDayOverride,
 } from "@/lib/firebase/schedule-store";
+import { unstable_noStore as noStore } from "next/cache";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
+    noStore();
     const { searchParams } = new URL(request.url);
     const clinicId = searchParams.get("clinic") || "surgery";
     const date = searchParams.get("date");
@@ -31,6 +35,10 @@ export async function GET(request: Request) {
     return Response.json({
       exists: !!override,
       override: override || null,
+    }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      },
     });
   } catch (error) {
     return jsonError(error);

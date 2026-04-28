@@ -11,8 +11,10 @@ import {
   generateSlots,
   type DaySchedule,
 } from "@/lib/firebase/schedule-store";
+import { unstable_noStore as noStore } from "next/cache";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+export const dynamic = "force-dynamic";
 
 /**
  * GET /api/schedule
@@ -23,6 +25,7 @@ const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Frid
  */
 export async function GET(request: Request) {
   try {
+    noStore();
     const { searchParams } = new URL(request.url);
     const clinicId = searchParams.get("clinic") || searchParams.get("clinicId") || "surgery";
     const mode = searchParams.get("mode");
@@ -44,6 +47,10 @@ export async function GET(request: Request) {
       return Response.json({
         today: todaySchedule,
         tomorrow: tomorrowSchedule,
+      }, {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
       });
     }
 
@@ -89,6 +96,10 @@ export async function GET(request: Request) {
     return Response.json({
       schedule: daysArray,
       weekStart,
+    }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      },
     });
   } catch (error) {
     return jsonError(error);

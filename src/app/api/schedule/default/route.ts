@@ -8,9 +8,13 @@ import {
   createEmptyDefaultSchedule,
   type ShiftDefinition,
 } from "@/lib/firebase/schedule-store";
+import { unstable_noStore as noStore } from "next/cache";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
+    noStore();
     const { searchParams } = new URL(request.url);
     const clinicId = searchParams.get("clinic") || "surgery";
 
@@ -30,12 +34,20 @@ export async function GET(request: Request) {
       return Response.json({
         exists: false,
         schedule: createEmptyDefaultSchedule(clinicId as ClinicId),
+      }, {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
       });
     }
 
     return Response.json({
       exists: true,
       schedule,
+    }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      },
     });
   } catch (error) {
     return jsonError(error);
