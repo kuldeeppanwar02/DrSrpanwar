@@ -26,6 +26,7 @@ import {
 } from "@/components/navbar";
 import { useToast } from "@/components/toast";
 import { PrescriptionModal } from "@/components/prescription-modal";
+import type { QueueEntry } from "@/features/clinic/types";
 
 type StaffSessionData = {
   id: string;
@@ -52,6 +53,7 @@ export default function StaffPage() {
     resetClinicState,
     rescheduleQueueEntry,
     setEmergencyState,
+    syncPendingEntries,
     updateQueueStatus,
   } = useClinic();
   const { t, lang } = useLang();
@@ -66,7 +68,13 @@ export default function StaffPage() {
   const [historyMap, setHistoryMap] = useState<Record<string, PatientHistorySummary>>({});
   const [emergencyMsg, setEmergencyMsg] = useState("");
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
-  const [rxEntry, setRxEntry] = useState<{ id: string; token: string; name: string } | null>(null);
+  const [rxEntry, setRxEntry] = useState<{
+    id: string;
+    token: string;
+    name: string;
+    clientRequestId: string;
+    syncState: "synced" | "pending";
+  } | null>(null);
 
   const isDoctor = session?.role === "doctor";
 
@@ -137,6 +145,44 @@ export default function StaffPage() {
       setError(msg);
       toast(msg, "error");
     }
+  };
+
+  const resolveEntryForAction = async (entry: QueueEntry) => {
+    if (entry.syncState !== "pending") {
+      return entry.id;
+    }
+
+    const syncedState = await syncPendingEntries(activeClinicId);
+    const syncedEntry = syncedState.queue.find(
+      (item) => item.clientRequestId === entry.clientRequestId,
+    );
+
+    if (!syncedEntry || syncedEntry.syncState === "pending") {
+      throw new Error("Entry abhi server par sync nahi hui. Internet stable karke dobara try karein.");
+    }
+
+    return syncedEntry.id;
+  };
+
+  const syncPendingEntryFromModal = async () => {
+    if (!rxEntry) {
+      throw new Error("Queue entry missing.");
+    }
+
+    if (rxEntry.syncState !== "pending") {
+      return rxEntry.id;
+    }
+
+    const syncedState = await syncPendingEntries(activeClinicId);
+    const syncedEntry = syncedState.queue.find(
+      (item) => item.clientRequestId === rxEntry.clientRequestId,
+    );
+
+    if (!syncedEntry || syncedEntry.syncState === "pending") {
+      throw new Error("Entry abhi server par sync nahi hui. Internet stable karke dobara try karein.");
+    }
+
+    return syncedEntry.id;
   };
 
   // Fetch patient history for a mobile number
@@ -479,19 +525,31 @@ export default function StaffPage() {
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         <button type="button" className="btn btn-primary btn-sm"
-                          onClick={() => void runAction(async () => { await updateQueueStatus(entry.id, "in-progress"); })}>
+                          onClick={() => void runAction(async () => {
+                            const resolvedEntryId = await resolveEntryForAction(entry);
+                            await updateQueueStatus(resolvedEntryId, "in-progress");
+                          })}>
                           <PlayCircle className="h-3 w-3" /> {t("staff", "callNow")}
                         </button>
                         {isDoctor && (
                           <button type="button" className="btn btn-sm" style={{background:'var(--success)',color:'white'}}
-                            onClick={() => setRxEntry({ id: entry.id, token: entry.token, name: entry.name })}>
+                            onClick={() =>
+                              setRxEntry({
+                                id: entry.id,
+                                token: entry.token,
+                                name: entry.name,
+                                clientRequestId: entry.clientRequestId,
+                                syncState: entry.syncState,
+                              })}
+                          >
                             <CheckCircle2 className="h-3 w-3" /> {t("staff", "doneBtn")}
                           </button>
                         )}
                         {isDoctor && (
                           <button type="button" className="btn btn-outline btn-sm"
                             onClick={() => void runAction(async () => {
-                              await updateQueueStatus(entry.id, entry.status === "hold" ? "waiting" : "hold");
+                              const resolvedEntryId = await resolveEntryForAction(entry);
+                              await updateQueueStatus(resolvedEntryId, entry.status === "hold" ? "waiting" : "hold");
                             })}>
                             <PauseCircle className="h-3 w-3" /> {entry.status === "hold" ? t("staff", "resumeBtn") : t("staff", "holdBtn")}
                           </button>
@@ -499,14 +557,20 @@ export default function StaffPage() {
                         <button type="button" className="btn btn-ghost btn-sm"
                           onClick={() => {
                             if (confirm(t("queue", "shiftConfirm"))) {
-                              void runAction(async () => { await rescheduleQueueEntry(entry.id); });
+                              void runAction(async () => {
+                                const resolvedEntryId = await resolveEntryForAction(entry);
+                                await rescheduleQueueEntry(resolvedEntryId);
+                              });
                             }
                           }}>
                           <CalendarClock className="h-3 w-3" /> {t("queue", "shiftToTomorrow")}
                         </button>
                         {isDoctor && (
                           <button type="button" className="btn btn-danger btn-sm"
-                            onClick={() => void runAction(async () => { await updateQueueStatus(entry.id, "skipped"); })}>
+                            onClick={() => void runAction(async () => {
+                              const resolvedEntryId = await resolveEntryForAction(entry);
+                              await updateQueueStatus(resolvedEntryId, "skipped");
+                            })}>
                             <SkipForward className="h-3 w-3" /> {t("staff", "skipBtn")}
                           </button>
                         )}
@@ -555,7 +619,10 @@ export default function StaffPage() {
           onDone={() => {
             // Mark entry as done after photo sent or skipped
             void runAction(
-              async () => { await updateQueueStatus(rxEntry.id, "done"); },
+              async () => {
+                const resolvedEntryId = await syncPendingEntryFromModal();
+                await updateQueueStatus(resolvedEntryId, "done");
+              },
               t("staff", "doneBtn") + " ✓",
             );
             setRxEntry(null);

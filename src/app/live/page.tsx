@@ -24,6 +24,7 @@ export default function LivePage() {
     activeClinicId,
     state: clinicState,
     advanceQueue,
+    syncPendingEntries,
     updateQueueStatus,
     rescheduleQueueEntry,
   } = useClinic();
@@ -49,6 +50,23 @@ export default function LivePage() {
 
   const runAction = async (task: () => Promise<void>) => {
     try { await task(); } catch { /* silent */ }
+  };
+
+  const resolveEntryId = async (entry: { id: string; clientRequestId: string; syncState: "synced" | "pending" }) => {
+    if (entry.syncState !== "pending") {
+      return entry.id;
+    }
+
+    const syncedState = await syncPendingEntries(activeClinicId);
+    const syncedEntry = syncedState.queue.find(
+      (item) => item.clientRequestId === entry.clientRequestId,
+    );
+
+    if (!syncedEntry || syncedEntry.syncState === "pending") {
+      throw new Error("Entry abhi server par sync nahi hui.");
+    }
+
+    return syncedEntry.id;
   };
 
   return (
@@ -126,21 +144,28 @@ export default function LivePage() {
                 </button>
                 {isDoctor && current && (
                   <>
-                    <button type="button"
+                      <button type="button"
                       className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(31,122,84,0.4)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(31,122,84,0.6)] active:scale-95"
-                      onClick={() => void runAction(async () => { await updateQueueStatus(current.id, "done"); })}>
+                      onClick={() => void runAction(async () => {
+                        const resolvedEntryId = await resolveEntryId(current);
+                        await updateQueueStatus(resolvedEntryId, "done");
+                      })}>
                       <CheckCircle2 className="h-4 w-4" /> {t("staff", "doneBtn")}
                     </button>
-                    <button type="button"
+                      <button type="button"
                       className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(255,255,255,0.08)] px-4 py-2 text-sm font-semibold text-[rgba(255,255,255,0.7)] transition hover:bg-[rgba(255,255,255,0.15)] active:scale-95"
                       onClick={() => void runAction(async () => {
-                        await updateQueueStatus(current.id, current.status === "hold" ? "waiting" : "hold");
+                        const resolvedEntryId = await resolveEntryId(current);
+                        await updateQueueStatus(resolvedEntryId, current.status === "hold" ? "waiting" : "hold");
                       })}>
                       <PauseCircle className="h-4 w-4" /> {current.status === "hold" ? t("staff", "resumeBtn") : t("staff", "holdBtn")}
                     </button>
-                    <button type="button"
+                      <button type="button"
                       className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(182,93,54,0.2)] px-4 py-2 text-sm font-semibold text-[rgba(255,180,140,0.9)] transition hover:bg-[rgba(182,93,54,0.3)] active:scale-95"
-                      onClick={() => void runAction(async () => { await updateQueueStatus(current.id, "skipped"); })}>
+                      onClick={() => void runAction(async () => {
+                        const resolvedEntryId = await resolveEntryId(current);
+                        await updateQueueStatus(resolvedEntryId, "skipped");
+                      })}>
                       <SkipForward className="h-4 w-4" /> {t("staff", "skipBtn")}
                     </button>
                   </>
@@ -184,12 +209,18 @@ export default function LivePage() {
                       <div className="flex gap-1">
                         <button type="button"
                           className="inline-flex items-center gap-1 rounded-full bg-[rgba(103,237,170,0.15)] px-2 py-0.5 text-[10px] font-semibold text-[#67edaa] active:scale-95"
-                          onClick={() => void runAction(async () => { await updateQueueStatus(entry.id, "in-progress"); })}>
+                          onClick={() => void runAction(async () => {
+                            const resolvedEntryId = await resolveEntryId(entry);
+                            await updateQueueStatus(resolvedEntryId, "in-progress");
+                          })}>
                           <PlayCircle className="h-3 w-3" /> {t("staff", "callNow")}
                         </button>
                         <button type="button"
                           className="inline-flex items-center gap-1 rounded-full bg-[rgba(182,93,54,0.15)] px-2 py-0.5 text-[10px] font-semibold text-[rgba(255,180,140,0.9)] active:scale-95"
-                          onClick={() => void runAction(async () => { await rescheduleQueueEntry(entry.id); })}>
+                          onClick={() => void runAction(async () => {
+                            const resolvedEntryId = await resolveEntryId(entry);
+                            await rescheduleQueueEntry(resolvedEntryId);
+                          })}>
                           <CalendarClock className="h-3 w-3" /> {t("queue", "shiftToTomorrow")}
                         </button>
                       </div>

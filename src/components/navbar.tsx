@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
   Home,
@@ -69,6 +70,7 @@ export function clearStaffSession() {
 }
 
 export function Navbar() {
+  const router = useRouter();
   const { activeClinicId, activeClinic, isOnline } = useClinic();
   const { lang, toggleLang, t } = useLang();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -93,6 +95,8 @@ export function Navbar() {
       clearStaffSession();
       setSession(null);
       window.dispatchEvent(new Event("staff-session-change"));
+      setMenuOpen(false);
+      router.replace(buildClinicHref("/", activeClinicId));
     }
   };
 
