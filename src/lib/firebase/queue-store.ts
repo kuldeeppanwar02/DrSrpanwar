@@ -222,6 +222,43 @@ async function readClinicQueueFrom(sql: QueryableDb, clinicId: ClinicId) {
   return rows.map(mapQueueEntry);
 }
 
+async function promoteNextWaitingEntry(
+  sql: QueryableDb,
+  clinicId: ClinicId,
+  updateTimestamp: string,
+) {
+  const [activeEntry] = await sql<{ id: string }[]>`
+    select id
+    from queue_entries
+    where clinic_id = ${clinicId} and status = 'in-progress'
+    order by queue_order asc
+    limit 1
+  `;
+
+  if (activeEntry) {
+    return;
+  }
+
+  const [nextEntry] = await sql<{ id: string }[]>`
+    select id
+    from queue_entries
+    where clinic_id = ${clinicId} and status = 'waiting'
+    order by queue_order asc
+    limit 1
+    for update
+  `;
+
+  if (!nextEntry) {
+    return;
+  }
+
+  await sql`
+    update queue_entries
+    set status = 'in-progress', updated_at = ${updateTimestamp}
+    where id = ${nextEntry.id}
+  `;
+}
+
 function createQueueEntry(
   clinicId: ClinicId,
   clinicDocument: ClinicStateRow,
@@ -554,6 +591,10 @@ export async function updateRemoteQueueEntryStatus(
       where id = ${entryId}
     `;
 
+    if (status === "done" || status === "skipped" || status === "hold") {
+      await promoteNextWaitingEntry(tx, clinicId, updateTimestamp);
+    }
+
     await tx`
       update clinic_states
       set last_updated = ${updateTimestamp}, last_synced_at = ${updateTimestamp}
@@ -617,6 +658,8 @@ export async function rescheduleRemoteQueueEntry(clinicId: ClinicId, entryId: st
         }
       where id = ${entryId}
     `;
+
+    await promoteNextWaitingEntry(tx, clinicId, updateTimestamp);
 
     await tx`
       update clinic_states

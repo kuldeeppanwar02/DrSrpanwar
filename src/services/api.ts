@@ -1,6 +1,18 @@
 import axios from "axios";
 import { env } from "@/config/env";
 
+export class ApiClientError extends Error {
+  status?: number;
+  isNetworkError: boolean;
+
+  constructor(message: string, options: { status?: number; isNetworkError?: boolean } = {}) {
+    super(message);
+    this.name = "ApiClientError";
+    this.status = options.status;
+    this.isNetworkError = options.isNetworkError ?? false;
+  }
+}
+
 export const apiClient = axios.create({
   baseURL: env.appBaseUrl || undefined,
   timeout: 12000,
@@ -36,7 +48,12 @@ apiClient.interceptors.response.use(
           ? String(error.response.data.message)
           : error.message;
 
-      return Promise.reject(new Error(message));
+      return Promise.reject(
+        new ApiClientError(message, {
+          status: error.response?.status,
+          isNetworkError: !error.response,
+        }),
+      );
     }
 
     return Promise.reject(error);

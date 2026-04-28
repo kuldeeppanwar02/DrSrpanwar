@@ -1,5 +1,5 @@
 import { hasRemoteSyncConfig } from "@/config/env";
-import { apiClient } from "@/services/api";
+import { ApiClientError, apiClient } from "@/services/api";
 import { DEFAULT_CLINIC_ID } from "@/features/clinic/catalog";
 import {
   advanceQueueState,
@@ -24,6 +24,14 @@ import type {
 async function persistState(state: ClinicState) {
   await writeClinicState(state);
   return state;
+}
+
+function shouldFallbackToOffline(error: unknown) {
+  if (error instanceof ApiClientError) {
+    return error.isNetworkError;
+  }
+
+  return false;
 }
 
 function sortQueueState(state: ClinicState) {
@@ -131,7 +139,11 @@ export const clinicService = {
         );
 
         return persistState(sortQueueState(response.data.state));
-      } catch {
+      } catch (error) {
+        if (!shouldFallbackToOffline(error)) {
+          throw error;
+        }
+
         // If network is flaky, keep the booking locally and sync later.
       }
     }
@@ -158,7 +170,11 @@ export const clinicService = {
         );
 
         return persistState(sortQueueState(response.data.state));
-      } catch {
+      } catch (error) {
+        if (!shouldFallbackToOffline(error)) {
+          throw error;
+        }
+
         // If network is flaky, keep the token locally and sync later.
       }
     }

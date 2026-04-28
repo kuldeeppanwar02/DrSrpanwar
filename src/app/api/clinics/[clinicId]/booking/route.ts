@@ -19,7 +19,7 @@ export async function POST(
       requiresPharmacyFollowUp?: boolean;
     };
 
-    if (!body.dayLabel || !body.slotLabel || !body.name || !body.mobile) {
+    if (!body.dayLabel || !body.slotLabel || !body.name?.trim()) {
       throw new ApiRouteError("Booking form is incomplete.", 400);
     }
 
@@ -28,7 +28,7 @@ export async function POST(
       dayLabel: body.dayLabel,
       slotLabel: body.slotLabel,
       name: body.name,
-      mobile: body.mobile,
+      mobile: body.mobile ?? "",
       clientRequestId: body.clientRequestId,
       createdAt: body.createdAt,
       requiresPharmacyFollowUp: body.requiresPharmacyFollowUp,
