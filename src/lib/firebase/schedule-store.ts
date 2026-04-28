@@ -280,7 +280,7 @@ export async function saveDefaultSchedule(
     )
     values (
       ${clinicId},
-      ${JSON.stringify(schedule.shifts)}::jsonb,
+      ${db.json(schedule.shifts)},
       ${db.array(schedule.weeklyOff)},
       ${schedule.slotInterval},
       ${schedule.maxPatients},
@@ -658,7 +658,7 @@ export async function saveWeekSchedule(
       ${clinicId},
       ${weekStart},
       ${weekEnd},
-      ${JSON.stringify(days)}::jsonb,
+      ${db.json(days)},
       ${now},
       ${updatedBy}
     )
