@@ -139,7 +139,7 @@ export function QuickAddModal({ onClose, onAdd }: QuickAddModalProps) {
                   <input
                     ref={nameInputRef}
                     type="text"
-                    className="input pl-10"
+                    className="input !pl-10"
                     placeholder="E.g. Ramesh Kumar"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -157,7 +157,7 @@ export function QuickAddModal({ onClose, onAdd }: QuickAddModalProps) {
                   <Phone className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <input
                     type="tel"
-                    className="input pl-10"
+                    className="input !pl-10"
                     placeholder="10 digit number"
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value)}
