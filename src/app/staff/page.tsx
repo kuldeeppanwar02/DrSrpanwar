@@ -15,6 +15,7 @@ import {
   Phone,
   Inbox,
   Lock,
+  UserPlus,
 } from "lucide-react";
 import { getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
@@ -26,6 +27,7 @@ import {
 } from "@/components/navbar";
 import { useToast } from "@/components/toast";
 import { PrescriptionModal } from "@/components/prescription-modal";
+import { QuickAddModal } from "@/components/quick-add-modal";
 import type { QueueEntry } from "@/features/clinic/types";
 
 type StaffSessionData = {
@@ -56,6 +58,7 @@ export default function StaffPage() {
     syncPendingEntries,
     updateQueueStatus,
     markReportCheck,
+    createWalkIn,
   } = useClinic();
   const { t, lang } = useLang();
   const { toast } = useToast();
@@ -76,6 +79,7 @@ export default function StaffPage() {
     clientRequestId: string;
     syncState: "synced" | "pending";
   } | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const isDoctor = session?.role === "doctor";
 
@@ -359,6 +363,16 @@ export default function StaffPage() {
           <button
             type="button"
             className="btn btn-primary"
+            onClick={() => setShowAddModal(true)}
+            style={{background:'var(--accent-strong)'}}
+          >
+            <UserPlus className="h-4 w-4" />
+            + New Walk-in
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-primary"
             onClick={() => void runAction(async () => { await advanceQueue(); }, t("staff", "advanceBtn") + " ✓")}
           >
             <PlayCircle className="h-4 w-4" />
@@ -638,6 +652,24 @@ export default function StaffPage() {
             setRxEntry(null);
           }}
           onClose={() => setRxEntry(null)}
+        />
+      )}
+
+      {/* Quick Add Walk-in Modal */}
+      {showAddModal && (
+        <QuickAddModal 
+          onClose={() => setShowAddModal(false)}
+          onAdd={async (name, mobile) => {
+            const resultState = await createWalkIn({
+              name,
+              mobile: mobile || undefined,
+            });
+            // We need to return the token to the modal so it can show the success screen & print option
+            // Find the most recently added pending entry
+            const sortedPending = [...resultState.queue].sort((a, b) => b.createdAt - a.createdAt);
+            const token = sortedPending[0]?.token || "Walk-in";
+            return { token };
+          }}
         />
       )}
     </div>
