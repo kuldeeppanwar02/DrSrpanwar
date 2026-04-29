@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Ticket, User, Phone, Share2, Eye, AlertTriangle, Pill, Loader2, CheckCircle2 } from "lucide-react";
 import { buildClinicHref } from "@/features/clinic/catalog";
 import { getEntryPosition, getQueueSummary } from "@/features/clinic/services/queue-engine";
@@ -24,6 +25,23 @@ export default function WalkInPage() {
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState<WalkInConfirmation | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (redirectCountdown === null) return;
+    
+    if (redirectCountdown === 0) {
+      router.push(buildClinicHref("/live", activeClinicId));
+      return;
+    }
+    
+    const timer = setTimeout(() => {
+      setRedirectCountdown(prev => (prev !== null ? prev - 1 : null));
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [redirectCountdown, router, activeClinicId]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -55,6 +73,14 @@ export default function WalkInPage() {
       setError("");
       setName("");
       setMobile("");
+      
+      // Save token to localStorage so Live Queue can highlight it
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem('my_clinic_token', latestEntry.token);
+      }
+      
+      // Start countdown to redirect
+      setRedirectCountdown(5);
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "Token generation failed.");
     } finally {
@@ -164,6 +190,13 @@ export default function WalkInPage() {
                       <Eye className="h-3 w-3" /> {t("walkin", "checkQueue")}
                     </Link>
                   </div>
+                  {redirectCountdown !== null && (
+                    <div className="mt-5 rounded-lg bg-[rgba(255,255,255,0.1)] p-3 backdrop-blur-sm">
+                      <p className="text-xs font-semibold text-[rgba(255,255,255,0.9)] animate-pulse">
+                        Redirecting to Live Queue in {redirectCountdown} seconds...
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

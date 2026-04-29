@@ -37,6 +37,13 @@ export default function LivePage() {
   const [session, setSession] = useState<{ name: string; role: string } | null>(
     () => getStaffSession(),
   );
+  const [myToken, setMyToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setMyToken(window.localStorage.getItem('my_clinic_token'));
+    }
+  }, []);
 
   useEffect(() => {
     const sync = () => setSession(getStaffSession());
@@ -104,7 +111,16 @@ export default function LivePage() {
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[rgba(255,255,255,0.5)]">
               {t("live", "currentToken")}
             </p>
-            <div className="mt-5 rounded-2xl bg-[linear-gradient(180deg,rgba(67,182,124,0.35),rgba(17,91,72,0.55))] px-6 py-8">
+            <div className={`mt-5 rounded-2xl ${
+              current?.token === myToken 
+                ? "bg-[linear-gradient(180deg,rgba(235,193,125,0.4),rgba(182,93,54,0.6))] shadow-[0_0_30px_rgba(235,193,125,0.25)] border border-[rgba(235,193,125,0.3)]" 
+                : "bg-[linear-gradient(180deg,rgba(67,182,124,0.35),rgba(17,91,72,0.55))]"
+            } px-6 py-8 relative`}>
+              {current?.token === myToken && (
+                <div className="absolute -top-3.5 right-6 rounded-full bg-[#ebc17d] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#17130f] shadow-lg animate-bounce">
+                  ⭐ It's Your Turn!
+                </div>
+              )}
               <p className="display-type text-[4rem] leading-none sm:text-[6rem] lg:text-[8rem]">
                 {current?.token ?? `${activeClinic.prefix}-000`}
               </p>
@@ -188,15 +204,24 @@ export default function LivePage() {
             </div>
 
             <div className="mt-4 space-y-2">
-              {summary.waiting.slice(0, 10).map((entry, index) => (
+              {summary.waiting.slice(0, 10).map((entry, index) => {
+                const isMyToken = entry.token === myToken;
+                return (
                 <div
                   key={entry.id}
-                  className={`rounded-xl border px-3 py-3 ${
-                    index === 0
+                  className={`rounded-xl border px-3 py-3 relative ${
+                    isMyToken
+                      ? "border-[rgba(235,193,125,0.8)] bg-[rgba(235,193,125,0.15)] shadow-[0_0_15px_rgba(235,193,125,0.15)]"
+                      : index === 0
                       ? "border-[rgba(103,237,170,0.2)] bg-[rgba(103,237,170,0.1)]"
                       : "border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)]"
                   }`}
                 >
+                  {isMyToken && (
+                    <div className="absolute -top-2.5 right-3 rounded-full bg-[#ebc17d] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#17130f] shadow-sm">
+                      ⭐ Your Token
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <p className="text-xl font-semibold">{entry.token}</p>
@@ -228,7 +253,7 @@ export default function LivePage() {
                   </div>
                   <p className="mt-1 text-sm text-[rgba(255,255,255,0.65)]">{entry.name}</p>
                 </div>
-              ))}
+              )})}
 
               {summary.waiting.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
