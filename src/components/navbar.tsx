@@ -254,10 +254,12 @@ export function Navbar() {
                       ? `/?clinic=${activeClinicId}`
                       : buildClinicHref(item.href, activeClinicId)
                   }
-                  className="group flex flex-1 flex-col items-center gap-0.5 py-2 transition-colors active:bg-[var(--accent-soft)]"
+                  className="group flex flex-1 flex-col items-center justify-start gap-1 py-1.5 min-h-[54px] transition-colors active:bg-[var(--accent-soft)]"
                 >
-                  <item.icon className="h-[18px] w-[18px] text-[rgba(19,49,58,0.5)] transition-colors group-hover:text-[var(--accent-strong)]" />
-                  <span className="text-[10px] font-semibold text-[rgba(19,49,58,0.55)] group-hover:text-[var(--accent-strong)]">
+                  <div className="flex h-[20px] items-center justify-center">
+                    <item.icon className="h-[18px] w-[18px] text-[rgba(19,49,58,0.5)] transition-colors group-hover:text-[var(--accent-strong)]" />
+                  </div>
+                  <span className="text-[9px] sm:text-[10px] font-semibold text-center leading-[1.1] px-0.5 text-[rgba(19,49,58,0.55)] group-hover:text-[var(--accent-strong)] w-full flex-1 flex items-center justify-center">
                     {item.label}
                   </span>
                 </Link>
