@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { useSearchParams } from "next/navigation";
+import { useRealtimeQueue } from "@/features/clinic/hooks/use-realtime-queue";
 import { clinicService } from "@/features/clinic/services/clinic-service";
 import {
   CLINICS,
