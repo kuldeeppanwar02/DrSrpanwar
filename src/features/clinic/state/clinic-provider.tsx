@@ -61,15 +61,24 @@ function browserOnline() {
   return typeof window === "undefined" ? true : window.navigator.onLine;
 }
 
+import { readFallbackState } from "@/features/clinic/storage/indexed-db";
+
 function createInitialStateMap() {
   return Object.fromEntries(
-    CLINICS.map((clinic) => [clinic.id, createEmptyClinicState(clinic.id)]),
+    CLINICS.map((clinic) => {
+      const cached = readFallbackState(clinic.id);
+      return [clinic.id, cached ?? createEmptyClinicState(clinic.id)];
+    }),
   ) as Record<ClinicId, ClinicState>;
 }
 
 function createInitialReadyMap() {
   return Object.fromEntries(
-    CLINICS.map((clinic) => [clinic.id, false]),
+    CLINICS.map((clinic) => {
+      // If we found a cache in localStorage, it's instantly ready
+      const hasCache = readFallbackState(clinic.id) !== null;
+      return [clinic.id, hasCache];
+    }),
   ) as Record<ClinicId, boolean>;
 }
 

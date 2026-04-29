@@ -61,7 +61,7 @@ function getFallbackKey(clinicId: ClinicId) {
   return `${FALLBACK_KEY}-${clinicId}`;
 }
 
-function readFallbackState(clinicId: ClinicId): ClinicState | null {
+export function readFallbackState(clinicId: ClinicId): ClinicState | null {
   if (!browserReady()) {
     return null;
   }
@@ -109,8 +109,10 @@ export async function readClinicState(clinicId: ClinicId = DEFAULT_CLINIC_ID) {
 }
 
 export async function writeClinicState(state: ClinicState) {
+  // Always dual-write to local storage so we can read it synchronously on first render
+  writeFallbackState(state);
+
   if (!hasIndexedDb()) {
-    writeFallbackState(state);
     return;
   }
 
