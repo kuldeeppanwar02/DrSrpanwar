@@ -17,7 +17,7 @@ export const apiClient = axios.create({
   // In the browser, always prefer same-origin API calls so auth cookies/session
   // and CORS stay aligned across localhost, preview, and production deployments.
   baseURL: typeof window === "undefined" ? env.appBaseUrl || undefined : undefined,
-  timeout: 12000,
+  timeout: 30000,
   headers: {
     Accept: "application/json",
   },

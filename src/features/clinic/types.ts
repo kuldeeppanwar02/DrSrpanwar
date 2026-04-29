@@ -47,6 +47,7 @@ export type QueueEntry = {
   provisionalBookingId?: string;
   requiresPharmacyFollowUp?: boolean;
   pharmacyStatus?: "not-needed" | "pending" | "done";
+  isReportCheck?: boolean;
 };
 
 export type ClinicState = {

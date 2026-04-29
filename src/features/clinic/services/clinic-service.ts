@@ -73,12 +73,29 @@ function remoteStateUrl(clinicId: ClinicId) {
   return `/api/clinics/${clinicId}/state`;
 }
 
+function isFromToday(dateString: string) {
+  const date = new Date(dateString);
+  const today = new Date();
+  return (
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear()
+  );
+}
+
 export const clinicService = {
   async loadState(
     clinicId: ClinicId = DEFAULT_CLINIC_ID,
     options: { online?: boolean } = {},
   ) {
-    const localState = await readClinicState(clinicId);
+    let localState = await readClinicState(clinicId);
+    
+    // Clear offline cache if it is from a previous day
+    if (!isFromToday(localState.lastUpdated) && localState.queue.length > 0) {
+      localState = createInitialClinicState(clinicId);
+      await writeClinicState(localState);
+    }
+
     const online = options.online ?? true;
 
     if (online && hasRemoteSyncConfig()) {
@@ -259,6 +276,24 @@ export const clinicService = {
 
     const state = await readClinicState(clinicId);
     return persistState(sortQueueState(updateQueueStatusState(state, entryId, status)));
+  },
+
+  async markReportCheck(
+    clinicId: ClinicId,
+    entryId: string,
+    options: { online?: boolean } = {},
+  ) {
+    if ((options.online ?? true) && hasRemoteSyncConfig()) {
+      const response = await apiClient.post<{ state: ClinicState }>(
+        `/api/clinics/${clinicId}/entries/${entryId}/report`,
+      );
+      return persistState(sortQueueState(response.data.state));
+    }
+
+    // Dynamic import to avoid circular dependency issues if any
+    const { markReportCheckState } = await import("@/features/clinic/services/queue-engine");
+    const state = await readClinicState(clinicId);
+    return persistState(sortQueueState(markReportCheckState(state, entryId)));
   },
 
   async rescheduleQueueEntry(

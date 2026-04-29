@@ -117,7 +117,8 @@ function mapQueueEntry(row: QueueEntryRow): QueueEntry {
     syncState: row.sync_state,
     createdAt: toIsoString(row.created_at),
     updatedAt: toIsoString(row.updated_at),
-    notes: row.notes ?? undefined,
+    notes: row.notes?.replace("[REPORT_CHECK]", "")?.trim() || undefined,
+    isReportCheck: row.notes?.includes("[REPORT_CHECK]") ?? false,
     requiresPharmacyFollowUp: row.requires_pharmacy_follow_up,
     pharmacyStatus: row.pharmacy_status,
   };
@@ -594,6 +595,71 @@ export async function updateRemoteQueueEntryStatus(
     if (status === "done" || status === "skipped" || status === "hold") {
       await promoteNextWaitingEntry(tx, clinicId, updateTimestamp);
     }
+
+    await tx`
+      update clinic_states
+      set last_updated = ${updateTimestamp}, last_synced_at = ${updateTimestamp}
+      where clinic_id = ${clinicId}
+    `;
+  });
+
+  return getRemoteClinicState(clinicId);
+}
+
+export async function markRemoteEntryAsReportCheck(clinicId: ClinicId, entryId: string) {
+  const db = getDb();
+  const updateTimestamp = new Date().toISOString();
+
+  await db.begin(async (tx) => {
+    await ensureClinicInitialized(tx, clinicId);
+    await tx`
+      select clinic_id
+      from clinic_states
+      where clinic_id = ${clinicId}
+      for update
+    `;
+
+    const [entrySnapshot] = await tx<{ id: string, status: string }[]>`
+      select id, status
+      from queue_entries
+      where clinic_id = ${clinicId} and id = ${entryId}
+      limit 1
+      for update
+    `;
+
+    if (!entrySnapshot) {
+      throw new Error("Queue entry not found.");
+    }
+
+    // Find the currently in-progress or first waiting patient
+    const [currentEntry] = await tx<{ queue_order: number }[]>`
+      select queue_order
+      from queue_entries
+      where clinic_id = ${clinicId} and status in ('in-progress', 'waiting') and id <> ${entryId}
+      order by queue_order asc
+      limit 1
+    `;
+
+    // If no one is waiting/in-progress, target order is 0, they become first.
+    const targetOrder = currentEntry ? currentEntry.queue_order : 0;
+
+    // Shift everyone after target order down by 1
+    await tx`
+      update queue_entries
+      set queue_order = queue_order + 1
+      where clinic_id = ${clinicId} and status = 'waiting' and queue_order > ${targetOrder}
+    `;
+
+    // Insert the returning patient right after the target order
+    await tx`
+      update queue_entries
+      set 
+        status = 'waiting',
+        queue_order = ${targetOrder + 1},
+        notes = concat(coalesce(notes, ''), ' [REPORT_CHECK]'),
+        updated_at = ${updateTimestamp}
+      where id = ${entryId}
+    `;
 
     await tx`
       update clinic_states

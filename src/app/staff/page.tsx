@@ -55,6 +55,7 @@ export default function StaffPage() {
     setEmergencyState,
     syncPendingEntries,
     updateQueueStatus,
+    markReportCheck,
   } = useClinic();
   const { t, lang } = useLang();
   const { toast } = useToast();
@@ -551,7 +552,16 @@ export default function StaffPage() {
                               const resolvedEntryId = await resolveEntryForAction(entry);
                               await updateQueueStatus(resolvedEntryId, entry.status === "hold" ? "waiting" : "hold");
                             })}>
-                            <PauseCircle className="h-3 w-3" /> {entry.status === "hold" ? t("staff", "resumeBtn") : t("staff", "holdBtn")}
+                            <PauseCircle className="h-3 w-3" /> {entry.status === "hold" ? t("staff", "resumeBtn") : "Test / Hold"}
+                          </button>
+                        )}
+                        {isDoctor && entry.status === "hold" && (
+                          <button type="button" className="btn btn-sm" style={{background:'var(--accent)',color:'white'}}
+                            onClick={() => void runAction(async () => {
+                              const resolvedEntryId = await resolveEntryForAction(entry);
+                              await markReportCheck(resolvedEntryId);
+                            }, "Patient inserted for report check ✓")}>
+                            <RotateCcw className="h-3 w-3" /> Insert for Report
                           </button>
                         )}
                         <button type="button" className="btn btn-ghost btn-sm"

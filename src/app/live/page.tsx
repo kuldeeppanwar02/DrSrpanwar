@@ -124,11 +124,13 @@ export default function LivePage() {
                   ⭐ It's Your Turn!
                 </div>
               )}
-              <p className="display-type text-[5rem] leading-none sm:text-[7rem] lg:text-[9.5rem] font-black tracking-tighter text-[#fdfffc] drop-shadow-md">
+              <p className="display-type text-[5rem] flex items-center gap-4 leading-none sm:text-[7rem] lg:text-[9.5rem] font-black tracking-tighter text-[#fdfffc] drop-shadow-md">
+                {current?.isReportCheck && <span className="text-[#00ffcc] opacity-90 text-[4rem] sm:text-[6rem] lg:text-[8rem]">🔄</span>}
                 {current?.token ?? `${activeClinic.prefix}-000`}
               </p>
-              <p className="mt-4 text-2xl font-bold text-[#a2f1e6]">
+              <p className="mt-4 flex items-center gap-2 text-2xl font-bold text-[#a2f1e6]">
                 {current?.name ?? t("live", "queuePreparing")}
+                {current?.isReportCheck && <span className="rounded-full bg-[#00ffcc]/20 px-3 py-1 text-xs font-bold text-[#00ffcc] uppercase tracking-wider">Report Check</span>}
               </p>
             </div>
 
@@ -138,9 +140,13 @@ export default function LivePage() {
                 <p className="text-[11px] font-extrabold uppercase tracking-widest text-[#83958d]">
                   {t("live", "nextToken")}
                 </p>
-                <p className="mt-3 text-[3.5rem] leading-none font-black text-[#dbe5df]">{next?.token ?? "--"}</p>
-                <p className="mt-2 text-base font-medium text-[#b9cbc2]">
-                  {next?.name ?? t("live", "pleaseWait")}
+                <p className="mt-3 flex items-center gap-2 text-[3.5rem] leading-none font-black text-[#dbe5df]">
+                  {summary.next?.isReportCheck && <span className="text-[#00ffcc] opacity-80 text-[2.5rem]">🔄</span>}
+                  {summary.next?.token ?? "--"}
+                </p>
+                <p className="mt-2 flex items-center gap-2 text-base font-medium text-[#b9cbc2]">
+                  {summary.next?.name ?? "--"}
+                  {summary.next?.isReportCheck && <span className="rounded-full bg-[#00ffcc]/10 px-2 py-0.5 text-[9px] font-bold text-[#00ffcc] uppercase tracking-wider">Report</span>}
                 </p>
               </div>
               <div className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[rgba(25,33,30,0.6)] p-6 backdrop-blur-md relative overflow-hidden">
@@ -228,11 +234,12 @@ export default function LivePage() {
                   )}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <p className={`text-2xl font-black ${isMyToken ? "text-[#ffd700]" : "text-[#fdfffc]"}`}>
+                      <p className={`text-2xl font-black flex items-center gap-2 ${isMyToken ? "text-[#ffd700]" : "text-[#fdfffc]"}`}>
+                        {entry.isReportCheck && <span className="text-[#00ffcc] opacity-90">🔄</span>}
                         {entry.token}
                       </p>
                       <span className="rounded-full bg-[rgba(255,255,255,0.1)] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-[#b9cbc2]">
-                        {entry.source}
+                        {entry.isReportCheck ? "Report Check" : entry.source}
                       </span>
                     </div>
                     {/* Doctor inline actions */}

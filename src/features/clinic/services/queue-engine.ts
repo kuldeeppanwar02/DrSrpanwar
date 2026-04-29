@@ -334,8 +334,45 @@ export function updateQueueStatusState(
               status: "done",
               updatedAt: new Date().toISOString(),
             }
-          : entry,
+      : entry,
     ),
+  });
+}
+
+export function markReportCheckState(state: ClinicState, entryId: string) {
+  const queue = [...state.queue];
+  const entryIndex = queue.findIndex((entry) => entry.id === entryId);
+
+  if (entryIndex < 0) {
+    return state;
+  }
+
+  const [returningEntry] = queue.splice(entryIndex, 1);
+  const currentEntryIndex = queue.findIndex((e) => e.status === "in-progress" || e.status === "waiting");
+  
+  const targetQueueOrder = currentEntryIndex >= 0 ? (queue[currentEntryIndex].queueOrder ?? 0) : 0;
+  
+  const insertIndex = currentEntryIndex >= 0 ? currentEntryIndex + 1 : 0;
+
+  // Shift everyone after
+  for (let i = insertIndex; i < queue.length; i++) {
+    if (queue[i].status === "waiting" && (queue[i].queueOrder ?? 0) > targetQueueOrder) {
+      queue[i] = { ...queue[i], queueOrder: (queue[i].queueOrder ?? 0) + 1 };
+    }
+  }
+
+  queue.splice(insertIndex, 0, {
+    ...returningEntry,
+    status: "waiting",
+    queueOrder: targetQueueOrder + 1,
+    notes: `${returningEntry.notes || ""} [REPORT_CHECK]`.trim(),
+    isReportCheck: true,
+    updatedAt: new Date().toISOString(),
+  });
+
+  return touchState({
+    ...state,
+    queue,
   });
 }
 

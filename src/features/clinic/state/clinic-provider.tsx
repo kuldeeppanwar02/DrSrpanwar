@@ -38,6 +38,7 @@ type ClinicContextValue = {
   syncPendingEntries: (clinicId?: ClinicId) => Promise<ClinicState>;
   advanceQueue: () => Promise<ClinicState>;
   updateQueueStatus: (entryId: string, status: QueueStatus) => Promise<ClinicState>;
+  markReportCheck: (entryId: string) => Promise<ClinicState>;
   rescheduleQueueEntry: (entryId: string) => Promise<ClinicState>;
   resetClinicState: () => Promise<ClinicState>;
   setEmergencyState: (input: {
@@ -234,6 +235,14 @@ function ClinicProviderInner({
         requestedClinicId,
         entryId,
         status,
+        { online: isOnline },
+      );
+      return applyState(requestedClinicId, nextState);
+    },
+    markReportCheck: async (entryId) => {
+      const nextState = await clinicService.markReportCheck(
+        requestedClinicId,
+        entryId,
         { online: isOnline },
       );
       return applyState(requestedClinicId, nextState);
