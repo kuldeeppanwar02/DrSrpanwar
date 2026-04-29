@@ -661,6 +661,7 @@ export default function StaffPage() {
           onClose={() => setShowAddModal(false)}
           onAdd={async (name, mobile) => {
             const resultState = await createWalkIn({
+              clinicId: activeClinicId,
               name,
               mobile: mobile || undefined,
             });
