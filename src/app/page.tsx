@@ -80,7 +80,7 @@ export default function HomePage() {
   const isDoctor = session?.role === "doctor";
   const isStaff = session?.role === "staff";
   const isLoggedIn = isDoctor || isStaff;
-  const heroTitle = lang === "hi" ? "पंवार स्मार्टकेयर" : "Panwar SmartCare";
+  const heroTitle = lang === "hi" ? "पंवार हेल्थ केयर" : "PANWAR HEALTH CARE";
 
   return (
     <div className="page-shell">
