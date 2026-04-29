@@ -667,7 +667,7 @@ export default function StaffPage() {
             });
             // We need to return the token to the modal so it can show the success screen & print option
             // Find the most recently added pending entry
-            const sortedPending = [...resultState.queue].sort((a, b) => b.createdAt - a.createdAt);
+            const sortedPending = [...resultState.queue].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             const token = sortedPending[0]?.token || "Walk-in";
             return { token };
           }}
