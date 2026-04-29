@@ -77,10 +77,10 @@ export default function LivePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#0f6b63_0%,#082a33_48%,#05161d_100%)] px-4 py-6 text-white sm:px-8 sm:py-8">
-      <div className="mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-7xl flex-col gap-6">
-        <header className="rounded-2xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] px-5 py-4 backdrop-blur">
-          <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+    <div className="min-h-screen bg-[#0c1512] px-4 py-6 text-[#fdfffc] sm:px-8 sm:py-8 font-sans">
+      <div className="mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-7xl flex-col gap-8">
+        <header className="rounded-[32px] border border-[rgba(255,255,255,0.15)] bg-[rgba(15,107,99,0.1)] px-6 py-5 backdrop-blur-[40px] shadow-[0_8px_32px_rgba(0,0,0,0.2)]">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[rgba(255,255,255,0.5)]">
                 {t("live", "waitingArea")}
@@ -106,45 +106,49 @@ export default function LivePage() {
           </div>
         </header>
 
-        <main className="grid flex-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_22rem]">
-          <section className="live-token-shadow rounded-3xl bg-[rgba(255,255,255,0.06)] p-6 sm:p-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[rgba(255,255,255,0.5)]">
+        <main className="grid flex-1 gap-8 xl:grid-cols-[minmax(0,1.1fr)_24rem]">
+          <section className="live-token-shadow rounded-[32px] border border-[rgba(255,255,255,0.1)] bg-[rgba(15,107,99,0.05)] p-6 sm:p-10 backdrop-blur-[20px]">
+            <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-[#00ffcc] drop-shadow-[0_0_8px_rgba(0,255,204,0.5)]">
               {t("live", "currentToken")}
             </p>
-            <div className={`mt-5 rounded-2xl ${
+            <div className={`mt-6 rounded-[32px] ${
               current?.token === myToken 
-                ? "bg-[linear-gradient(180deg,rgba(235,193,125,0.4),rgba(182,93,54,0.6))] shadow-[0_0_30px_rgba(235,193,125,0.25)] border border-[rgba(235,193,125,0.3)]" 
-                : "bg-[linear-gradient(180deg,rgba(67,182,124,0.35),rgba(17,91,72,0.55))]"
-            } px-6 py-8 relative`}>
+                ? "bg-[linear-gradient(180deg,#3a3000,#725f00)] shadow-[0_0_40px_rgba(255,215,0,0.3)] border-2 border-[#ffd700]" 
+                : "bg-[linear-gradient(180deg,#00513f,#002118)] shadow-[0_0_30px_rgba(0,255,204,0.15)] border border-[#00ffcc]"
+            } px-8 py-12 relative overflow-hidden`}>
+              {/* Glass reflection effect */}
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.1)_0%,transparent_50%)] rounded-[32px] pointer-events-none" />
+              
               {current?.token === myToken && (
-                <div className="absolute -top-3.5 right-6 rounded-full bg-[#ebc17d] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#17130f] shadow-lg animate-bounce">
+                <div className="absolute top-4 right-6 rounded-full bg-[#ffd700] px-4 py-1.5 text-xs font-black uppercase tracking-widest text-[#221b00] shadow-[0_0_20px_rgba(255,215,0,0.8)] animate-pulse">
                   ⭐ It's Your Turn!
                 </div>
               )}
-              <p className="display-type text-[4rem] leading-none sm:text-[6rem] lg:text-[8rem]">
+              <p className="display-type text-[5rem] leading-none sm:text-[7rem] lg:text-[9.5rem] font-black tracking-tighter text-[#fdfffc] drop-shadow-md">
                 {current?.token ?? `${activeClinic.prefix}-000`}
               </p>
-              <p className="mt-3 text-xl font-semibold text-[rgba(255,255,255,0.8)]">
+              <p className="mt-4 text-2xl font-bold text-[#a2f1e6]">
                 {current?.name ?? t("live", "queuePreparing")}
               </p>
             </div>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <div className="rounded-2xl bg-[rgba(255,255,255,0.06)] p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-[rgba(255,255,255,0.5)]">
+            <div className="mt-6 grid gap-6 md:grid-cols-2">
+              <div className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[rgba(25,33,30,0.6)] p-6 backdrop-blur-md relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[radial-gradient(circle,#00ffcc_0%,transparent_70%)] opacity-10 pointer-events-none" />
+                <p className="text-[11px] font-extrabold uppercase tracking-widest text-[#83958d]">
                   {t("live", "nextToken")}
                 </p>
-                <p className="mt-2 text-4xl font-semibold">{next?.token ?? "--"}</p>
-                <p className="mt-1 text-sm text-[rgba(255,255,255,0.6)]">
+                <p className="mt-3 text-[3.5rem] leading-none font-black text-[#dbe5df]">{next?.token ?? "--"}</p>
+                <p className="mt-2 text-base font-medium text-[#b9cbc2]">
                   {next?.name ?? t("live", "pleaseWait")}
                 </p>
               </div>
-              <div className="rounded-2xl bg-[rgba(255,255,255,0.06)] p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-[rgba(255,255,255,0.5)]">
+              <div className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[rgba(25,33,30,0.6)] p-6 backdrop-blur-md relative overflow-hidden">
+                <p className="text-[11px] font-extrabold uppercase tracking-widest text-[#83958d]">
                   {t("live", "queueCount")}
                 </p>
-                <p className="mt-2 text-4xl font-semibold">{summary.waiting.length}</p>
-                <p className="mt-1 text-sm text-[rgba(255,255,255,0.6)]">
+                <p className="mt-3 text-[3.5rem] leading-none font-black text-[#dbe5df]">{summary.waiting.length}</p>
+                <p className="mt-2 text-base font-medium text-[#b9cbc2]">
                   {t("live", "patientsWaiting")}
                 </p>
               </div>
@@ -190,50 +194,52 @@ export default function LivePage() {
             )}
           </section>
 
-          <aside className="live-token-shadow rounded-2xl bg-[rgba(255,255,255,0.06)] p-5">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[rgba(255,255,255,0.5)]">
+          <aside className="rounded-[32px] border border-[rgba(255,255,255,0.1)] bg-[rgba(21,29,26,0.6)] p-6 backdrop-blur-[20px] flex flex-col">
+            <div className="flex items-center justify-between pb-4 border-b border-[rgba(255,255,255,0.05)]">
+              <p className="text-[12px] font-extrabold uppercase tracking-widest text-[#a2f1e6]">
                 {t("live", "waitingList")}
               </p>
               <Link
                 href={buildClinicHref("/staff", activeClinicId)}
-                className="rounded-full border border-[rgba(255,255,255,0.15)] px-3 py-1 text-xs font-semibold text-[rgba(255,255,255,0.7)]"
+                className="rounded-full border border-[#3a4a44] bg-[#29322f] px-4 py-1.5 text-[11px] font-bold uppercase tracking-wide text-[#dbe5df] transition hover:bg-[#323b37]"
               >
                 {t("nav", "staff")}
               </Link>
             </div>
 
-            <div className="mt-4 space-y-2">
+            <div className="mt-6 space-y-3 overflow-y-auto pr-1 custom-scrollbar">
               {summary.waiting.slice(0, 10).map((entry, index) => {
                 const isMyToken = entry.token === myToken;
                 return (
                 <div
                   key={entry.id}
-                  className={`rounded-xl border px-3 py-3 relative ${
+                  className={`rounded-[20px] px-5 py-4 relative transition-all duration-300 ${
                     isMyToken
-                      ? "border-[rgba(235,193,125,0.8)] bg-[rgba(235,193,125,0.15)] shadow-[0_0_15px_rgba(235,193,125,0.15)]"
+                      ? "bg-[rgba(255,215,0,0.1)] shadow-[0_0_20px_rgba(255,215,0,0.15)] border border-[#ffd700] transform scale-[1.02]"
                       : index === 0
-                      ? "border-[rgba(103,237,170,0.2)] bg-[rgba(103,237,170,0.1)]"
-                      : "border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)]"
+                      ? "bg-[rgba(0,255,204,0.05)] border border-[rgba(0,255,204,0.3)]"
+                      : "bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.05)]"
                   }`}
                 >
                   {isMyToken && (
-                    <div className="absolute -top-2.5 right-3 rounded-full bg-[#ebc17d] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#17130f] shadow-sm">
+                    <div className="absolute -top-3 right-4 rounded-full bg-[#ffd700] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[#221b00] shadow-[0_0_10px_rgba(255,215,0,0.5)]">
                       ⭐ Your Token
                     </div>
                   )}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <p className="text-xl font-semibold">{entry.token}</p>
-                      <span className="rounded-full bg-[rgba(255,255,255,0.08)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[rgba(255,255,255,0.6)]">
+                    <div className="flex items-center gap-3">
+                      <p className={`text-2xl font-black ${isMyToken ? "text-[#ffd700]" : "text-[#fdfffc]"}`}>
+                        {entry.token}
+                      </p>
+                      <span className="rounded-full bg-[rgba(255,255,255,0.1)] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-[#b9cbc2]">
                         {entry.source}
                       </span>
                     </div>
-                    {/* Doctor inline actions on each waiting entry */}
+                    {/* Doctor inline actions */}
                     {isDoctor && (
-                      <div className="flex gap-1">
+                      <div className="flex gap-1.5 opacity-80 hover:opacity-100">
                         <button type="button"
-                          className="inline-flex items-center gap-1 rounded-full bg-[rgba(103,237,170,0.15)] px-2 py-0.5 text-[10px] font-semibold text-[#67edaa] active:scale-95"
+                          className="inline-flex items-center gap-1 rounded-full bg-[rgba(0,255,204,0.15)] px-2.5 py-1 text-[10px] font-bold text-[#00ffcc] hover:bg-[rgba(0,255,204,0.25)] transition active:scale-95"
                           onClick={() => void runAction(async () => {
                             const resolvedEntryId = await resolveEntryId(entry);
                             await updateQueueStatus(resolvedEntryId, "in-progress");
@@ -241,7 +247,7 @@ export default function LivePage() {
                           <PlayCircle className="h-3 w-3" /> {t("staff", "callNow")}
                         </button>
                         <button type="button"
-                          className="inline-flex items-center gap-1 rounded-full bg-[rgba(182,93,54,0.15)] px-2 py-0.5 text-[10px] font-semibold text-[rgba(255,180,140,0.9)] active:scale-95"
+                          className="inline-flex items-center gap-1 rounded-full bg-[rgba(255,180,171,0.15)] px-2.5 py-1 text-[10px] font-bold text-[#ffb4ab] hover:bg-[rgba(255,180,171,0.25)] transition active:scale-95"
                           onClick={() => void runAction(async () => {
                             const resolvedEntryId = await resolveEntryId(entry);
                             await rescheduleQueueEntry(resolvedEntryId);
@@ -251,7 +257,7 @@ export default function LivePage() {
                       </div>
                     )}
                   </div>
-                  <p className="mt-1 text-sm text-[rgba(255,255,255,0.65)]">{entry.name}</p>
+                  <p className="mt-1.5 text-base font-medium text-[#b9cbc2]">{entry.name}</p>
                 </div>
               )})}
 
