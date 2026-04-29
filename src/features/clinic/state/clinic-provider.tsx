@@ -118,6 +118,11 @@ function ClinicProviderInner({
   const isReady = readyMap[requestedClinicId] ?? false;
   const activeClinic = getClinicDefinition(requestedClinicId);
 
+  const refresh = async (clinicId: ClinicId = requestedClinicId) => {
+    const nextState = await clinicService.loadState(clinicId, { online: browserOnline() });
+    applyState(clinicId, nextState);
+  };
+
   const applyState = (clinicId: ClinicId, nextState: ClinicState) => {
     startTransition(() => {
       setStateMap((current) => ({
@@ -133,10 +138,13 @@ function ClinicProviderInner({
     return nextState;
   };
 
-  const refresh = async (clinicId: ClinicId = requestedClinicId) => {
-    const nextState = await clinicService.loadState(clinicId, { online: browserOnline() });
-    applyState(clinicId, nextState);
-  };
+  // Use Realtime hook to automatically call refresh when Supabase pushes updates
+  useRealtimeQueue(requestedClinicId, () => {
+    // We only refresh if the system isn't currently syncing to prevent loops
+    if (!syncInFlight && isOnline) {
+      refresh(requestedClinicId).catch(console.error);
+    }
+  });
 
   const syncPendingEntries = async (clinicId: ClinicId = requestedClinicId) => {
     setSyncInFlight(true);
