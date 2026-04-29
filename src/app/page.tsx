@@ -366,28 +366,66 @@ function FocusedClinicCard({
         {!isLoggedIn && (
           <div className="mt-6 space-y-3">
             {clinic.hasBooking ? (
-              <>
-                <Link href={buildClinicHref("/book", clinic.id)} className="btn btn-primary min-h-[4rem] w-full justify-center text-xl">
-                  <CalendarCheck className="h-5 w-5" /> {t("home", "bookBtn")}
+              <div className="grid gap-3 sm:grid-cols-1">
+                <Link href={buildClinicHref("/book", clinic.id)} className="flex items-center gap-4 rounded-[1.8rem] bg-[linear-gradient(145deg,#23c965,#1cb056)] p-3 pr-5 shadow-[0_12px_24px_rgba(35,201,101,0.25)] transition-transform hover:-translate-y-1 active:scale-95 text-white">
+                  <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-[1.4rem] bg-[rgba(255,255,255,0.2)] shadow-inner">
+                    <CalendarCheck className="h-8 w-8" />
+                  </div>
+                  <div className="flex-1 text-left min-w-0 py-1">
+                    <p className="text-[1.35rem] font-bold leading-tight">{t("home", "bookBtn")}</p>
+                    <p className="mt-0.5 text-sm font-medium text-[rgba(255,255,255,0.9)] truncate">बिना इंतज़ार किये, 3 क्लिक में</p>
+                  </div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(255,255,255,0.2)]">
+                    <ArrowRight className="h-4 w-4" />
+                  </div>
                 </Link>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Link href={buildClinicHref("/walkin", clinic.id)} className="btn btn-warm min-h-[4rem] justify-center text-lg">
-                    <Ticket className="h-5 w-5" /> {t("home", "walkinBtn")}
-                  </Link>
-                  <Link href={buildClinicHref("/status", clinic.id)} className="btn btn-outline min-h-[4rem] justify-center text-lg">
-                    <Search className="h-5 w-5" /> {t("home", "checkStatus")}
-                  </Link>
-                </div>
-              </>
+
+                <Link href={buildClinicHref("/live", clinic.id)} className="flex items-center gap-4 rounded-[1.8rem] border border-[rgba(12,86,81,0.06)] bg-white p-3 pr-5 shadow-[0_8px_20px_rgba(30,27,19,0.04)] transition-transform hover:-translate-y-1 active:scale-95 text-[#17130f]">
+                  <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-[1.4rem] bg-[#f0f5ff] text-[#2c61fb]">
+                    <Clock className="h-8 w-8" />
+                  </div>
+                  <div className="flex-1 text-left min-w-0 py-1">
+                    <p className="text-[1.35rem] font-bold leading-tight">{t("home", "liveQueue")}</p>
+                    <p className="mt-0.5 text-sm font-medium text-[rgba(19,49,58,0.52)] truncate">अस्पताल की कतार देखें (Queue)</p>
+                  </div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(19,49,58,0.04)]">
+                    <ArrowRight className="h-4 w-4 text-[rgba(19,49,58,0.4)]" />
+                  </div>
+                </Link>
+                
+                {/* Secondary Walk-in fallback for those who need online parchi without booking */}
+                <Link href={buildClinicHref("/walkin", clinic.id)} className="mt-2 text-center text-sm font-semibold text-[var(--accent)] hover:underline">
+                  ऑनलाइन पर्ची (Walk-in Token) बनाएं →
+                </Link>
+              </div>
             ) : (
-              <>
-                <Link href={buildClinicHref("/walkin", clinic.id)} className="btn btn-warm min-h-[4rem] w-full justify-center text-xl">
-                  <Ticket className="h-5 w-5" /> {t("pharmacy", "pickupToken")}
+              <div className="grid gap-3 sm:grid-cols-1">
+                <Link href={buildClinicHref("/walkin", clinic.id)} className="flex items-center gap-4 rounded-[1.8rem] bg-[linear-gradient(145deg,#23c965,#1cb056)] p-3 pr-5 shadow-[0_12px_24px_rgba(35,201,101,0.25)] transition-transform hover:-translate-y-1 active:scale-95 text-white">
+                  <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-[1.4rem] bg-[rgba(255,255,255,0.2)] shadow-inner">
+                    <Ticket className="h-8 w-8" />
+                  </div>
+                  <div className="flex-1 text-left min-w-0 py-1">
+                    <p className="text-[1.35rem] font-bold leading-tight">{t("home", "walkinBtn")}</p>
+                    <p className="mt-0.5 text-sm font-medium text-[rgba(255,255,255,0.9)] truncate">फार्मेसी के लिए टोकन</p>
+                  </div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(255,255,255,0.2)]">
+                    <ArrowRight className="h-4 w-4" />
+                  </div>
                 </Link>
-                <Link href={buildClinicHref("/status", clinic.id)} className="btn btn-outline min-h-[4rem] w-full justify-center text-lg">
-                  <Search className="h-5 w-5" /> {t("home", "checkStatus")}
+
+                <Link href={buildClinicHref("/live", clinic.id)} className="flex items-center gap-4 rounded-[1.8rem] border border-[rgba(12,86,81,0.06)] bg-white p-3 pr-5 shadow-[0_8px_20px_rgba(30,27,19,0.04)] transition-transform hover:-translate-y-1 active:scale-95 text-[#17130f]">
+                  <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-[1.4rem] bg-[#f0f5ff] text-[#2c61fb]">
+                    <Clock className="h-8 w-8" />
+                  </div>
+                  <div className="flex-1 text-left min-w-0 py-1">
+                    <p className="text-[1.35rem] font-bold leading-tight">{t("home", "liveQueue")}</p>
+                    <p className="mt-0.5 text-sm font-medium text-[rgba(19,49,58,0.52)] truncate">अस्पताल की कतार देखें (Queue)</p>
+                  </div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(19,49,58,0.04)]">
+                    <ArrowRight className="h-4 w-4 text-[rgba(19,49,58,0.4)]" />
+                  </div>
                 </Link>
-              </>
+              </div>
             )}
           </div>
         )}
