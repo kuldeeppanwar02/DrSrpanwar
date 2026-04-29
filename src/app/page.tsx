@@ -104,13 +104,8 @@ export default function HomePage() {
           <div className="pointer-events-none absolute -right-12 -top-10 h-36 w-36 rounded-full bg-[radial-gradient(circle,rgba(15,107,99,0.12),transparent_72%)] blur-xl" />
 
           <div className="relative z-10">
-            <p className="inline-flex items-center gap-2 rounded-full border border-[rgba(73,181,109,0.3)] bg-[rgba(220,250,228,0.9)] px-3.5 py-1.5 text-sm font-semibold text-[var(--success)] shadow-[0_10px_24px_rgba(73,181,109,0.08)]">
-              <span className={`h-2.5 w-2.5 rounded-full ${isOnline ? "bg-emerald-500" : "bg-red-400"}`} />
-              {isOnline ? "Now Online" : "Offline Cached Mode"}
-            </p>
-
-            <div className="mt-4 max-w-4xl">
-              <h1 className="display-type text-[2.25rem] leading-[0.92] tracking-[-0.04em] text-[#1c1913] sm:text-[3.6rem]">
+            <div className="mt-2 max-w-4xl">
+              <h1 className="display-type text-[7.5vw] leading-[0.92] tracking-tighter text-[#1c1913] whitespace-nowrap sm:text-[3.6rem]">
                 {heroTitle}
               </h1>
               {isLoggedIn ? (

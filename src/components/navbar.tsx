@@ -187,6 +187,19 @@ export function Navbar() {
 
         {/* Right controls */}
         <div className="flex items-center gap-2">
+          {/* Online status indicator */}
+          <div 
+            className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold transition-colors ${
+              isOnline 
+                ? "border-[rgba(73,181,109,0.3)] bg-[rgba(220,250,228,0.6)] text-[var(--success)]" 
+                : "border-[rgba(192,57,43,0.3)] bg-[rgba(250,220,220,0.6)] text-[var(--danger)]"
+            }`}
+            title={isOnline ? "System is Online & Syncing" : "Offline Cached Mode"}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${isOnline ? "bg-emerald-500 animate-pulse-dot" : "bg-red-500"}`} />
+            <span className="hidden xs:inline">{isOnline ? "Online" : "Offline"}</span>
+          </div>
+
           <button
             type="button"
             onClick={toggleLang}
@@ -197,11 +210,6 @@ export function Navbar() {
             <Globe className="h-3.5 w-3.5" />
             {lang === "hi" ? "EN" : "हि"}
           </button>
-
-          <span
-            className={`h-2 w-2 rounded-full ${isOnline ? "bg-emerald-500 animate-pulse-dot" : "bg-red-400"}`}
-            title={isOnline ? "Online" : "Offline"}
-          />
 
           {!session && (
             <Link
