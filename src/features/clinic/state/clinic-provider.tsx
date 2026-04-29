@@ -16,7 +16,15 @@ import {
   getClinicDefinition,
   isClinicId,
 } from "@/features/clinic/catalog";
-import { createEmptyClinicState } from "@/features/clinic/services/queue-engine";
+import { 
+  createEmptyClinicState,
+  advanceQueueState,
+  markReportCheckState,
+  rescheduleQueueEntryState,
+  updateQueueStatusState,
+  createWalkInState,
+  createBookingState,
+} from "@/features/clinic/services/queue-engine";
 import type {
   ClinicId,
   ClinicState,
@@ -204,56 +212,109 @@ function ClinicProviderInner({
     syncInFlight,
     refresh,
     createBooking: async (input) => {
-      const nextState = await clinicService.createBooking(
-        {
-          ...input,
-          clinicId: input.clinicId ?? requestedClinicId,
-        },
-        { online: isOnline },
-      );
-      return applyState(nextState.clinicId, nextState);
+      const payload = {
+        ...input,
+        clinicId: input.clinicId ?? requestedClinicId,
+      };
+
+      // Optimistic Update
+      const optimisticState = createBookingState(state, payload, { online: isOnline });
+      applyState(payload.clinicId, optimisticState);
+
+      try {
+        const nextState = await clinicService.createBooking(payload, { online: isOnline });
+        return applyState(nextState.clinicId, nextState);
+      } catch (err) {
+        applyState(payload.clinicId, state);
+        throw err;
+      }
     },
     createWalkIn: async (input) => {
-      const nextState = await clinicService.createWalkIn(
-        {
-          ...input,
-          clinicId: input.clinicId ?? requestedClinicId,
-        },
-        { online: isOnline },
-      );
-      return applyState(nextState.clinicId, nextState);
+      const payload = {
+        ...input,
+        clinicId: input.clinicId ?? requestedClinicId,
+      };
+
+      // Optimistic Update
+      const optimisticState = createWalkInState(state, payload, { online: isOnline });
+      applyState(payload.clinicId, optimisticState);
+
+      try {
+        const nextState = await clinicService.createWalkIn(payload, { online: isOnline });
+        return applyState(nextState.clinicId, nextState);
+      } catch (err) {
+        applyState(payload.clinicId, state);
+        throw err;
+      }
     },
     syncPendingEntries,
     advanceQueue: async () => {
-      const nextState = await clinicService.advanceQueue(requestedClinicId, {
-        online: isOnline,
-      });
-      return applyState(requestedClinicId, nextState);
+      // Optimistic Update
+      const optimisticState = advanceQueueState(state);
+      applyState(requestedClinicId, optimisticState);
+      
+      try {
+        const nextState = await clinicService.advanceQueue(requestedClinicId, {
+          online: isOnline,
+        });
+        return applyState(requestedClinicId, nextState);
+      } catch (err) {
+        // Revert on error
+        applyState(requestedClinicId, state);
+        throw err;
+      }
     },
     updateQueueStatus: async (entryId, status) => {
-      const nextState = await clinicService.updateQueueStatus(
-        requestedClinicId,
-        entryId,
-        status,
-        { online: isOnline },
-      );
-      return applyState(requestedClinicId, nextState);
+      // Optimistic Update
+      const optimisticState = updateQueueStatusState(state, entryId, status);
+      applyState(requestedClinicId, optimisticState);
+      
+      try {
+        const nextState = await clinicService.updateQueueStatus(
+          requestedClinicId,
+          entryId,
+          status,
+          { online: isOnline },
+        );
+        return applyState(requestedClinicId, nextState);
+      } catch (err) {
+        applyState(requestedClinicId, state);
+        throw err;
+      }
     },
     markReportCheck: async (entryId) => {
-      const nextState = await clinicService.markReportCheck(
-        requestedClinicId,
-        entryId,
-        { online: isOnline },
-      );
-      return applyState(requestedClinicId, nextState);
+      // Optimistic Update
+      const optimisticState = markReportCheckState(state, entryId);
+      applyState(requestedClinicId, optimisticState);
+
+      try {
+        const nextState = await clinicService.markReportCheck(
+          requestedClinicId,
+          entryId,
+          { online: isOnline },
+        );
+        return applyState(requestedClinicId, nextState);
+      } catch (err) {
+        applyState(requestedClinicId, state);
+        throw err;
+      }
     },
     rescheduleQueueEntry: async (entryId) => {
-      const nextState = await clinicService.rescheduleQueueEntry(
-        requestedClinicId,
-        entryId,
-        { online: isOnline },
-      );
-      return applyState(requestedClinicId, nextState);
+      // Optimistic Update
+      const optimisticState = rescheduleQueueEntryState(state, entryId);
+      applyState(requestedClinicId, optimisticState);
+
+      try {
+        const nextState = await clinicService.rescheduleQueueEntry(
+          requestedClinicId,
+          entryId,
+          { online: isOnline },
+        );
+        return applyState(requestedClinicId, nextState);
+      } catch (err) {
+        applyState(requestedClinicId, state);
+        throw err;
+      }
     },
     resetClinicState: async () => {
       const nextState = await clinicService.resetState(requestedClinicId, {
