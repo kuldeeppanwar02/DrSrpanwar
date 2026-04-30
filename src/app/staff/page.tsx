@@ -545,19 +545,7 @@ export default function StaffPage() {
           ) : (
             <div className="space-y-2 stagger-children">
               {visibleEntries.map((entry) => (
-                <div key={entry.id} className={`fade-up card p-3 ${entry.status === "done" || entry.status === "skipped" ? "opacity-65" : ""}`}>
-                  {entry.status === "done" || entry.status === "skipped" ? (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <span className={`queue-dot ${entry.status}`} />
-                        <span className="text-base font-bold">{entry.token}</span>
-                        <span className="text-sm text-[rgba(19,49,58,0.55)]">{entry.name}</span>
-                      </div>
-                      <span className={`badge ${entry.status === "done" ? "badge-done" : "badge-skipped"}`}>
-                        {entry.status === "done" ? t("queue", "complete") : t("staff", "skipBtn")}
-                      </span>
-                    </div>
-                  ) : (
+                <div key={entry.id} className={`fade-up card p-3 ${entry.status === "done" || entry.status === "skipped" ? "opacity-75" : ""}`}>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-start gap-2.5">
                         <span className={`queue-dot mt-2 ${entry.status}`} />
@@ -596,12 +584,13 @@ export default function StaffPage() {
                           )}
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        <button type="button" className="btn btn-primary btn-sm"
-                          onClick={() => void runAction(async () => {
-                            const resolvedEntryId = await resolveEntryForAction(entry);
-                            await updateQueueStatus(resolvedEntryId, "in-progress");
-                          })}>
+                      {entry.status !== "done" && entry.status !== "skipped" && (
+                        <div className="flex flex-wrap gap-1.5">
+                          <button type="button" className="btn btn-primary btn-sm"
+                            onClick={() => void runAction(async () => {
+                              const resolvedEntryId = await resolveEntryForAction(entry);
+                              await updateQueueStatus(resolvedEntryId, "in-progress");
+                            })}>
                           <PlayCircle className="h-3 w-3" /> {t("staff", "callNow")}
                         </button>
                         {isDoctor && (
@@ -656,10 +645,9 @@ export default function StaffPage() {
                             <SkipForward className="h-3 w-3" /> {t("staff", "skipBtn")}
                           </button>
                         )}
-                      </div>
+                        </div>
+                      )}
                     </div>
-
-                  )}
                 </div>
               ))}
               </div>
