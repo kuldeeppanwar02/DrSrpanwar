@@ -385,6 +385,7 @@ export function rescheduleQueueEntryState(state: ClinicState, entryId: string) {
     dayLabel: "Kal",
     slotLabel: "Morning",
     status: "waiting",
+    source: "booking",
     queueOrder: getNextQueueOrder(queue),
     updatedAt: new Date().toISOString(),
     notes: "Kal ke liye rescheduled",
