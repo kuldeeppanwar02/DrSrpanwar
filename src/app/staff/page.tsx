@@ -83,7 +83,10 @@ export default function StaffPage() {
 
   const isDoctor = session?.role === "doctor";
   
-
+  const pendingEntries = useMemo(
+    () => clinicState.queue.filter((e) => e.status !== "done" && e.status !== "skipped"),
+    [clinicState.queue],
+  );
   // Split queue logically
   const liveQueue = useMemo(
     () => clinicState.queue.filter((e) => e.status !== "done" && e.status !== "skipped" && e.dayLabel === "Aaj" && e.source === "walk-in"),
