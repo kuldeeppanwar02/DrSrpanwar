@@ -52,7 +52,7 @@ function mapVisit(row: PatientVisitRow): PatientVisit {
 }
 
 export async function saveVisitRecord(
-  mobile: string,
+  mobile: string | null | undefined,
   name: string,
   clinicId: ClinicId,
   data: {
@@ -63,12 +63,9 @@ export async function saveVisitRecord(
     slotLabel: string;
   },
 ): Promise<void> {
-  if (!mobile || mobile.length < 10) {
-    return;
-  }
-
   const db = getDb();
   const now = new Date();
+  const cleanMobile = mobile ? mobile.replace(/\D/g, "").slice(-10) : "";
 
   await db`
     insert into patient_visits (
@@ -87,7 +84,7 @@ export async function saveVisitRecord(
     )
     values (
       ${randomUUID()},
-      ${mobile.replace(/\D/g, "").slice(-10)},
+      ${cleanMobile},
       ${name},
       ${clinicId},
       ${data.token},
