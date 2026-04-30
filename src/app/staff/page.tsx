@@ -44,7 +44,7 @@ type PatientHistorySummary = {
   clinicBreakdown: Record<string, number>;
 };
 
-type QueueTab = "pending" | "complete";
+type QueueTab = "live" | "scheduled" | "tomorrow" | "complete";
 
 export default function StaffPage() {
   const {
@@ -68,7 +68,7 @@ export default function StaffPage() {
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<QueueTab>("pending");
+  const [tab, setTab] = useState<QueueTab>("live");
   const [historyMap, setHistoryMap] = useState<Record<string, PatientHistorySummary>>({});
   const [emergencyMsg, setEmergencyMsg] = useState("");
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
@@ -83,8 +83,6 @@ export default function StaffPage() {
 
   const isDoctor = session?.role === "doctor";
   
-  type QueueTab = "live" | "scheduled" | "tomorrow" | "complete";
-  const [tab, setTab] = useState<QueueTab>("live");
 
   // Split queue logically
   const liveQueue = useMemo(
