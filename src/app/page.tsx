@@ -362,35 +362,46 @@ function FocusedClinicCard({
           <div className="mt-6 space-y-3">
             {clinic.hasBooking ? (
               <div className="grid gap-3 sm:grid-cols-1">
-                <Link href={buildClinicHref("/book", clinic.id)} className="flex items-center gap-4 rounded-[1.8rem] bg-[linear-gradient(145deg,#23c965,#1cb056)] p-3 pr-5 shadow-[0_12px_24px_rgba(35,201,101,0.25)] transition-transform hover:-translate-y-1 active:scale-95 text-white">
+                {/* PRIMARY ACTION: Walk-in Token (For users at the clinic) */}
+                <Link href={buildClinicHref("/walkin", clinic.id)} className="flex items-center gap-4 rounded-[1.8rem] bg-[linear-gradient(145deg,#23c965,#1cb056)] p-3 pr-5 shadow-[0_12px_24px_rgba(35,201,101,0.25)] transition-transform hover:-translate-y-1 active:scale-95 text-white">
                   <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-[1.4rem] bg-[rgba(255,255,255,0.2)] shadow-inner">
-                    <CalendarCheck className="h-8 w-8" />
+                    <Ticket className="h-8 w-8" />
                   </div>
                   <div className="flex-1 text-left min-w-0 py-1">
-                    <p className="text-[1.35rem] font-bold leading-tight">{t("home", "bookBtn")}</p>
-                    <p className="mt-0.5 text-sm font-medium text-[rgba(255,255,255,0.9)] truncate">बिना इंतज़ार किये, 3 क्लिक में</p>
+                    <p className="text-[1.35rem] font-bold leading-tight">आज का टोकन लें</p>
+                    <p className="mt-0.5 text-sm font-medium text-[rgba(255,255,255,0.9)] truncate">सिर्फ क्लिनिक पर आए मरीजों के लिए</p>
                   </div>
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(255,255,255,0.2)]">
                     <ArrowRight className="h-4 w-4" />
                   </div>
                 </Link>
 
-                <Link href={buildClinicHref("/live", clinic.id)} className="flex items-center gap-4 rounded-[1.8rem] border border-[rgba(12,86,81,0.06)] bg-white p-3 pr-5 shadow-[0_8px_20px_rgba(30,27,19,0.04)] transition-transform hover:-translate-y-1 active:scale-95 text-[#17130f]">
-                  <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-[1.4rem] bg-[#f0f5ff] text-[#2c61fb]">
-                    <Clock className="h-8 w-8" />
+                {/* SECONDARY ACTION: Book Appointment (For future dates) */}
+                <Link href={buildClinicHref("/book", clinic.id)} className="flex items-center gap-4 rounded-[1.8rem] border border-[rgba(12,86,81,0.06)] bg-white p-3 pr-5 shadow-[0_8px_20px_rgba(30,27,19,0.04)] transition-transform hover:-translate-y-1 active:scale-95 text-[#17130f]">
+                  <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-[1.4rem] bg-[rgba(15,107,99,0.06)] text-[var(--accent)]">
+                    <CalendarCheck className="h-8 w-8" />
                   </div>
                   <div className="flex-1 text-left min-w-0 py-1">
-                    <p className="text-[1.35rem] font-bold leading-tight">{t("home", "liveQueue")}</p>
-                    <p className="mt-0.5 text-sm font-medium text-[rgba(19,49,58,0.52)] truncate">अस्पताल की कतार देखें (Queue)</p>
+                    <p className="text-[1.35rem] font-bold leading-tight">अपॉइंटमेंट बुक करें</p>
+                    <p className="mt-0.5 text-sm font-medium text-[rgba(19,49,58,0.52)] truncate">बिना इंतज़ार किये, 3 क्लिक में</p>
                   </div>
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(19,49,58,0.04)]">
                     <ArrowRight className="h-4 w-4 text-[rgba(19,49,58,0.4)]" />
                   </div>
                 </Link>
-                
-                {/* Secondary Walk-in fallback for those who need online parchi without booking */}
-                <Link href={buildClinicHref("/walkin", clinic.id)} className="mt-2 text-center text-sm font-semibold text-[var(--accent)] hover:underline">
-                  ऑनलाइन पर्ची (Walk-in Token) बनाएं →
+
+                {/* TERTIARY ACTION: Live Queue */}
+                <Link href={buildClinicHref("/live", clinic.id)} className="flex items-center gap-4 rounded-[1.8rem] border border-[rgba(12,86,81,0.06)] bg-white p-3 pr-5 shadow-[0_8px_20px_rgba(30,27,19,0.04)] transition-transform hover:-translate-y-1 active:scale-95 text-[#17130f]">
+                  <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-[1.4rem] bg-[#f0f5ff] text-[#2c61fb]">
+                    <Clock className="h-8 w-8" />
+                  </div>
+                  <div className="flex-1 text-left min-w-0 py-1">
+                    <p className="text-[1.35rem] font-bold leading-tight">मेरा लाइव टोकन</p>
+                    <p className="mt-0.5 text-sm font-medium text-[rgba(19,49,58,0.52)] truncate">अस्पताल की कतार देखें</p>
+                  </div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(19,49,58,0.04)]">
+                    <ArrowRight className="h-4 w-4 text-[rgba(19,49,58,0.4)]" />
+                  </div>
                 </Link>
               </div>
             ) : (
