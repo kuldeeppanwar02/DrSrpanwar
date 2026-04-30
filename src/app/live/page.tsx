@@ -38,6 +38,8 @@ export default function LivePage() {
     () => getStaffSession(),
   );
   const [myToken, setMyToken] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -213,69 +215,107 @@ export default function LivePage() {
               </Link>
             </div>
 
-            <div className="mt-6 space-y-3 overflow-y-auto pr-1 custom-scrollbar">
-              {summary.waiting.slice(0, 10).map((entry, index) => {
-                const isMyToken = entry.token === myToken;
-                return (
-                <div
-                  key={entry.id}
-                  className={`rounded-[20px] px-5 py-4 relative transition-all duration-300 ${
-                    isMyToken
-                      ? "bg-[rgba(255,215,0,0.1)] shadow-[0_0_20px_rgba(255,215,0,0.15)] border border-[#ffd700] transform scale-[1.02]"
-                      : index === 0
-                      ? "bg-[rgba(0,255,204,0.05)] border border-[rgba(0,255,204,0.3)]"
-                      : "bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.05)]"
-                  }`}
-                >
-                  {isMyToken && (
-                    <div className="absolute -top-3 right-4 rounded-full bg-[#ffd700] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[#221b00] shadow-[0_0_10px_rgba(255,215,0,0.5)]">
-                      ⭐ Your Token
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <p className={`text-2xl font-black flex items-center gap-2 ${isMyToken ? "text-[#ffd700]" : "text-[#fdfffc]"}`}>
-                        {entry.isReportCheck && <span className="text-[#00ffcc] opacity-90">🔄</span>}
-                        {entry.token}
-                      </p>
-                      <span className="rounded-full bg-[rgba(255,255,255,0.1)] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-[#b9cbc2]">
-                        {entry.isReportCheck ? "Report Check" : entry.source}
-                      </span>
-                    </div>
-                    {/* Doctor inline actions */}
-                    {isDoctor && (
-                      <div className="flex gap-1.5 opacity-80 hover:opacity-100">
-                        <button type="button"
-                          className="inline-flex items-center gap-1 rounded-full bg-[rgba(0,255,204,0.15)] px-2.5 py-1 text-[10px] font-bold text-[#00ffcc] hover:bg-[rgba(0,255,204,0.25)] transition active:scale-95"
-                          onClick={() => void runAction(async () => {
-                            const resolvedEntryId = await resolveEntryId(entry);
-                            await updateQueueStatus(resolvedEntryId, "in-progress");
-                          })}>
-                          <PlayCircle className="h-3 w-3" /> {t("staff", "callNow")}
-                        </button>
-                        <button type="button"
-                          className="inline-flex items-center gap-1 rounded-full bg-[rgba(255,180,171,0.15)] px-2.5 py-1 text-[10px] font-bold text-[#ffb4ab] hover:bg-[rgba(255,180,171,0.25)] transition active:scale-95"
-                          onClick={() => void runAction(async () => {
-                            const resolvedEntryId = await resolveEntryId(entry);
-                            await rescheduleQueueEntry(resolvedEntryId);
-                          })}>
-                          <CalendarClock className="h-3 w-3" /> {t("queue", "shiftToTomorrow")}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <p className="mt-1.5 text-base font-medium text-[#b9cbc2]">{entry.name}</p>
-                </div>
-              )})}
+            <div className="mt-4">
+              <input 
+                type="text" 
+                placeholder="नाम या टोकन खोजें 🔍" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-[16px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] transition-colors"
+              />
+            </div>
 
-              {summary.waiting.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <Inbox className="h-8 w-8 text-[rgba(255,255,255,0.15)]" />
-                  <p className="mt-2 text-sm text-[rgba(255,255,255,0.35)]">
-                    {t("staff", "noPatients")}
-                  </p>
-                </div>
-              )}
+            <div className="mt-4 space-y-3 overflow-y-auto pr-1 custom-scrollbar">
+              {(() => {
+                const filtered = summary.waiting.filter(entry => 
+                  entry.token.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                  (entry.name && entry.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                );
+                
+                const displayList = showAll || searchQuery ? filtered : filtered.slice(0, 10);
+                
+                if (summary.waiting.length === 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Inbox className="h-8 w-8 text-[rgba(255,255,255,0.15)]" />
+                      <p className="mt-2 text-sm text-[rgba(255,255,255,0.35)]">
+                        {t("staff", "noPatients")}
+                      </p>
+                    </div>
+                  );
+                }
+
+                if (filtered.length === 0) {
+                  return <p className="text-center text-sm text-[rgba(255,255,255,0.5)] py-4">कोई मरीज़ नहीं मिला</p>;
+                }
+                
+                return (
+                  <>
+                    {displayList.map((entry, index) => {
+                      const isMyToken = entry.token === myToken;
+                      return (
+                      <div
+                        key={entry.id}
+                        className={`rounded-[20px] px-5 py-4 relative transition-all duration-300 ${
+                          isMyToken
+                            ? "bg-[rgba(255,215,0,0.1)] shadow-[0_0_20px_rgba(255,215,0,0.15)] border border-[#ffd700] transform scale-[1.02]"
+                            : index === 0 && !searchQuery
+                            ? "bg-[rgba(0,255,204,0.05)] border border-[rgba(0,255,204,0.3)]"
+                            : "bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.05)]"
+                        }`}
+                      >
+                        {isMyToken && (
+                          <div className="absolute -top-3 right-4 rounded-full bg-[#ffd700] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[#221b00] shadow-[0_0_10px_rgba(255,215,0,0.5)]">
+                            ⭐ Your Token
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <p className={`text-2xl font-black flex items-center gap-2 ${isMyToken ? "text-[#ffd700]" : "text-[#fdfffc]"}`}>
+                              {entry.isReportCheck && <span className="text-[#00ffcc] opacity-90">🔄</span>}
+                              {entry.token}
+                            </p>
+                            <span className="rounded-full bg-[rgba(255,255,255,0.1)] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-[#b9cbc2]">
+                              {entry.isReportCheck ? "Report Check" : entry.source}
+                            </span>
+                          </div>
+                          {/* Doctor inline actions */}
+                          {isDoctor && (
+                            <div className="flex gap-1.5 opacity-80 hover:opacity-100">
+                              <button type="button"
+                                className="inline-flex items-center gap-1 rounded-full bg-[rgba(0,255,204,0.15)] px-2.5 py-1 text-[10px] font-bold text-[#00ffcc] hover:bg-[rgba(0,255,204,0.25)] transition active:scale-95"
+                                onClick={() => void runAction(async () => {
+                                  const resolvedEntryId = await resolveEntryId(entry);
+                                  await updateQueueStatus(resolvedEntryId, "in-progress");
+                                })}>
+                                <PlayCircle className="h-3 w-3" /> {t("staff", "callNow")}
+                              </button>
+                              <button type="button"
+                                className="inline-flex items-center gap-1 rounded-full bg-[rgba(255,180,171,0.15)] px-2.5 py-1 text-[10px] font-bold text-[#ffb4ab] hover:bg-[rgba(255,180,171,0.25)] transition active:scale-95"
+                                onClick={() => void runAction(async () => {
+                                  const resolvedEntryId = await resolveEntryId(entry);
+                                  await rescheduleQueueEntry(resolvedEntryId);
+                                })}>
+                                <CalendarClock className="h-3 w-3" /> {t("queue", "shiftToTomorrow")}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <p className="mt-1.5 text-base font-medium text-[#b9cbc2]">{entry.name}</p>
+                      </div>
+                    )})}
+                    
+                    {!showAll && !searchQuery && filtered.length > 10 && (
+                      <button
+                        onClick={() => setShowAll(true)}
+                        className="w-full mt-2 rounded-[16px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] py-3 text-sm font-semibold text-[#a2f1e6] hover:bg-[rgba(255,255,255,0.08)] transition-colors"
+                      >
+                        बाकी {filtered.length - 10} मरीज़ देखें (View All)
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </aside>
         </main>
