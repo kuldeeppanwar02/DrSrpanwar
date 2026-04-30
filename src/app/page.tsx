@@ -180,8 +180,8 @@ export default function HomePage() {
 
       {!isLoggedIn && (
         <section className="section-shell pb-10">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="card-elevated rounded-[1.9rem] p-5">
+          <div className="flex justify-center">
+            <div className="card-elevated rounded-[1.9rem] p-5 w-full max-w-2xl">
               <p className="label-type text-[var(--accent)]">
                 {t("home", "contact")} - {activeClinic.shortName}
               </p>
@@ -222,30 +222,6 @@ export default function HomePage() {
                 )}
               </div>
             </div>
-
-            {activeClinic.mapUrl ? (
-              <div className="card overflow-hidden rounded-[1.9rem]">
-                <iframe
-                  title={`${activeClinic.title} map`}
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3574.0!2d70.905228!3d26.9126519!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3947bf85998998d1%3A0x9b5b327f625d9421!2sDR%20SATTARAM%20PANWAR!5e0!3m2!1sen!2sin!4v1"
-                  className="min-h-[260px] w-full border-0"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  allowFullScreen
-                />
-              </div>
-            ) : (
-              <div className="card-elevated flex min-h-[260px] flex-col items-center justify-center rounded-[1.9rem] p-6 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-soft)]">
-                  <ClinicIcon id={activeClinicId} className="h-6 w-6 text-[var(--accent)]" />
-                </div>
-                <p className="mt-4 text-lg font-semibold text-[var(--accent-strong)]">{activeClinic.title}</p>
-                <p className="mt-2 max-w-xs text-sm leading-6 text-[rgba(19,49,58,0.62)]">{activeClinic.subtitle}</p>
-                {!activeClinic.hasBooking && (
-                  <span className="badge badge-booking mt-4">{t("pharmacy", "noBookingNeeded")}</span>
-                )}
-              </div>
-            )}
           </div>
         </section>
       )}
