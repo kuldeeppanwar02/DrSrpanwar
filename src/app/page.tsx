@@ -368,8 +368,8 @@ function FocusedClinicCard({
                     <Ticket className="h-8 w-8" />
                   </div>
                   <div className="flex-1 text-left min-w-0 py-1">
-                    <p className="text-[1.35rem] font-bold leading-tight">आज का टोकन लें</p>
-                    <p className="mt-0.5 text-sm font-medium text-[rgba(255,255,255,0.9)] truncate">सिर्फ क्लिनिक पर आए मरीजों के लिए</p>
+                    <p className="text-[1.35rem] font-bold leading-tight">{t("home", "walkinBtnTitle")}</p>
+                    <p className="mt-0.5 text-sm font-medium text-[rgba(255,255,255,0.9)] truncate">{t("home", "walkinBtnSub")}</p>
                   </div>
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(255,255,255,0.2)]">
                     <ArrowRight className="h-4 w-4" />
@@ -382,8 +382,8 @@ function FocusedClinicCard({
                     <CalendarCheck className="h-8 w-8" />
                   </div>
                   <div className="flex-1 text-left min-w-0 py-1">
-                    <p className="text-[1.35rem] font-bold leading-tight">अपॉइंटमेंट बुक करें</p>
-                    <p className="mt-0.5 text-sm font-medium text-[rgba(19,49,58,0.52)] truncate">बिना इंतज़ार किये, 3 क्लिक में</p>
+                    <p className="text-[1.35rem] font-bold leading-tight">{t("home", "bookBtnTitle")}</p>
+                    <p className="mt-0.5 text-sm font-medium text-[rgba(19,49,58,0.52)] truncate">{t("home", "bookBtnSub")}</p>
                   </div>
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(19,49,58,0.04)]">
                     <ArrowRight className="h-4 w-4 text-[rgba(19,49,58,0.4)]" />
@@ -396,8 +396,8 @@ function FocusedClinicCard({
                     <Clock className="h-8 w-8" />
                   </div>
                   <div className="flex-1 text-left min-w-0 py-1">
-                    <p className="text-[1.35rem] font-bold leading-tight">मेरा लाइव टोकन</p>
-                    <p className="mt-0.5 text-sm font-medium text-[rgba(19,49,58,0.52)] truncate">अस्पताल की कतार देखें</p>
+                    <p className="text-[1.35rem] font-bold leading-tight">{t("home", "liveQueueTitle")}</p>
+                    <p className="mt-0.5 text-sm font-medium text-[rgba(19,49,58,0.52)] truncate">{t("home", "liveQueueSub")}</p>
                   </div>
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(19,49,58,0.04)]">
                     <ArrowRight className="h-4 w-4 text-[rgba(19,49,58,0.4)]" />
