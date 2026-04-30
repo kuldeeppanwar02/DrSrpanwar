@@ -576,16 +576,6 @@ export async function updateRemoteQueueEntryStatus(
       throw new Error("Queue entry not found.");
     }
 
-    if (status === "in-progress") {
-      await tx`
-        update queue_entries
-        set status = 'done', updated_at = ${updateTimestamp}
-        where clinic_id = ${clinicId}
-          and status = 'in-progress'
-          and id <> ${entryId}
-      `;
-    }
-
     await tx`
       update queue_entries
       set status = ${status}, updated_at = ${updateTimestamp}

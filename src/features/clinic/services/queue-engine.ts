@@ -328,13 +328,7 @@ export function updateQueueStatusState(
             status,
             updatedAt: new Date().toISOString(),
           }
-        : status === "in-progress" && entry.status === "in-progress"
-          ? {
-              ...entry,
-              status: "done",
-              updatedAt: new Date().toISOString(),
-            }
-      : entry,
+        : entry,
     ),
   });
 }
