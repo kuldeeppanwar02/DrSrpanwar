@@ -316,33 +316,33 @@ function FocusedClinicCard({
   return (
     <div className="card-elevated overflow-hidden rounded-[2rem] border border-[rgba(255,255,255,0.78)]">
       <div className="p-4 sm:p-6">
-        <div className="flex flex-col-reverse sm:flex-row sm:items-start justify-between gap-6 sm:gap-4">
+        <div className="flex flex-row items-start justify-between gap-3 sm:gap-4">
           <div className="min-w-0 flex-1">
-            <h2 className="display-type text-[1.62rem] leading-[0.92] tracking-[-0.05em] text-[#17130f] sm:mt-1 sm:text-[3.25rem]">
+            <h2 className="display-type text-[1.4rem] leading-[1] tracking-[-0.05em] text-[#17130f] sm:mt-1 sm:text-[3.25rem]">
               {clinic.title}
             </h2>
 
             <div
-              className={`mt-3 inline-flex max-w-3xl rounded-[20px] px-4 py-2.5 text-center shadow-[0_14px_32px_rgba(183,138,63,0.16)] ${
+              className={`mt-2 sm:mt-3 inline-flex max-w-3xl rounded-[16px] sm:rounded-[20px] px-3 py-1.5 sm:px-4 sm:py-2.5 text-center shadow-[0_10px_20px_rgba(183,138,63,0.12)] sm:shadow-[0_14px_32px_rgba(183,138,63,0.16)] ${
                 isSurgeryClinic
                   ? "bg-[linear-gradient(135deg,#b99043,#d9bc73)] text-white"
                   : "bg-[linear-gradient(135deg,rgba(15,107,99,0.12),rgba(15,107,99,0.2))] text-[var(--accent-strong)]"
               }`}
             >
-              <p className="w-full text-base font-medium leading-6 sm:text-[1.2rem] sm:leading-7">{clinic.subtitle}</p>
+              <p className="w-full text-[11px] font-semibold sm:font-medium leading-tight sm:text-[1.2rem] sm:leading-7 text-left">{clinic.subtitle}</p>
             </div>
 
             {clinic.metaLine && (
-              <p className="mt-4 text-lg font-bold tracking-[0.02em] text-[#17130f] sm:text-xl border-l-4 border-[var(--accent)] pl-3">
+              <p className="mt-3 text-sm font-bold tracking-[0.02em] text-[#17130f] sm:text-xl border-l-4 border-[var(--accent)] pl-2.5 sm:pl-3">
                 {clinic.metaLine}
               </p>
             )}
           </div>
 
-          {/* Doctor Profile Image - Option 3 (Right Side) */}
+          {/* Doctor Profile Image - Option 3 (Right Side Always) */}
           {isSurgeryClinic && (
-            <div className="flex-shrink-0 flex justify-center sm:justify-end w-full sm:w-auto">
-              <div className="relative h-32 w-32 sm:h-36 sm:w-36 rounded-full border-[5px] border-white shadow-[0_15px_35px_rgba(15,107,99,0.25)] overflow-hidden transform hover:scale-105 transition-transform duration-300">
+            <div className="flex-shrink-0 ml-1">
+              <div className="relative h-20 w-20 sm:h-36 sm:w-36 rounded-full border-[3px] sm:border-[5px] border-white shadow-[0_8px_20px_rgba(15,107,99,0.2)] sm:shadow-[0_15px_35px_rgba(15,107,99,0.25)] overflow-hidden transform hover:scale-105 transition-transform duration-300">
                 <img 
                   src="/dr-panwar.jpg" 
                   alt="Dr. Sattaram Panwar" 
