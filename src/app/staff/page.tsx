@@ -573,11 +573,11 @@ export default function StaffPage() {
                             </p>
                           )}
                           {/* Fetch history on first view */}
-                          {entry.mobile && !historyMap[entry.mobile] && isDoctor && (
+                          {entry.mobile && !historyMap[entry.mobile] && (
                             <button
                               type="button"
                               className="mt-0.5 text-[10px] font-semibold text-[var(--accent)] underline"
-                              onClick={() => void fetchHistory(entry.mobile)}
+                              onClick={() => void fetchHistory(entry.mobile!)}
                             >
                               {t("history", "viewHistory")}
                             </button>
@@ -593,30 +593,26 @@ export default function StaffPage() {
                             })}>
                           <PlayCircle className="h-3 w-3" /> {t("staff", "callNow")}
                         </button>
-                        {isDoctor && (
-                          <button type="button" className="btn btn-sm" style={{background:'var(--success)',color:'white'}}
-                            onClick={() =>
-                              setRxEntry({
-                                id: entry.id,
-                                token: entry.token,
-                                name: entry.name,
-                                clientRequestId: entry.clientRequestId,
-                                syncState: entry.syncState,
-                              })}
-                          >
-                            <CheckCircle2 className="h-3 w-3" /> {t("staff", "doneBtn")}
-                          </button>
-                        )}
-                        {isDoctor && (
-                          <button type="button" className="btn btn-outline btn-sm"
-                            onClick={() => void runAction(async () => {
-                              const resolvedEntryId = await resolveEntryForAction(entry);
-                              await updateQueueStatus(resolvedEntryId, entry.status === "hold" ? "waiting" : "hold");
-                            })}>
-                            <PauseCircle className="h-3 w-3" /> {entry.status === "hold" ? t("staff", "resumeBtn") : "Test / Hold"}
-                          </button>
-                        )}
-                        {isDoctor && entry.status === "hold" && (
+                        <button type="button" className="btn btn-sm" style={{background:'var(--success)',color:'white'}}
+                          onClick={() =>
+                            setRxEntry({
+                              id: entry.id,
+                              token: entry.token,
+                              name: entry.name,
+                              clientRequestId: entry.clientRequestId,
+                              syncState: entry.syncState,
+                            })}
+                        >
+                          <CheckCircle2 className="h-3 w-3" /> {t("staff", "doneBtn")}
+                        </button>
+                        <button type="button" className="btn btn-outline btn-sm"
+                          onClick={() => void runAction(async () => {
+                            const resolvedEntryId = await resolveEntryForAction(entry);
+                            await updateQueueStatus(resolvedEntryId, entry.status === "hold" ? "waiting" : "hold");
+                          })}>
+                          <PauseCircle className="h-3 w-3" /> {entry.status === "hold" ? t("staff", "resumeBtn") : "Test / Hold"}
+                        </button>
+                        {entry.status === "hold" && (
                           <button type="button" className="btn btn-sm" style={{background:'var(--accent)',color:'white'}}
                             onClick={() => void runAction(async () => {
                               const resolvedEntryId = await resolveEntryForAction(entry);
@@ -636,15 +632,13 @@ export default function StaffPage() {
                           }}>
                           <CalendarClock className="h-3 w-3" /> {t("queue", "shiftToTomorrow")}
                         </button>
-                        {isDoctor && (
-                          <button type="button" className="btn btn-danger btn-sm"
-                            onClick={() => void runAction(async () => {
-                              const resolvedEntryId = await resolveEntryForAction(entry);
-                              await updateQueueStatus(resolvedEntryId, "skipped");
-                            })}>
-                            <SkipForward className="h-3 w-3" /> {t("staff", "skipBtn")}
-                          </button>
-                        )}
+                        <button type="button" className="btn btn-danger btn-sm"
+                          onClick={() => void runAction(async () => {
+                            const resolvedEntryId = await resolveEntryForAction(entry);
+                            await updateQueueStatus(resolvedEntryId, "skipped");
+                          })}>
+                          <SkipForward className="h-3 w-3" /> {t("staff", "skipBtn")}
+                        </button>
                         </div>
                       )}
                     </div>
