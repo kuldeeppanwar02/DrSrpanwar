@@ -7,7 +7,7 @@ export const CLINICS: ClinicDefinition[] = [
     shortName: "Surgical",
     title: "Dr. Satta Ram Panwar",
     subtitle: "Advance Laparoscopic, Gastro & Trauma Specialist Surgeon",
-    metaLine: "MBBS, MS, ATLS • Jaisalmer",
+    metaLine: "MBBS MS FMAS ATLS",
     prefix: "S",
     phone: "9636243621",
     locationLabel: "Qtr No. 1, Behind Poonam Stadium, Jaisalmer",
