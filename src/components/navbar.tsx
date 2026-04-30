@@ -20,6 +20,11 @@ import {
   Pill,
   BarChart,
   Download,
+  Code,
+  Phone,
+  Mail,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { CLINICS, buildClinicHref } from "@/features/clinic/catalog";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
@@ -79,6 +84,7 @@ export function Navbar() {
   const { isInstallable, install, isIOS } = usePWAInstall();
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [developerExpanded, setDeveloperExpanded] = useState(false);
   const [session, setSession] = useState<StaffSession>(() => getStaffSession());
 
   useEffect(() => {
@@ -384,6 +390,41 @@ export function Navbar() {
               {t("nav", "login")}
             </Link>
           )}
+
+          {/* Developer Section (Accordion) */}
+          <div className="mt-4 border-t border-[rgba(19,49,58,0.1)] pt-3">
+            <button
+              onClick={() => setDeveloperExpanded(!developerExpanded)}
+              className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold text-[rgba(19,49,58,0.7)] transition-colors hover:bg-[rgba(19,49,58,0.05)]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-strong)]">
+                  <Code className="h-4 w-4" />
+                </div>
+                <span>👨‍💻 App Developer Contact</span>
+              </div>
+              {developerExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+
+            {developerExpanded && (
+              <div className="mt-2 flex flex-col gap-2 pl-3 pr-2 pb-2 animate-slide-up">
+                <a
+                  href="tel:+919358752147"
+                  className="flex items-center gap-3 rounded-xl bg-white px-3 py-2.5 text-sm font-medium text-[rgba(19,49,58,0.85)] shadow-sm border border-[rgba(19,49,58,0.05)] hover:bg-green-50 transition-colors"
+                >
+                  <Phone className="h-4 w-4 text-green-600" />
+                  <span>Call: 9358752147</span>
+                </a>
+                <a
+                  href="mailto:panwarkuldeep256@gmail.com?subject=Enquiry for Smart Clinic App"
+                  className="flex items-center gap-3 rounded-xl bg-white px-3 py-2.5 text-sm font-medium text-[rgba(19,49,58,0.85)] shadow-sm border border-[rgba(19,49,58,0.05)] hover:bg-blue-50 transition-colors"
+                >
+                  <Mail className="h-4 w-4 text-blue-600" />
+                  <span className="truncate">panwarkuldeep256@gmail.com</span>
+                </a>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
