@@ -339,14 +339,14 @@ function FocusedClinicCard({
             )}
           </div>
 
-          {/* Doctor Profile Image - Complete Transparent Circle */}
+          {/* Doctor Profile Image - Circular Masked */}
           {isSurgeryClinic && (
             <div className="flex-shrink-0 ml-1 sm:ml-2">
-              <div className="relative h-24 w-24 sm:h-40 sm:w-40 transform hover:scale-105 transition-transform duration-300">
+              <div className="relative h-24 w-24 sm:h-36 sm:w-36 rounded-full border-[3px] sm:border-[4px] border-white shadow-[0_8px_20px_rgba(15,107,99,0.2)] sm:shadow-[0_15px_35px_rgba(15,107,99,0.25)] overflow-hidden transform hover:scale-105 transition-transform duration-300">
                 <img 
                   src="/dr-panwar-circle.png" 
                   alt="Dr. Sattaram Panwar" 
-                  className="w-full h-full object-contain drop-shadow-[0_8px_15px_rgba(15,107,99,0.3)] sm:drop-shadow-[0_15px_30px_rgba(15,107,99,0.35)]"
+                  className="w-full h-full object-cover"
                 />
               </div>
             </div>
