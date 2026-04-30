@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Hind, Noto_Serif, Manrope } from "next/font/google";
+import { Noto_Sans_Devanagari, Playfair_Display, Manrope } from "next/font/google";
 import {
   ClinicProvider,
   ClinicProviderFallback,
@@ -19,13 +19,13 @@ const bodyFont = Manrope({
   weight: ["400", "500", "600", "700"],
 });
 
-const displayFont = Noto_Serif({
+const displayFont = Playfair_Display({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 
-const hindiFont = Hind({
+const hindiFont = Noto_Sans_Devanagari({
   variable: "--font-hindi",
   subsets: ["devanagari", "latin"],
   weight: ["400", "500", "600", "700"],
