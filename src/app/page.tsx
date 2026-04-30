@@ -18,6 +18,9 @@ import {
   ShieldCheck,
   Stethoscope,
   Ticket,
+  Facebook,
+  Instagram,
+  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 import { CLINICS, buildClinicHref } from "@/features/clinic/catalog";
@@ -180,7 +183,7 @@ export default function HomePage() {
 
       {!isLoggedIn && (
         <section className="section-shell pb-10">
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-4">
             <div className="card-elevated rounded-[1.9rem] p-5 w-full max-w-2xl">
               <p className="label-type text-[var(--accent)]">
                 {t("home", "contact")} - {activeClinic.shortName}
@@ -222,6 +225,46 @@ export default function HomePage() {
                 )}
               </div>
             </div>
+
+            {/* Premium Connect Card */}
+            {activeClinic.id === "surgery" && (
+              <div className="card-elevated rounded-[1.9rem] p-5 w-full max-w-2xl bg-[rgba(255,255,255,0.95)]">
+                <p className="label-type text-[var(--accent)] mb-4">
+                  Connect with Doctor
+                </p>
+                <div className="flex flex-col gap-3">
+                  <a
+                    href="https://www.facebook.com/profile.php?id=100083774958056"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 bg-[rgba(24,119,242,0.06)] hover:bg-[rgba(24,119,242,0.12)] border border-[rgba(24,119,242,0.15)] transition-colors"
+                  >
+                    <Facebook className="h-5 w-5 text-[#1877F2]" />
+                    <span className="font-semibold text-[rgba(19,49,58,0.85)] text-sm">Follow on Facebook</span>
+                  </a>
+
+                  <a
+                    href="https://www.instagram.com/desert_boyjsm?igsh=aWdsYnI1b2J1dGww"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 bg-[rgba(225,48,108,0.06)] hover:bg-[rgba(225,48,108,0.12)] border border-[rgba(225,48,108,0.15)] transition-colors"
+                  >
+                    <Instagram className="h-5 w-5 text-[#E1306C]" />
+                    <span className="font-semibold text-[rgba(19,49,58,0.85)] text-sm">Follow on Instagram</span>
+                  </a>
+
+                  <a
+                    href="https://wa.me/919636243621?text=Hello%20Dr.%20SattaRam%20Panwar"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 bg-[rgba(37,211,102,0.06)] hover:bg-[rgba(37,211,102,0.12)] border border-[rgba(37,211,102,0.15)] transition-colors"
+                  >
+                    <MessageCircle className="h-5 w-5 text-[#25D366]" />
+                    <span className="font-semibold text-[rgba(19,49,58,0.85)] text-sm">Message on WhatsApp</span>
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </section>
       )}
