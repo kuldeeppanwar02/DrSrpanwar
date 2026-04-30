@@ -329,23 +329,6 @@ function FocusedClinicCard({
           </div>
         </div>
 
-        <div className="mt-4 grid gap-2 text-sm leading-6 text-[rgba(19,49,58,0.72)]">
-          <p className="flex items-start gap-2.5">
-            <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
-            <span>{clinic.hoursLabel}</span>
-          </p>
-          <p className="flex items-start gap-2.5">
-            <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
-            <span>{clinic.locationLabel}</span>
-          </p>
-          <a
-            href={`tel:+91${clinic.phone}`}
-            className="flex items-center gap-2.5 font-semibold text-[var(--accent-strong)] hover:underline"
-          >
-            <Phone className="h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
-            <span>{clinic.phone}</span>
-          </a>
-        </div>
 
         {!isLoggedIn && (
           <div className="mt-6 space-y-3">
