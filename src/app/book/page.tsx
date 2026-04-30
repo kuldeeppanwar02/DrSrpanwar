@@ -310,13 +310,13 @@ export default function BookPage() {
             </p>
             <div className="card mt-4 space-y-2 p-4 text-left">
               <p className="flex items-center gap-2 text-sm text-[rgba(19,49,58,0.65)]">
-                <Clock className="h-3.5 w-3.5 text-[var(--accent)]" /> {activeClinic.locationLabel}
+                <Clock className="h-3.5 w-3.5 text-[var(--accent)]" /> {state.settings?.address || activeClinic.locationLabel}
               </p>
               <p className="flex items-center gap-2 text-sm text-[rgba(19,49,58,0.65)]">
                 <Clock className="h-3.5 w-3.5 text-[var(--accent)]" /> {activeClinic.hoursLabel}
               </p>
               <p className="flex items-center gap-2 text-sm text-[rgba(19,49,58,0.65)]">
-                <Phone className="h-3.5 w-3.5 text-[var(--accent)]" /> {activeClinic.phone}
+                <Phone className="h-3.5 w-3.5 text-[var(--accent)]" /> {state.settings?.phone || activeClinic.phone}
               </p>
             </div>
             <div className="mt-5 flex flex-wrap justify-center gap-3">

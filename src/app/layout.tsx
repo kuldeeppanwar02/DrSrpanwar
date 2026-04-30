@@ -41,16 +41,14 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "SmartCare",
-    startupImage: "/icon.svg",
+    startupImage: "/logo.png",
   },
   icons: {
     icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
+      { url: "/logo.png", type: "image/png" },
     ],
     apple: [
-      { url: "/icon.svg", sizes: "512x512", type: "image/svg+xml" },
-      { url: "/icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
+      { url: "/logo.png", sizes: "512x512", type: "image/png" },
     ],
   },
   formatDetection: {

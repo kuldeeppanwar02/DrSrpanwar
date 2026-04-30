@@ -87,7 +87,7 @@ export default function LivePage() {
               <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[rgba(255,255,255,0.5)]">
                 {t("live", "waitingArea")}
               </p>
-              <h1 className="display-type mt-1 text-3xl sm:text-4xl">{activeClinic.title}</h1>
+              <h1 className="display-type mt-1 text-3xl sm:text-4xl">{state.settings?.doctorName || activeClinic.title}</h1>
               {activeClinic.metaLine && (
                 <p className="mt-2 text-xs font-semibold uppercase tracking-[0.2em] text-[rgba(255,255,255,0.72)]">
                   {activeClinic.metaLine}

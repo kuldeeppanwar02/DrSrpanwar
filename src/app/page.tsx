@@ -143,7 +143,7 @@ export default function HomePage() {
       </section>
 
       <section className="section-shell -mt-1 grid gap-4 pb-8 xl:grid-cols-[minmax(0,1.1fr)_0.9fr]">
-        <FocusedClinicCard clinic={activeClinic} isLoggedIn={isLoggedIn} t={t} />
+        <FocusedClinicCard clinic={activeClinic} isLoggedIn={isLoggedIn} t={t} settings={state.settings} />
 
         <div className="space-y-4">
           <QueueSnapshotCard
@@ -191,11 +191,11 @@ export default function HomePage() {
               <div className="mt-4 space-y-3 text-sm leading-6 text-[rgba(19,49,58,0.72)]">
                 <p className="flex items-start gap-2.5">
                   <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
-                  <span>{activeClinic.locationLabel}</span>
+                  <span>{state.settings?.address || activeClinic.locationLabel}</span>
                 </p>
                 <p className="flex items-center gap-2.5">
                   <Phone className="h-4 w-4 flex-shrink-0 text-[var(--accent)]" />
-                  <span>{activeClinic.phone}</span>
+                  <span>{state.settings?.phone || activeClinic.phone}</span>
                 </p>
                 {activeClinic.email && (
                   <p className="flex items-center gap-2.5">
@@ -210,7 +210,7 @@ export default function HomePage() {
               </div>
 
               <div className="mt-5 flex flex-wrap gap-2">
-                <a href={`tel:+91${activeClinic.phone}`} className="btn btn-primary btn-sm">
+                <a href={`tel:+91${state.settings?.phone || activeClinic.phone}`} className="btn btn-primary btn-sm">
                   <Phone className="h-3 w-3" /> {t("home", "callNow")}
                 </a>
                 {activeClinic.mapUrl && (
@@ -254,7 +254,7 @@ export default function HomePage() {
                   </a>
 
                   <a
-                    href="https://wa.me/919636243621?text=Hello%20Dr.%20SattaRam%20Panwar"
+                    href={`https://wa.me/91${state.settings?.whatsapp || state.settings?.phone || activeClinic.phone}?text=Hello%20Dr.%20${state.settings?.doctorName || activeClinic.title.replace("Dr. ", "")}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-3 rounded-xl px-4 py-3 bg-[rgba(37,211,102,0.06)] hover:bg-[rgba(37,211,102,0.12)] border border-[rgba(37,211,102,0.15)] transition-colors"
@@ -324,10 +324,12 @@ function FocusedClinicCard({
   clinic,
   isLoggedIn,
   t,
+  settings,
 }: {
   clinic: ClinicDefinition;
   isLoggedIn: boolean;
   t: (section: TranslationKey, key: string) => string;
+  settings?: any;
 }) {
   const isSurgeryClinic = clinic.id === "surgery";
   const trustPoints = TRUST_POINTS[clinic.id];
@@ -351,7 +353,7 @@ function FocusedClinicCard({
 
           <div className="min-w-0 flex-1">
             <h2 className="display-type text-[1.35rem] leading-[1] tracking-tighter whitespace-nowrap text-[#17130f] sm:mt-1 sm:text-[3.25rem]">
-              {clinic.title}
+              {settings?.doctorName || clinic.title}
             </h2>
 
             <div
@@ -361,7 +363,9 @@ function FocusedClinicCard({
                   : "bg-[linear-gradient(135deg,rgba(15,107,99,0.12),rgba(15,107,99,0.2))] text-[var(--accent-strong)]"
               }`}
             >
-              <p className="w-full text-[11px] font-semibold sm:font-medium leading-snug sm:text-[1.2rem] sm:leading-7">{clinic.subtitle}</p>
+              <p className="w-full text-[11px] font-semibold sm:font-medium leading-snug sm:text-[1.2rem] sm:leading-7">
+                {settings?.clinicName || clinic.subtitle}
+              </p>
             </div>
 
             {clinic.metaLine && (

@@ -160,8 +160,7 @@ export function Navbar() {
           href="/"
           className="flex items-center gap-2 font-semibold text-[var(--accent-strong)]"
         >
-          <Hospital className="h-5 w-5" />
-          <span className="hidden text-sm sm:inline">SmartCare Hub</span>
+          <img src="/logo.png" alt="Panwar Health Care" className="h-9 w-auto sm:h-10 object-contain drop-shadow-sm" />
         </Link>
 
         {/* Clinic Switcher — desktop */}
