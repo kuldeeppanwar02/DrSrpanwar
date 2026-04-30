@@ -665,7 +665,6 @@ export default function StaffPage() {
 
             )}
         </div>
-        </div>
       </div>
 
       {/* Prescription Photo Modal */}
