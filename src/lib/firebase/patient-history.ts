@@ -154,3 +154,35 @@ export async function getPatientVisitSummary(
     clinicBreakdown,
   };
 }
+
+export async function getClinicVisitsByDateRange(
+  clinicId: ClinicId,
+  startDate: string,
+  endDate: string,
+): Promise<PatientVisit[]> {
+  const db = getDb();
+
+  const rows = await db<PatientVisitRow[]>`
+    select
+      id,
+      mobile,
+      name,
+      clinic_id,
+      token,
+      booking_id,
+      source,
+      day_label,
+      slot_label,
+      status,
+      visit_date,
+      created_at
+    from patient_visits
+    where clinic_id = ${clinicId}
+      and visit_date >= ${startDate}
+      and visit_date <= ${endDate}
+    order by visit_date desc, created_at desc
+    limit 1000
+  `;
+
+  return rows.map(mapVisit);
+}

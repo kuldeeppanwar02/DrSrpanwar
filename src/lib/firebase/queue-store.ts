@@ -306,7 +306,7 @@ function createQueueEntry(
   };
 }
 
-export async function getRemoteClinicState(clinicId: ClinicId) {
+export async function getRemoteClinicState(clinicId: ClinicId): Promise<ClinicState> {
   const db = getDb();
   await ensureClinicInitialized(db, clinicId);
 
@@ -753,7 +753,7 @@ export async function rescheduleRemoteQueueEntry(clinicId: ClinicId, entryId: st
   return getRemoteClinicState(clinicId);
 }
 
-export async function resetRemoteClinicQueue(clinicId: ClinicId) {
+export async function resetRemoteClinicQueue(clinicId: ClinicId): Promise<ClinicState> {
   const db = getDb();
   const document = createClinicDocument(clinicId);
   const clinic = getClinicDefinition(clinicId);

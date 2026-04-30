@@ -18,6 +18,7 @@ import {
   Globe,
   Hospital,
   Pill,
+  BarChart,
 } from "lucide-react";
 import { CLINICS, buildClinicHref } from "@/features/clinic/catalog";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
@@ -127,10 +128,14 @@ export function Navbar() {
               { href: "/pharmacy", label: t("nav", "pharmacy") || "Pharmacy", icon: Pill },
               { href: "/staff/schedule", label: t("nav", "schedule"), icon: CalendarDays },
               { href: "/staff/manage", label: t("nav", "staffMgmt"), icon: Users },
+              { href: "/staff/reports", label: t("nav", "reports") || "Reports", icon: BarChart },
             ]
           : []),
         ...(!isPharmacist && !isDoctor
-          ? [{ href: "/staff/schedule", label: t("nav", "schedule"), icon: CalendarDays }]
+          ? [
+              { href: "/staff/schedule", label: t("nav", "schedule"), icon: CalendarDays },
+              { href: "/staff/reports", label: t("nav", "reports") || "Reports", icon: BarChart },
+            ]
           : []),
       ]
     : [];
