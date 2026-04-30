@@ -132,7 +132,7 @@ type DayAvailability = {
 };
 
 export default function BookPage() {
-  const { activeClinic, activeClinicId, createBooking, syncInFlight } = useClinic();
+  const { activeClinic, activeClinicId, createBooking, syncInFlight, state } = useClinic();
   const { t } = useLang();
 
   const [dayLabel, setDayLabel] = useState<"Aaj" | "Kal">("Aaj");
