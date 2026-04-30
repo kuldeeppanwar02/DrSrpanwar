@@ -339,7 +339,29 @@ export async function getRemoteClinicState(clinicId: ClinicId): Promise<ClinicSt
   }
 
   const queue = await readClinicQueueFrom(db, clinicId);
-  return normalizeClinicState(clinicId, clinicDocument, queue);
+  const normalizedState = normalizeClinicState(clinicId, clinicDocument, queue);
+
+  try {
+    const { getClinicSettings } = await import("@/lib/firebase/clinic-settings");
+    const settings = await getClinicSettings(clinicId);
+    if (settings) {
+      normalizedState.settings = {
+        doctorName: settings.doctorName,
+        clinicName: settings.clinicName,
+        address: settings.address,
+        phone: settings.phone,
+        whatsapp: settings.whatsapp,
+      };
+      
+      // Override default names if setting exists
+      if (settings.clinicName) normalizedState.clinicName = settings.clinicName;
+      if (settings.address) normalizedState.clinicSubtitle = settings.address;
+    }
+  } catch (err) {
+    console.error("Failed to fetch clinic settings:", err);
+  }
+
+  return normalizedState;
 }
 
 async function upsertRemoteEntries(clinicId: ClinicId, entries: PendingSyncEntry[]) {

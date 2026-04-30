@@ -129,6 +129,7 @@ export function Navbar() {
               { href: "/staff/schedule", label: t("nav", "schedule"), icon: CalendarDays },
               { href: "/staff/manage", label: t("nav", "staffMgmt"), icon: Users },
               { href: "/staff/reports", label: t("nav", "reports") || "Reports", icon: BarChart },
+              { href: "/staff/settings", label: "Settings", icon: Hospital },
             ]
           : []),
         ...(!isPharmacist && !isDoctor

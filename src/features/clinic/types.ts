@@ -50,6 +50,14 @@ export type QueueEntry = {
   isReportCheck?: boolean;
 };
 
+export type ClinicSettings = {
+  doctorName: string;
+  clinicName: string;
+  address: string;
+  phone: string;
+  whatsapp: string;
+};
+
 export type ClinicState = {
   clinicId: ClinicId;
   clinicName: string;
@@ -61,6 +69,7 @@ export type ClinicState = {
   queue: QueueEntry[];
   emergencyClosed?: boolean;
   emergencyMessage?: string;
+  settings?: ClinicSettings;
 };
 
 export type CreateBookingInput = {
