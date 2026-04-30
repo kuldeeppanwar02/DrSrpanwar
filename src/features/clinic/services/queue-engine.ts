@@ -288,7 +288,7 @@ export function syncPendingState(state: ClinicState) {
 
 export function advanceQueueState(state: ClinicState) {
   const nextQueue = [...state.queue];
-  const currentIndex = nextQueue.findIndex((entry) => entry.status === "in-progress");
+  const currentIndex = nextQueue.findIndex((entry) => entry.status === "in-progress" && entry.dayLabel === "Aaj" && entry.source === "walk-in");
 
   if (currentIndex >= 0) {
     nextQueue[currentIndex] = {
@@ -298,7 +298,7 @@ export function advanceQueueState(state: ClinicState) {
     };
   }
 
-  const nextIndex = nextQueue.findIndex((entry) => entry.status === "waiting");
+  const nextIndex = nextQueue.findIndex((entry) => entry.status === "waiting" && entry.dayLabel === "Aaj" && entry.source === "walk-in");
 
   if (nextIndex >= 0) {
     nextQueue[nextIndex] = {

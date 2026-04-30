@@ -82,16 +82,40 @@ export default function StaffPage() {
   const [showAddModal, setShowAddModal] = useState(false);
 
   const isDoctor = session?.role === "doctor";
+  
+  type QueueTab = "live" | "scheduled" | "tomorrow" | "complete";
+  const [tab, setTab] = useState<QueueTab>("live");
 
-  // Split queue
-  const pendingEntries = useMemo(
-    () => clinicState.queue.filter((e) => e.status !== "done" && e.status !== "skipped"),
+  // Split queue logically
+  const liveQueue = useMemo(
+    () => clinicState.queue.filter((e) => e.status !== "done" && e.status !== "skipped" && e.dayLabel === "Aaj" && e.source === "walk-in"),
     [clinicState.queue],
   );
+
+  const scheduledToday = useMemo(
+    () => clinicState.queue.filter((e) => e.status !== "done" && e.status !== "skipped" && e.dayLabel === "Aaj" && e.source === "booking"),
+    [clinicState.queue],
+  );
+
+  const tomorrowBookings = useMemo(
+    () => clinicState.queue.filter((e) => e.status !== "done" && e.status !== "skipped" && e.dayLabel === "Kal"),
+    [clinicState.queue],
+  );
+
   const completeEntries = useMemo(
     () => clinicState.queue.filter((e) => e.status === "done" || e.status === "skipped"),
     [clinicState.queue],
   );
+
+  const visibleEntries = useMemo(() => {
+    switch (tab) {
+      case "live": return liveQueue;
+      case "scheduled": return scheduledToday;
+      case "tomorrow": return tomorrowBookings;
+      case "complete": return completeEntries;
+      default: return liveQueue;
+    }
+  }, [tab, liveQueue, scheduledToday, tomorrowBookings, completeEntries]);
 
   useEffect(() => {
     const sync = () => setSession(getStaffSession());
@@ -463,43 +487,64 @@ export default function StaffPage() {
         )}
 
         {/* Queue Tabs */}
-        <div className="mt-6 flex gap-1 rounded-xl bg-[rgba(19,49,58,0.06)] p-1">
+        <div className="mt-6 flex gap-1 rounded-xl bg-[rgba(19,49,58,0.06)] p-1 overflow-x-auto no-scrollbar">
           <button
             type="button"
-            className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              tab === "pending"
+            className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition ${
+              tab === "live"
                 ? "bg-white text-[var(--accent-strong)] shadow-sm"
                 : "text-[rgba(19,49,58,0.55)]"
             }`}
-            onClick={() => setTab("pending")}
+            onClick={() => setTab("live")}
           >
-            {t("queue", "pending")} ({pendingEntries.length})
+            Live ({liveQueue.length})
           </button>
           <button
             type="button"
-            className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+            className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition ${
+              tab === "scheduled"
+                ? "bg-white text-[var(--accent-strong)] shadow-sm"
+                : "text-[rgba(19,49,58,0.55)]"
+            }`}
+            onClick={() => setTab("scheduled")}
+          >
+            Scheduled ({scheduledToday.length})
+          </button>
+          <button
+            type="button"
+            className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition ${
+              tab === "tomorrow"
+                ? "bg-white text-[var(--accent-strong)] shadow-sm"
+                : "text-[rgba(19,49,58,0.55)]"
+            }`}
+            onClick={() => setTab("tomorrow")}
+          >
+            Tomorrow ({tomorrowBookings.length})
+          </button>
+          <button
+            type="button"
+            className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition ${
               tab === "complete"
                 ? "bg-white text-[var(--accent-strong)] shadow-sm"
                 : "text-[rgba(19,49,58,0.55)]"
             }`}
             onClick={() => setTab("complete")}
           >
-            {t("queue", "complete")} ({completeEntries.length})
+            Done ({completeEntries.length})
           </button>
         </div>
 
         {/* Queue List */}
         <div className="mt-4 card p-4">
-          {tab === "pending" ? (
-            pendingEntries.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <Inbox className="h-10 w-10 text-[rgba(19,49,58,0.2)]" />
-                <p className="mt-3 text-sm font-medium text-[rgba(19,49,58,0.45)]">{t("staff", "noPatients")}</p>
-              </div>
-            ) : (
-              <div className="space-y-2 stagger-children">
-                {pendingEntries.map((entry) => (
-                  <div key={entry.id} className="fade-up card p-3">
+          {visibleEntries.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Inbox className="h-10 w-10 text-[rgba(19,49,58,0.2)]" />
+              <p className="mt-3 text-sm font-medium text-[rgba(19,49,58,0.45)]">{t("staff", "noPatients")}</p>
+            </div>
+          ) : (
+            <div className="space-y-2 stagger-children">
+              {visibleEntries.map((entry) => (
+                <div key={entry.id} className="fade-up card p-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-start gap-2.5">
                         <span className={`queue-dot mt-2 ${entry.status}`} />

@@ -231,7 +231,7 @@ async function promoteNextWaitingEntry(
   const [activeEntry] = await sql<{ id: string }[]>`
     select id
     from queue_entries
-    where clinic_id = ${clinicId} and status = 'in-progress'
+    where clinic_id = ${clinicId} and status = 'in-progress' and day_label = 'Aaj' and source = 'walk-in'
     order by queue_order asc
     limit 1
   `;
@@ -243,7 +243,7 @@ async function promoteNextWaitingEntry(
   const [nextEntry] = await sql<{ id: string }[]>`
     select id
     from queue_entries
-    where clinic_id = ${clinicId} and status = 'waiting'
+    where clinic_id = ${clinicId} and status = 'waiting' and day_label = 'Aaj' and source = 'walk-in'
     order by queue_order asc
     limit 1
     for update
