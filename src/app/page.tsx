@@ -425,25 +425,6 @@ function FocusedClinicCard({
           </div>
         )}
 
-        <div className="mt-7 border-t border-[rgba(12,86,81,0.08)] pt-4">
-          <p className="text-sm font-semibold text-[rgba(19,49,58,0.82)]">Trust Strip</p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            {trustPoints.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.label} className="flex items-start gap-3 rounded-[1.3rem] bg-[rgba(255,249,240,0.9)] px-3 py-3">
-                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[var(--gold-soft)] text-[#bb9447]">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold text-[#17130f]">{item.label}</p>
-                    <p className="text-sm leading-5 text-[rgba(19,49,58,0.72)]">{item.detail}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
 
         {!clinic.hasBooking && (
           <div className="mt-5 flex items-center gap-2 rounded-xl bg-[var(--accent-soft)] px-3 py-2">
