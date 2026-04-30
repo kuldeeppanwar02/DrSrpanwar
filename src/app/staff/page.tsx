@@ -89,12 +89,12 @@ export default function StaffPage() {
   );
   // Split queue logically
   const liveQueue = useMemo(
-    () => clinicState.queue.filter((e) => e.status !== "done" && e.status !== "skipped" && e.dayLabel === "Aaj" && e.source === "walk-in"),
+    () => clinicState.queue.filter((e) => e.status !== "done" && e.status !== "skipped" && e.dayLabel === "Aaj" && (e.source === "walk-in" || e.status === "in-progress" || e.status === "hold")),
     [clinicState.queue],
   );
 
   const scheduledToday = useMemo(
-    () => clinicState.queue.filter((e) => e.status !== "done" && e.status !== "skipped" && e.dayLabel === "Aaj" && e.source === "booking"),
+    () => clinicState.queue.filter((e) => e.status !== "done" && e.status !== "skipped" && e.dayLabel === "Aaj" && e.source === "booking" && e.status !== "in-progress" && e.status !== "hold"),
     [clinicState.queue],
   );
 

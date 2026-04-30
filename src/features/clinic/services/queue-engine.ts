@@ -383,11 +383,11 @@ export function rescheduleQueueEntryState(state: ClinicState, entryId: string) {
   queue.push({
     ...entry,
     dayLabel: "Kal",
-    slotLabel: "11:30 AM",
+    slotLabel: "Morning",
     status: "waiting",
     queueOrder: getNextQueueOrder(queue),
     updatedAt: new Date().toISOString(),
-    notes: "Kal 11:30 AM par rescheduled",
+    notes: "Kal ke liye rescheduled",
   });
 
   return touchState({
