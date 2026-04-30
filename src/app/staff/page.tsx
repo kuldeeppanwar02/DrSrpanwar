@@ -544,7 +544,19 @@ export default function StaffPage() {
           ) : (
             <div className="space-y-2 stagger-children">
               {visibleEntries.map((entry) => (
-                <div key={entry.id} className="fade-up card p-3">
+                <div key={entry.id} className={`fade-up card p-3 ${entry.status === "done" || entry.status === "skipped" ? "opacity-65" : ""}`}>
+                  {entry.status === "done" || entry.status === "skipped" ? (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span className={`queue-dot ${entry.status}`} />
+                        <span className="text-base font-bold">{entry.token}</span>
+                        <span className="text-sm text-[rgba(19,49,58,0.55)]">{entry.name}</span>
+                      </div>
+                      <span className={`badge ${entry.status === "done" ? "badge-done" : "badge-skipped"}`}>
+                        {entry.status === "done" ? t("queue", "complete") : t("staff", "skipBtn")}
+                      </span>
+                    </div>
+                  ) : (
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-start gap-2.5">
                         <span className={`queue-dot mt-2 ${entry.status}`} />
@@ -645,36 +657,14 @@ export default function StaffPage() {
                         )}
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )
-          ) : (
-            /* Complete Tab */
-            completeEntries.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <CheckCircle2 className="h-10 w-10 text-[rgba(31,122,84,0.2)]" />
-                <p className="mt-3 text-sm font-medium text-[rgba(19,49,58,0.45)]">{t("queue", "noCompletedToday")}</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {completeEntries.map((entry) => (
-                  <div key={entry.id} className="card p-3 opacity-65">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <span className={`queue-dot ${entry.status}`} />
-                        <span className="text-base font-bold">{entry.token}</span>
-                        <span className="text-sm text-[rgba(19,49,58,0.55)]">{entry.name}</span>
-                      </div>
-                      <span className={`badge ${entry.status === "done" ? "badge-done" : "badge-skipped"}`}>
-                        {entry.status === "done" ? t("queue", "complete") : t("staff", "skipBtn")}
-                      </span>
                     </div>
-                  </div>
-                ))}
+                  )}
+                </div>
+              ))}
               </div>
-            )
-          )}
+              </div>
+            )}
+        </div>
         </div>
       </div>
 
