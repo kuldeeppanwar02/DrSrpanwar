@@ -19,10 +19,12 @@ import {
   Hospital,
   Pill,
   BarChart,
+  Download,
 } from "lucide-react";
 import { CLINICS, buildClinicHref } from "@/features/clinic/catalog";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
+import { usePWAInstall } from "@/lib/use-pwa";
 
 type StaffSession = {
   id: string;
@@ -74,6 +76,8 @@ export function Navbar() {
   const router = useRouter();
   const { activeClinicId, activeClinic, isOnline } = useClinic();
   const { lang, toggleLang, t } = useLang();
+  const { isInstallable, install, isIOS } = usePWAInstall();
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [session, setSession] = useState<StaffSession>(() => getStaffSession());
 
@@ -332,6 +336,25 @@ export function Navbar() {
                   {item.label}
                 </Link>
               ))}
+              
+              {/* Manual Install Trigger */}
+              {(isInstallable || isIOS) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    if (isIOS) {
+                      setShowIOSInstructions(true);
+                    } else {
+                      install();
+                    }
+                  }}
+                  className="fade-up flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--accent-strong)] bg-[rgba(103,237,170,0.1)] transition-colors hover:bg-[rgba(103,237,170,0.2)] mt-1 border border-[rgba(103,237,170,0.2)]"
+                >
+                  <Download className="h-4 w-4 text-[var(--accent)]" />
+                  ऐप इंस्टॉल करें (Install App)
+                </button>
+              )}
             </div>
           )}
 
@@ -361,6 +384,34 @@ export function Navbar() {
               {t("nav", "login")}
             </Link>
           )}
+        </div>
+      )}
+
+      {/* iOS Instructions Modal (Same as Banner but scoped to Navbar for manual clicks) */}
+      {showIOSInstructions && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm p-4 sm:items-center">
+          <div className="w-full max-w-sm rounded-[24px] bg-white p-6 shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xl font-bold text-gray-900">ऐप इंस्टॉल करें</h3>
+              <button onClick={() => setShowIOSInstructions(false)} className="rounded-full bg-gray-100 p-2 text-gray-500 hover:bg-gray-200">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-4 text-gray-700 font-medium">
+              <p>अपने iPhone में आसानी से ऐप डालने के लिए:</p>
+              <ol className="list-decimal pl-5 space-y-3">
+                <li>स्क्रीन के नीचे दिए गए <strong>Share</strong> बटन (चौकोर बॉक्स से ऊपर जाता हुआ तीर) को दबाएं।</li>
+                <li>थोड़ा नीचे स्क्रॉल करें और <strong>"Add to Home Screen"</strong> चुनें।</li>
+                <li>सबसे ऊपर दाईं ओर <strong>"Add"</strong> पर टैप करें।</li>
+              </ol>
+            </div>
+            <button 
+              onClick={() => setShowIOSInstructions(false)}
+              className="mt-6 w-full rounded-2xl bg-[var(--accent)] py-3.5 font-bold text-white transition-transform active:scale-95 shadow-lg shadow-[var(--accent)]/30"
+            >
+              समझ गया
+            </button>
+          </div>
         </div>
       )}
     </header>

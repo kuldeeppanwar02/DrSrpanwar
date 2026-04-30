@@ -10,6 +10,7 @@ import { Navbar } from "@/components/navbar";
 import { PwaShell } from "@/components/pwa-shell";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ToastProvider } from "@/components/toast";
+import { InstallBanner } from "@/components/install-banner";
 import "./globals.css";
 
 const bodyFont = Manrope({
@@ -96,6 +97,7 @@ export default function RootLayout({
                   <Navbar />
                   <PwaShell />
                   <main className="flex-1">{children}</main>
+                  <InstallBanner />
                 </ClinicProvider>
               </Suspense>
             </ErrorBoundary>
