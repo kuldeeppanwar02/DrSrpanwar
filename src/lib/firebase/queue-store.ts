@@ -13,6 +13,7 @@ import type {
   QueueStatus,
 } from "@/features/clinic/types";
 import { getDb, toIsoString } from "@/lib/supabase/db";
+import { saveVisitRecord } from "@/lib/firebase/patient-history";
 
 type QueryableDb = {
   <T = unknown>(strings: TemplateStringsArray, ...values: unknown[]): T;
@@ -327,6 +328,16 @@ export async function getRemoteClinicState(clinicId: ClinicId) {
     limit 1
   `;
 
+  // Auto-reset daily logic
+  if (clinicDocument && clinicDocument.last_updated) {
+    const lastUpdateDate = new Date(clinicDocument.last_updated).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" });
+    const currentDate = new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" });
+    if (lastUpdateDate !== currentDate) {
+      console.log(`[Auto-Reset] Triggering daily reset for ${clinicId}. Last updated: ${lastUpdateDate}, Current: ${currentDate}`);
+      return await resetRemoteClinicQueue(clinicId);
+    }
+  }
+
   const queue = await readClinicQueueFrom(db, clinicId);
   return normalizeClinicState(clinicId, clinicDocument, queue);
 }
@@ -554,6 +565,7 @@ export async function updateRemoteQueueEntryStatus(
 ) {
   const db = getDb();
   const updateTimestamp = new Date().toISOString();
+  let entryToSave: QueueEntryRow | null = null;
 
   await db.begin(async (tx) => {
     await ensureClinicInitialized(tx, clinicId);
@@ -564,8 +576,8 @@ export async function updateRemoteQueueEntryStatus(
       for update
     `;
 
-    const [entrySnapshot] = await tx<{ id: string }[]>`
-      select id
+    const [entrySnapshot] = await tx<QueueEntryRow[]>`
+      select *
       from queue_entries
       where clinic_id = ${clinicId} and id = ${entryId}
       limit 1
@@ -575,6 +587,7 @@ export async function updateRemoteQueueEntryStatus(
     if (!entrySnapshot) {
       throw new Error("Queue entry not found.");
     }
+    entryToSave = entrySnapshot;
 
     await tx`
       update queue_entries
@@ -592,6 +605,16 @@ export async function updateRemoteQueueEntryStatus(
       where clinic_id = ${clinicId}
     `;
   });
+
+  if (status === "done" && entryToSave) {
+    await saveVisitRecord(entryToSave.mobile, entryToSave.name, clinicId, {
+      token: entryToSave.token,
+      bookingId: entryToSave.booking_id,
+      source: entryToSave.source,
+      dayLabel: entryToSave.day_label,
+      slotLabel: entryToSave.slot_label,
+    });
+  }
 
   return getRemoteClinicState(clinicId);
 }
@@ -733,13 +756,42 @@ export async function rescheduleRemoteQueueEntry(clinicId: ClinicId, entryId: st
 export async function resetRemoteClinicQueue(clinicId: ClinicId) {
   const db = getDb();
   const document = createClinicDocument(clinicId);
+  const clinic = getClinicDefinition(clinicId);
 
   await db.begin(async (tx) => {
     await ensureClinicInitialized(tx, clinicId);
+    
+    // Delete only Aaj's entries (clearing today's history)
     await tx`
       delete from queue_entries
-      where clinic_id = ${clinicId}
+      where clinic_id = ${clinicId} and day_label = 'Aaj'
     `;
+
+    // Fetch tomorrow's bookings
+    const kalEntries = await tx<QueueEntryRow[]>`
+      select * from queue_entries
+      where clinic_id = ${clinicId} and day_label = 'Kal'
+      order by queue_order asc, created_at asc
+    `;
+
+    let nextToken = 1;
+    let nextOrder = 1;
+
+    // Promote tomorrow's bookings to today, assigning new tokens
+    for (const entry of kalEntries) {
+      const newToken = `${clinic.prefix}-${padSequence(nextToken)}`;
+      await tx`
+        update queue_entries
+        set
+          day_label = 'Aaj',
+          token = ${newToken},
+          queue_order = ${nextOrder},
+          updated_at = ${toIsoString(new Date())}
+        where id = ${entry.id}
+      `;
+      nextToken++;
+      nextOrder++;
+    }
 
     await tx`
       update clinic_states
@@ -748,12 +800,12 @@ export async function resetRemoteClinicQueue(clinicId: ClinicId) {
         clinic_subtitle = ${document.clinic_subtitle},
         clinic_prefix = ${document.clinic_prefix},
         doctor_message = ${document.doctor_message},
-        next_token_number = ${document.next_token_number},
-        next_queue_order = ${document.next_queue_order},
+        next_token_number = ${nextToken},
+        next_queue_order = ${nextOrder},
         emergency_closed = ${document.emergency_closed},
         emergency_message = ${document.emergency_message},
-        last_updated = ${toIsoString(document.last_updated)},
-        last_synced_at = ${toIsoString(document.last_synced_at)}
+        last_updated = ${toIsoString(new Date())},
+        last_synced_at = ${toIsoString(new Date())}
       where clinic_id = ${clinicId}
     `;
   });
