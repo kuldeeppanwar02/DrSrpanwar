@@ -565,9 +565,7 @@ export async function updateRemoteQueueEntryStatus(
 ) {
   const db = getDb();
   const updateTimestamp = new Date().toISOString();
-  let entryToSave: QueueEntryRow | null = null;
-
-  await db.begin(async (tx) => {
+  const entryToSave = await db.begin(async (tx) => {
     await ensureClinicInitialized(tx, clinicId);
     await tx`
       select clinic_id
@@ -587,7 +585,6 @@ export async function updateRemoteQueueEntryStatus(
     if (!entrySnapshot) {
       throw new Error("Queue entry not found.");
     }
-    entryToSave = entrySnapshot;
 
     await tx`
       update queue_entries
@@ -604,6 +601,8 @@ export async function updateRemoteQueueEntryStatus(
       set last_updated = ${updateTimestamp}, last_synced_at = ${updateTimestamp}
       where clinic_id = ${clinicId}
     `;
+
+    return entrySnapshot;
   });
 
   if (status === "done" && entryToSave) {
