@@ -641,6 +641,18 @@ export default function StaffPage() {
                         </button>
                         </div>
                       )}
+
+                      {(entry.status === "done" || entry.status === "skipped") && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          <button type="button" className="btn btn-outline btn-sm"
+                            onClick={() => void runAction(async () => {
+                              const resolvedEntryId = await resolveEntryForAction(entry);
+                              await updateQueueStatus(resolvedEntryId, "waiting");
+                            }, "Patient re-queued successfully")}>
+                            <RotateCcw className="h-3 w-3" /> Re-Queue / Undo
+                          </button>
+                        </div>
+                      )}
                     </div>
                 </div>
               ))}
