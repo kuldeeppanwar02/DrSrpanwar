@@ -32,15 +32,15 @@ const hindiFont = Noto_Sans_Devanagari({
 });
 
 export const metadata: Metadata = {
-  title: "Panwar SmartCare Hub | Multi-Clinic Appointment & Queue PWA",
+  title: "Dr SR Panwar Clinic | Smart Appointment & Queue PWA",
   description:
     "Hindi-first multi-clinic PWA with appointment booking, QR walk-in token, staff dashboard aur live queue status.",
-  applicationName: "Panwar SmartCare Hub",
+  applicationName: "Dr SR Panwar",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "SmartCare",
+    title: "Dr SR Panwar",
     startupImage: "/logo.png",
   },
   icons: {

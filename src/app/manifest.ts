@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Panwar SmartCare Hub",
-    short_name: "SmartCare",
+    name: "Dr SR Panwar Clinic",
+    short_name: "Dr SR Panwar",
     description:
       "Hindi-first multi-clinic PWA — appointment booking, walk-in token, live queue status aur staff dashboard.",
     start_url: "/",
