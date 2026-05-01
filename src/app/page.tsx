@@ -21,6 +21,9 @@ import {
   Facebook,
   Instagram,
   MessageCircle,
+  Code2,
+  Zap,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { CLINICS, buildClinicHref } from "@/features/clinic/catalog";
@@ -73,6 +76,8 @@ export default function HomePage() {
   const [session, setSession] = useState<{ name: string; role: string; clinicAccess: string[] } | null>(
     () => getStaffSession(),
   );
+
+  const [showDeveloperModal, setShowDeveloperModal] = useState(false);
 
   useEffect(() => {
     const sync = () => setSession(getStaffSession());
@@ -526,6 +531,106 @@ function FocusedClinicCard({
           </div>
         )}
       </div>
+
+      {/* Subtle Developer Footer */}
+      <div className="mt-6 mb-8 text-center px-4">
+        <button 
+          onClick={() => setShowDeveloperModal(true)}
+          className="inline-flex items-center gap-1.5 text-[0.7rem] font-medium text-[rgba(19,49,58,0.35)] hover:text-[rgba(19,49,58,0.7)] transition-colors"
+        >
+          <span>Designed & Developed by Kuldeep Panwar</span>
+          <Zap className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+        </button>
+      </div>
+
+      {/* Developer Connect Modal */}
+      {showDeveloperModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[rgba(19,49,58,0.3)] backdrop-blur-sm sm:p-4">
+          <div 
+            className="w-full sm:w-[26rem] bg-[#fbfaf8] sm:rounded-3xl rounded-t-3xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="relative bg-[var(--accent)] px-6 py-6 text-white overflow-hidden">
+              <div className="absolute inset-0 opacity-10">
+                <Code2 className="h-40 w-40 absolute -right-10 -bottom-10" />
+              </div>
+              <button 
+                onClick={() => setShowDeveloperModal(false)}
+                className="absolute top-4 right-4 h-8 w-8 flex items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm hover:bg-white/30 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              
+              <div className="relative z-10">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-white mb-4 shadow-inner">
+                  <Code2 className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-bold tracking-tight">Kuldeep Panwar</h3>
+                <p className="text-white/80 text-sm font-medium mt-1 flex items-center gap-1">
+                  App Developer & Designer <Zap className="h-3.5 w-3.5 text-yellow-300 fill-yellow-300" />
+                </p>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <p className="text-sm text-[rgba(19,49,58,0.6)] font-medium mb-5">
+                For app support, new development, or feature requests, feel free to connect with me.
+              </p>
+
+              <div className="flex flex-col gap-3">
+                <a 
+                  href="tel:+919358752147"
+                  className="flex items-center gap-4 w-full p-4 rounded-2xl bg-white border border-[rgba(19,49,58,0.06)] shadow-[0_2px_8px_rgba(19,49,58,0.03)] hover:-translate-y-0.5 transition-transform active:scale-95"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                    <Phone className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="text-[0.95rem] font-bold text-[var(--accent-strong)]">Call</p>
+                    <p className="text-[0.8rem] font-medium text-[rgba(19,49,58,0.5)] truncate">+91 9358752147</p>
+                  </div>
+                  <ExternalLink className="h-4 w-4 text-[rgba(19,49,58,0.2)]" />
+                </a>
+
+                <a 
+                  href="mailto:panwarkuldeep256@gmail.com"
+                  className="flex items-center gap-4 w-full p-4 rounded-2xl bg-white border border-[rgba(19,49,58,0.06)] shadow-[0_2px_8px_rgba(19,49,58,0.03)] hover:-translate-y-0.5 transition-transform active:scale-95"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                    <Mail className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="text-[0.95rem] font-bold text-[var(--accent-strong)]">Email</p>
+                    <p className="text-[0.8rem] font-medium text-[rgba(19,49,58,0.5)] truncate">panwarkuldeep256@gmail.com</p>
+                  </div>
+                  <ExternalLink className="h-4 w-4 text-[rgba(19,49,58,0.2)]" />
+                </a>
+
+                <a 
+                  href="https://www.instagram.com/kuldeeppanwar126?igsh=Ympjb3RiNDNxMWl0"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-4 w-full p-4 rounded-2xl bg-white border border-[rgba(19,49,58,0.06)] shadow-[0_2px_8px_rgba(19,49,58,0.03)] hover:-translate-y-0.5 transition-transform active:scale-95"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-50 text-pink-600">
+                    <Instagram className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="text-[0.95rem] font-bold text-[var(--accent-strong)]">Instagram</p>
+                    <p className="text-[0.8rem] font-medium text-[rgba(19,49,58,0.5)] truncate">@kuldeeppanwar126</p>
+                  </div>
+                  <ExternalLink className="h-4 w-4 text-[rgba(19,49,58,0.2)]" />
+                </a>
+              </div>
+            </div>
+            
+            {/* Safe area for mobile */}
+            <div className="h-6 sm:hidden"></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
