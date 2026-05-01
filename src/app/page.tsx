@@ -364,7 +364,7 @@ function FocusedClinicCard({
               }`}
             >
               <p className="w-full text-[11px] font-semibold sm:font-medium leading-snug sm:text-[1.2rem] sm:leading-7">
-                {settings?.clinicName || clinic.subtitle}
+                {clinic.subtitle}
               </p>
             </div>
 
