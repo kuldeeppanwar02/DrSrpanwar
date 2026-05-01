@@ -75,7 +75,10 @@ export default function LivePage() {
           const rxList = data.prescriptions || [];
           
           const surgicalRx = rxList.filter((p: any) => p.tokenId.startsWith("S-") && p.status !== "collected");
-          const readyList = surgicalRx.filter((p: any) => p.status === "ready");
+          const readyList = surgicalRx
+            .filter((p: any) => p.status === "ready")
+            .sort((a: any, b: any) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
+            
           const preparingList = surgicalRx.filter((p: any) => p.status === "preparing" || p.status === "sent");
           
           if (readyList.length > 0) {

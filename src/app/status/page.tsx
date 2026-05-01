@@ -32,9 +32,44 @@ export default function StatusPage() {
   const [mobile, setMobile] = useState("");
   const [submittedMobile, setSubmittedMobile] = useState("");
 
+  const [pharmacyRx, setPharmacyRx] = useState<{status: string} | null>(null);
+
   const matches = useMemo(() => findEntriesByMobile(submittedMobile, clinicState), [clinicState, submittedMobile]);
   const selectedEntry = pickBestEntry(matches);
   const position = selectedEntry ? getEntryPosition(clinicState, selectedEntry.id) : null;
+
+  // If the entry is done, check if there's a pharmacy prescription for it
+  useEffect(() => {
+    if (!selectedEntry || selectedEntry.status !== "done") {
+      setPharmacyRx(null);
+      return;
+    }
+    
+    let mounted = true;
+    const fetchPharmacyStatus = async () => {
+      try {
+        const res = await fetch("/api/prescriptions");
+        if (res.ok) {
+          const data = await res.json();
+          if (mounted) {
+            const rx = (data.prescriptions || []).find((p: any) => p.tokenId === selectedEntry.token);
+            if (rx) {
+              setPharmacyRx({ status: rx.status });
+            } else {
+              setPharmacyRx(null);
+            }
+          }
+        }
+      } catch (e) {}
+    };
+    
+    fetchPharmacyStatus();
+    const interval = setInterval(fetchPharmacyStatus, 5000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [selectedEntry]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -58,34 +93,28 @@ export default function StatusPage() {
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value)}
                   inputMode="numeric"
-                  className="input"
-                  style={{ paddingLeft: '2.5rem' }}
-                  placeholder={t("status", "enterMobilePlaceholder")}
+                  className="input pl-10 pt-2 pb-2 h-10 min-h-0 sm:pt-2.5 sm:pb-2.5 sm:h-11 border-[rgba(15,107,99,0.15)] shadow-inner text-base font-semibold tracking-wide placeholder:font-normal focus:border-[var(--accent-strong)] focus:ring-[var(--accent-soft)]"
+                  placeholder={t("status", "mobilePlaceholder")}
                 />
               </div>
-              <button type="submit" className="btn btn-primary flex-shrink-0">
-                <Search className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("status", "checkBtn")}</span>
+              <button
+                type="submit"
+                disabled={mobile.length < 4}
+                className="btn btn-primary px-5 shadow-[0_4px_12px_rgba(15,107,99,0.15)] h-10 sm:h-11"
+              >
+                {t("status", "searchBtn")}
               </button>
             </form>
           </div>
 
-          {/* Queue stats */}
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div className="card-elevated overflow-hidden rounded-xl">
-              <div className="bg-gradient-to-br from-[rgba(19,49,58,0.92)] to-[rgba(8,42,51,0.96)] p-3 text-center text-white">
-                <p className="text-[9px] uppercase tracking-widest text-[rgba(255,255,255,0.5)]">
-                  <Activity className="mx-auto mb-0.5 h-3 w-3 animate-pulse-dot" />
-                  {t("status", "yourToken")}
-                </p>
-                <p className="display-type mt-1 text-xl">{summary.current?.token ?? "--"}</p>
-              </div>
-            </div>
+          {/* Quick Stats */}
+          <div className="mt-4 grid grid-cols-3 gap-2">
             <div className="card p-3 text-center">
               <p className="text-[9px] font-semibold uppercase tracking-widest text-[var(--accent)]">
-                {t("home", "nextToken")}
+                <Activity className="mx-auto mb-0.5 h-3 w-3" />
+                {t("live", "currentToken")}
               </p>
-              <p className="mt-1 text-xl font-bold">{summary.next?.token ?? "--"}</p>
+              <p className="mt-1 text-xl font-bold">{summary.current?.token ?? "--"}</p>
             </div>
             <div className="card p-3 text-center">
               <p className="text-[9px] font-semibold uppercase tracking-widest text-[var(--accent)]">
@@ -121,7 +150,7 @@ export default function StatusPage() {
             {selectedEntry && (
               <div className="fade-up space-y-3">
                 <div className="card-elevated overflow-hidden rounded-2xl">
-                  <div className="bg-gradient-to-br from-[var(--accent)] to-[var(--accent-strong)] p-5 text-center text-white">
+                  <div className="bg-gradient-to-br from-[var(--accent)] to-[var(--accent-strong)] p-5 text-center text-white relative">
                     <p className="text-[10px] uppercase tracking-[0.2em] text-[rgba(255,255,255,0.55)]">
                       {t("status", "yourToken")}
                     </p>
@@ -129,6 +158,17 @@ export default function StatusPage() {
                     <span className={`mt-2 badge badge-${selectedEntry.status === 'in-progress' ? 'in-progress' : selectedEntry.status === 'done' ? 'done' : selectedEntry.status === 'hold' ? 'hold' : 'waiting'}`}>
                       {selectedEntry.status}
                     </span>
+                    
+                    {pharmacyRx && pharmacyRx.status !== "collected" && (
+                      <div className="mt-4 pt-3 border-t border-[rgba(255,255,255,0.1)] animate-fade-in">
+                        <p className="text-xs uppercase tracking-widest text-[#a2f1e6] font-bold">
+                          Pharmacy Status
+                        </p>
+                        <p className={`mt-1 text-lg font-black tracking-wide ${pharmacyRx.status === 'ready' ? 'text-[#ffd700] animate-pulse' : 'text-white'}`}>
+                          {pharmacyRx.status === 'ready' ? 'READY TO COLLECT 💊' : 'Preparing Medicines...'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
