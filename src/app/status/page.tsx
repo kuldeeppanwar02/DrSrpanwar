@@ -58,7 +58,8 @@ export default function StatusPage() {
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value)}
                   inputMode="numeric"
-                  className="input pl-11"
+                  className="input"
+                  style={{ paddingLeft: '2.5rem' }}
                   placeholder={t("status", "enterMobilePlaceholder")}
                 />
               </div>
