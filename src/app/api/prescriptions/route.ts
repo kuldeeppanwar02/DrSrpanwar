@@ -129,10 +129,10 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const validStatuses: PrescriptionStatus[] = ["sent", "preparing", "ready"];
+    const validStatuses: PrescriptionStatus[] = ["sent", "preparing", "ready", "collected"];
     if (!validStatuses.includes(status)) {
       return NextResponse.json(
-        { error: "status must be sent, preparing, or ready" },
+        { error: "status must be sent, preparing, ready, or collected" },
         { status: 400 },
       );
     }

@@ -85,6 +85,50 @@ export default function HomePage() {
   const isLoggedIn = isDoctor || isStaff;
   const heroTitle = lang === "hi" ? "पंवार हेल्थ केयर" : "PANWAR HEALTH CARE";
 
+  // Pharmacy specific queue tracking
+  const [pharmacyReady, setPharmacyReady] = useState<{ token: string; name: string } | null>(null);
+  const [pharmacyWaitingCount, setPharmacyWaitingCount] = useState(0);
+
+  useEffect(() => {
+    if (activeClinicId !== "pharmacy") return;
+    
+    let mounted = true;
+    const fetchPharmacyRx = async () => {
+      try {
+        const res = await fetch("/api/prescriptions");
+        if (res.ok) {
+          const data = await res.json();
+          if (!mounted) return;
+          const rxList = data.prescriptions || [];
+          
+          // Only show those from surgical as requested: "bas surgical --> pharmacy ko hi kro"
+          // We can't strictly filter by origin clinic easily without checking prefix, so let's check prefix
+          const surgicalRx = rxList.filter((p: any) => p.tokenId.startsWith("S-") && p.status !== "collected");
+          
+          const readyList = surgicalRx.filter((p: any) => p.status === "ready");
+          const preparingList = surgicalRx.filter((p: any) => p.status === "preparing" || p.status === "sent");
+          
+          if (readyList.length > 0) {
+            // Show the oldest ready one (first in the list, assuming sorting is desc, so last in array)
+            // Wait, the API returns them ordered by created_at desc. So readyList[0] is the NEWEST ready.
+            // Let's show the NEWEST ready.
+            setPharmacyReady({ token: readyList[0].tokenId, name: readyList[0].patientName });
+          } else {
+            setPharmacyReady(null);
+          }
+          setPharmacyWaitingCount(preparingList.length);
+        }
+      } catch (e) {}
+    };
+
+    void fetchPharmacyRx();
+    const interval = setInterval(fetchPharmacyRx, 10000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [activeClinicId]);
+
   return (
     <div className="page-shell">
       {state.emergencyClosed && (
@@ -148,10 +192,26 @@ export default function HomePage() {
         <div className="space-y-4">
           <QueueSnapshotCard
             clinic={activeClinic}
-            currentToken={summary.current?.token ?? `${activeClinic.prefix}-000`}
-            nextToken={summary.next?.token ?? "--"}
-            waitingCount={summary.waiting.length}
-            currentName={summary.current?.name ?? "Queue preparing"}
+            currentToken={
+              activeClinicId === "pharmacy"
+                ? (pharmacyReady?.token ?? "---")
+                : (summary.current?.token ?? `${activeClinic.prefix}-000`)
+            }
+            nextToken={
+              activeClinicId === "pharmacy"
+                ? "--"
+                : (summary.next?.token ?? "--")
+            }
+            waitingCount={
+              activeClinicId === "pharmacy"
+                ? pharmacyWaitingCount
+                : summary.waiting.length
+            }
+            currentName={
+              activeClinicId === "pharmacy"
+                ? (pharmacyReady?.name ?? (pharmacyWaitingCount > 0 ? t("prescription", "preparing") || "Preparing..." : "Queue preparing"))
+                : (summary.current?.name ?? "Queue preparing")
+            }
             t={t}
           />
 

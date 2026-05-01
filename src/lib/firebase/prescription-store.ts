@@ -6,7 +6,7 @@ import { serverEnv } from "@/config/server-env";
 import { getDb, toIsoString } from "@/lib/supabase/db";
 import { getSupabaseAdminClient } from "@/lib/supabase/storage";
 
-export type PrescriptionStatus = "sent" | "preparing" | "ready";
+export type PrescriptionStatus = "sent" | "preparing" | "ready" | "collected";
 
 export type StoredPrescriptionDoc = {
   id: string;

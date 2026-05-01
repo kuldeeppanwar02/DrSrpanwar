@@ -23,7 +23,7 @@ type PrescriptionItem = {
   patientName: string;
   date: string;
   photoCount: number;
-  status: "sent" | "preparing" | "ready";
+  status: "sent" | "preparing" | "ready" | "collected";
   createdAt: string;
 };
 
@@ -54,7 +54,11 @@ export default function PharmacyPage() {
       const res = await fetch("/api/prescriptions");
       if (res.ok) {
         const data = await res.json();
-        setPrescriptions(data.prescriptions || []);
+        // Filter out collected prescriptions so they don't clutter the main view
+        const activePrescriptions = (data.prescriptions || []).filter(
+          (p: PrescriptionItem) => p.status !== "collected"
+        );
+        setPrescriptions(activePrescriptions);
       }
     } catch {
       // silent fail
@@ -95,7 +99,7 @@ export default function PharmacyPage() {
     }
   };
 
-  const updateStatus = async (id: string, status: "preparing" | "ready") => {
+  const updateStatus = async (id: string, status: "preparing" | "ready" | "collected") => {
     try {
       await fetch("/api/prescriptions", {
         method: "PATCH",
@@ -278,6 +282,17 @@ export default function PharmacyPage() {
                     >
                       <CheckCircle2 className="h-3 w-3" />
                       {t("prescription", "markReady") || "तैयार ✓"}
+                    </button>
+                  )}
+                  {rx.status === "ready" && (
+                    <button
+                      type="button"
+                      className="btn btn-sm flex-1"
+                      style={{ background: "var(--accent-strong)", color: "white" }}
+                      onClick={() => void updateStatus(rx.id, "collected")}
+                    >
+                      <Package className="h-3 w-3" />
+                      {t("prescription", "markCollected") || "दे दी गई (Collected)"}
                     </button>
                   )}
                 </div>
