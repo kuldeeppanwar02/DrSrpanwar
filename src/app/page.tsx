@@ -77,8 +77,6 @@ export default function HomePage() {
     () => getStaffSession(),
   );
 
-  const [showDeveloperModal, setShowDeveloperModal] = useState(false);
-
   useEffect(() => {
     const sync = () => setSession(getStaffSession());
     window.addEventListener("staff-session-change", sync);
@@ -401,6 +399,7 @@ function FocusedClinicCard({
 }) {
   const isSurgeryClinic = clinic.id === "surgery";
   const trustPoints = TRUST_POINTS[clinic.id];
+  const [showDeveloperModal, setShowDeveloperModal] = useState(false);
 
   return (
     <div className="card-elevated overflow-hidden rounded-[2rem] border border-[rgba(255,255,255,0.78)]">
