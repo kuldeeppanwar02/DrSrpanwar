@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 
     const saved = await saveDefaultSchedule(clinicId as ClinicId, {
       shifts: shifts as [ShiftDefinition, ShiftDefinition, ShiftDefinition],
-      weeklyOff: weeklyOff || ["Sunday"],
+      weeklyOff: Array.isArray(weeklyOff) ? weeklyOff : ["Sunday"],
       slotInterval: slotInterval || 30,
       maxPatients: maxPatients || 20,
       updatedBy: updatedBy || session.name,

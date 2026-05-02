@@ -139,23 +139,20 @@ function normalizeWeeklyOff(value: unknown): string[] {
   const parsed = parseJsonLike(value);
 
   if (Array.isArray(parsed)) {
-    const days = parsed.filter(
+    return parsed.filter(
       (day): day is string => typeof day === "string" && day.trim().length > 0,
     );
-    return days.length > 0 ? days : ["Sunday"];
   }
 
   if (typeof parsed === "string" && parsed.startsWith("{") && parsed.endsWith("}")) {
-    const days = parsed
+    return parsed
       .slice(1, -1)
       .split(",")
       .map((day: string) => day.trim())
       .filter(Boolean);
-
-    return days.length > 0 ? days : ["Sunday"];
   }
 
-  return ["Sunday"];
+  return Array.isArray(value) ? value : [];
 }
 
 function generateSlots(open: string, close: string, interval = 30): string[] {

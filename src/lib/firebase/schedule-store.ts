@@ -145,28 +145,24 @@ function normalizeWeeklyOff(value: unknown) {
   const parsed = parseJsonLike(value);
 
   if (Array.isArray(parsed)) {
-    const days = parsed.filter(
+    return parsed.filter(
       (day): day is string => typeof day === "string" && day.trim().length > 0,
     );
-    return days.length > 0 ? days : ["Sunday"];
   }
 
   if (typeof parsed === "string" && parsed.startsWith("{") && parsed.endsWith("}")) {
-    const days = parsed
+    return parsed
       .slice(1, -1)
       .split(",")
       .map((day) => day.trim())
       .filter(Boolean);
-
-    return days.length > 0 ? days : ["Sunday"];
   }
 
   if (!Array.isArray(parsed)) {
-    return ["Sunday"];
+    return [];
   }
 
-  const days = parsed.filter((day): day is string => typeof day === "string" && day.trim().length > 0);
-  return days.length > 0 ? days : ["Sunday"];
+  return parsed.filter((day): day is string => typeof day === "string" && day.trim().length > 0);
 }
 
 function toDateString(value: string | Date) {
