@@ -142,10 +142,18 @@ export function useClinicSchedule(clinicId: ClinicId) {
       }
 
       // Day has ended (past all shifts)
+      let nextMessage = "";
+      if (tomorrow.isOpen) {
+        const firstTomorrowShift = tomorrow.shifts.find(s => s.enabled && !s.closed);
+        if (firstTomorrowShift) {
+          nextMessage = ` • ${t("banner", "clinicClosedToday")} ${t("banner", "tomorrowAt")} ${formatTime(firstTomorrowShift.startTime)}`;
+        }
+      }
+
       // Change to Overtime banner message but DO NOT BLOCK
       setLiveState({
         status: "closed_for_day",
-        message: t("banner", "routineShiftEnded"),
+        message: `${t("banner", "routineShiftEnded")}${nextMessage}`,
         isWalkInAllowed: true,
       });
     };
