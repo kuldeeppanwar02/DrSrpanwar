@@ -67,20 +67,61 @@ export function useClinicSchedule(clinicId: ClinicId) {
 
       // 1. Check for Leave / Full Day Closure
       if (!today.isOpen) {
-        const reason = today.override?.reason || "";
-        const nextDayLabel = tomorrow.isOpen ? t("banner", "tomorrowAt") : t("banner", "later");
-        
+        let reasonText = "";
+        let returnDate = "";
+        let returnTime = "";
+        let parsedReason = null;
+
+        // Try to parse reason if it's JSON from Smart Away Mode
+        if (today.override?.reason) {
+          try {
+            parsedReason = JSON.parse(today.override.reason);
+            reasonText = parsedReason.text || "";
+            returnDate = parsedReason.returnDate || "";
+            returnTime = parsedReason.returnTime || "";
+          } catch {
+            reasonText = today.override.reason;
+          }
+        }
+
+        const formatTime = (time24: string) => {
+          if (!time24) return "";
+          const [h, m] = time24.split(":");
+          const d = new Date();
+          d.setHours(parseInt(h, 10));
+          d.setMinutes(parseInt(m, 10));
+          return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        };
+
+        const formatDate = (dateStr: string) => {
+          if (!dateStr) return "";
+          return new Date(dateStr).toLocaleDateString("hi-IN", { day: "numeric", month: "long" });
+        };
+
         // If it's a planned override (leave)
         if (today.source === "override") {
+          let nextMessage = "";
+          
+          if (returnTime) {
+            nextMessage = `${t("banner", "returnTodayAt")} ${formatTime(returnTime)} ${t("banner", "nextAvailable").replace(':', '')}`;
+          } else if (returnDate) {
+            nextMessage = `${formatDate(returnDate)} ${t("banner", "returnOnDate")}`;
+          } else {
+             // Fallback to generic next day
+             const nextDayLabel = tomorrow.isOpen ? t("banner", "tomorrowAt") : t("banner", "later");
+             nextMessage = `${t("banner", "nextAvailable")} ${nextDayLabel}`;
+          }
+
           setLiveState({
             status: "on_leave",
-            message: `${t("banner", "doctorOnLeave")} ${reason ? "- " + reason : ""}. ${t("banner", "nextAvailable")} ${nextDayLabel}.`,
+            message: `${reasonText || t("banner", "doctorOnLeave")} • ${nextMessage}`,
             isWalkInAllowed: false,
           });
           return;
         }
 
         // Just a regular weekly off or closed day
+        const nextDayLabel = tomorrow.isOpen ? t("banner", "tomorrowAt") : t("banner", "later");
         setLiveState({
           status: "closed_for_day",
           message: `${t("banner", "clinicClosedToday")} ${nextDayLabel}.`,

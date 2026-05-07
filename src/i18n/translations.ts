@@ -56,11 +56,13 @@ export const translations = {
     doctorAwayNextShift: { hi: "डॉक्टर अभी बाहर हैं • अगली शिफ्ट", en: "Doctor is away • Next shift starts at" },
     clinicClosedToday: { hi: "क्लिनिक आज बंद है • खुलेगा", en: "Clinic is closed today. Opens" },
     noActiveShifts: { hi: "आज कोई शिफ्ट नहीं है", en: "No active shifts today." },
-    doctorOnLeave: { hi: "डॉक्टर छुट्टी पर हैं", en: "Doctor is on leave" },
-    nextAvailable: { hi: "अगले उपलब्ध:", en: "Next available:" },
+    doctorOnLeave: { hi: "डॉक्टर बाहर हैं", en: "Doctor is away" },
+    nextAvailable: { hi: "वापसी:", en: "Returning:" },
     tomorrowAt: { hi: "कल", en: "Tomorrow at" },
     later: { hi: "बाद में", en: "later" },
-    routineShiftEnded: { hi: "रूटीन शिफ्ट खत्म • अंदर के मरीज़ों की जाँच जारी", en: "Routine shift ended • Consulting waiting patients" }
+    routineShiftEnded: { hi: "रूटीन शिफ्ट खत्म • अंदर के मरीज़ों की जाँच जारी", en: "Routine shift ended • Consulting waiting patients" },
+    returnTodayAt: { hi: "आज", en: "Today at" },
+    returnOnDate: { hi: "को खुलेंगा", en: "Opens on" }
   },
 
   home: {
@@ -328,8 +330,8 @@ export const translations = {
     saveDefault: { hi: "डिफॉल्ट सेव करें", en: "Save Default" },
     todayControl: { hi: "आज का कंट्रोल", en: "Today's Control" },
     closeShift: { hi: "शिफ्ट बंद करें", en: "Close Shift" },
-    closeFullDay: { hi: "आज पूरा दिन बंद", en: "Close Full Day Today" },
-    reopenDay: { hi: "आज फिर से खोलें", en: "Reopen Today" },
+    markAway: { hi: "डॉक्टर बाहर हैं (Mark Away)", en: "Mark Doctor Away" },
+    reopenDay: { hi: "वापस खोलें (Reopen)", en: "Reopen Today" },
     confirmClose: { hi: "बंद करें?", en: "Close?" },
     overrideActive: { hi: "आज ओवरराइड लागू", en: "Override Active Today" },
     shiftClosed: { hi: "शिफ्ट बंद", en: "Shift Closed" },
@@ -339,6 +341,18 @@ export const translations = {
     weekScheduleDesc: { hi: "किसी हफ्ते में बदलाव करें", en: "Customize a specific week" },
     booked: { hi: "बुक", en: "booked" },
     reason: { hi: "कारण", en: "Reason" },
+    
+    // Smart Away Modal
+    awayReason: { hi: "बाहर जाने का कारण", en: "Reason for Absence" },
+    hospitalDuty: { hi: "अस्पताल ड्यूटी / इमरजेंसी", en: "Hospital Duty / Emergency" },
+    outOfTown: { hi: "शहर से बाहर", en: "Out of Town" },
+    personalLeave: { hi: "व्यक्तिगत छुट्टी", en: "Personal Leave" },
+    returnTimeLabel: { hi: "वापसी का समय", en: "Returning On" },
+    returningToday: { hi: "आज ही वापस आएंगे", en: "Returning Today" },
+    returningLater: { hi: "किसी और दिन आएंगे", en: "Returning Later" },
+    selectTime: { hi: "समय चुनें", en: "Select Time" },
+    selectDate: { hi: "तारीख चुनें", en: "Select Date" },
+    saveAway: { hi: "सेव करें", en: "Save Away Settings" },
   },
 
   live: {

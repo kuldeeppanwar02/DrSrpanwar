@@ -210,6 +210,13 @@ export default function SchedulePage() {
   const [weekDays, setWeekDays] = useState<DayScheduleLegacy[]>([]);
   const [showWeek, setShowWeek] = useState(false);
 
+  // Smart Away Modal State
+  const [showAwayModal, setShowAwayModal] = useState(false);
+  const [awayReason, setAwayReason] = useState("Hospital Duty / Emergency");
+  const [returnType, setReturnType] = useState<"today" | "later">("today");
+  const [returnTime, setReturnTime] = useState("");
+  const [returnDate, setReturnDate] = useState("");
+
   // UI
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -328,17 +335,27 @@ export default function SchedulePage() {
     finally { setSaving(false); }
   };
 
-  const handleOverride = async (closedShifts: number[], fullDayClosed: boolean) => {
+  const handleOverride = async (closedShifts: number[], fullDayClosed: boolean, reasonStr: string = "") => {
     try {
       await apiClient.post("/api/schedule/override", {
           clinicId: activeClinicId, date: todayStr(), closedShifts, fullDayClosed,
-          reason: "", createdBy: session?.name || "staff",
+          reason: reasonStr, createdBy: session?.name || "staff",
       });
       setTodayOverride({ closedShifts, fullDayClosed });
+      setShowAwayModal(false);
       setError("");
     } catch (overrideError) {
       setError(overrideError instanceof Error ? overrideError.message : "Override update failed");
     }
+  };
+
+  const handleSaveAway = () => {
+    const reasonObj = {
+      text: awayReason,
+      returnDate: returnType === "later" ? returnDate : "",
+      returnTime: returnType === "today" ? returnTime : "",
+    };
+    handleOverride([], true, JSON.stringify(reasonObj));
   };
 
   const handleRemoveOverride = async () => {
@@ -579,11 +596,72 @@ export default function SchedulePage() {
                           🔓 {t("schedule", "reopenDay")}
                         </button>
                       ) : (
-                        <button type="button" onClick={() => void handleOverride([], true)} className="btn btn-sm w-full" style={{ background: "var(--danger)", color: "white" }}>
-                          🔴 {t("schedule", "closeFullDay")}
+                        <button type="button" onClick={() => setShowAwayModal(true)} className="btn btn-sm w-full" style={{ background: "var(--danger)", color: "white" }}>
+                          ✈️ {t("schedule", "markAway")}
                         </button>
                       )}
                     </div>
+                    
+                    {/* Away Modal */}
+                    {showAwayModal && (
+                      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+                        <div className="card w-full max-w-sm p-6 relative">
+                          <button onClick={() => setShowAwayModal(false)} className="absolute right-4 top-4 text-[rgba(19,49,58,0.5)] hover:text-black">✕</button>
+                          <h3 className="mb-4 text-lg font-bold text-[var(--accent-strong)]">✈️ {t("schedule", "markAway")}</h3>
+                          
+                          <div className="space-y-4">
+                            <label className="block">
+                              <span className="mb-1 block text-xs font-semibold text-[rgba(19,49,58,0.7)]">{t("schedule", "awayReason")}</span>
+                              <select 
+                                value={awayReason} 
+                                onChange={e => setAwayReason(e.target.value)}
+                                className="focus-ring w-full rounded-lg border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm outline-none"
+                              >
+                                <option value={t("schedule", "hospitalDuty")}>{t("schedule", "hospitalDuty")}</option>
+                                <option value={t("schedule", "outOfTown")}>{t("schedule", "outOfTown")}</option>
+                                <option value={t("schedule", "personalLeave")}>{t("schedule", "personalLeave")}</option>
+                              </select>
+                            </label>
+
+                            <div className="grid grid-cols-2 gap-2 rounded-lg bg-[rgba(19,49,58,0.04)] p-1">
+                              <button type="button" onClick={() => setReturnType("today")} className={`rounded-md px-2 py-1.5 text-xs font-semibold transition ${returnType === "today" ? "bg-white shadow" : ""}`}>
+                                {t("schedule", "returningToday")}
+                              </button>
+                              <button type="button" onClick={() => setReturnType("later")} className={`rounded-md px-2 py-1.5 text-xs font-semibold transition ${returnType === "later" ? "bg-white shadow" : ""}`}>
+                                {t("schedule", "returningLater")}
+                              </button>
+                            </div>
+
+                            {returnType === "today" ? (
+                              <label className="block">
+                                <span className="mb-1 block text-xs font-semibold text-[rgba(19,49,58,0.7)]">{t("schedule", "selectTime")}</span>
+                                <input 
+                                  type="time" 
+                                  value={returnTime} 
+                                  onChange={e => setReturnTime(e.target.value)}
+                                  className="focus-ring w-full rounded-lg border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm outline-none" 
+                                />
+                              </label>
+                            ) : (
+                              <label className="block">
+                                <span className="mb-1 block text-xs font-semibold text-[rgba(19,49,58,0.7)]">{t("schedule", "selectDate")}</span>
+                                <input 
+                                  type="date" 
+                                  min={todayStr()}
+                                  value={returnDate} 
+                                  onChange={e => setReturnDate(e.target.value)}
+                                  className="focus-ring w-full rounded-lg border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm outline-none" 
+                                />
+                              </label>
+                            )}
+
+                            <button type="button" onClick={handleSaveAway} className="btn btn-primary w-full mt-2" style={{ background: "var(--danger)", border: "none" }}>
+                              {t("schedule", "saveAway")}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
