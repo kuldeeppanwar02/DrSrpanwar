@@ -103,17 +103,17 @@ export default function WalkInPage() {
 
           <div className="mt-8 grid gap-6">
             {/* Form or Block Message */}
-            {!confirmation && (schedule.status === "on_leave" || schedule.status === "closed_for_day") ? (
+            {!confirmation && schedule.status === "on_leave" ? (
               <div className="card p-8 text-center flex flex-col items-center">
                 <div className="h-16 w-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center mb-4">
                   <AlertTriangle className="h-8 w-8" />
                 </div>
-                <h3 className="text-lg font-bold text-[var(--accent-strong)] mb-2">Tokens Closed</h3>
+                <h3 className="text-lg font-bold text-[var(--accent-strong)] mb-2">{t("home", "tokensClosed")}</h3>
                 <p className="text-sm text-[rgba(19,49,58,0.7)] mb-6">
                   {schedule.message}
                 </p>
                 <Link href={buildClinicHref("/book", activeClinicId)} className="btn btn-primary w-full justify-center">
-                  Book an Appointment Instead
+                  {t("walkin", "bookInstead")}
                 </Link>
               </div>
             ) : !confirmation ? (
@@ -157,8 +157,8 @@ export default function WalkInPage() {
                   <div className="flex items-start gap-3 rounded-xl bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.2)] px-4 py-3">
                     <AlertTriangle className="h-5 w-5 flex-shrink-0 text-[#d97706] mt-0.5" />
                     <div>
-                      <p className="text-sm font-bold text-[#b45309]">Clinic is currently between shifts</p>
-                      <p className="text-xs font-medium text-[#d97706] mt-0.5">Your token will be valid for the next shift starting at {schedule.nextAvailableTime}.</p>
+                      <p className="text-sm font-bold text-[#b45309]">{t("walkin", "betweenShiftsTitle")}</p>
+                      <p className="text-xs font-medium text-[#d97706] mt-0.5">{t("walkin", "validForNextShift")} {schedule.nextAvailableTime}.</p>
                     </div>
                   </div>
                 )}

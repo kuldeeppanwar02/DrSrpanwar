@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import type { ClinicId } from "@/features/clinic/types";
 import type { ResolvedDaySchedule } from "@/lib/firebase/schedule-store";
+import { useLang } from "@/i18n/lang-provider";
 
 export type ClinicScheduleStatus = "open" | "break" | "closed_for_day" | "on_leave" | "loading" | "error";
 
@@ -15,10 +16,11 @@ export type ClinicLiveState = {
 };
 
 export function useClinicSchedule(clinicId: ClinicId) {
+  const { t } = useLang();
   const [scheduleData, setScheduleData] = useState<{ today: ResolvedDaySchedule; tomorrow: ResolvedDaySchedule } | null>(null);
   const [liveState, setLiveState] = useState<ClinicLiveState>({
     status: "loading",
-    message: "Loading schedule...",
+    message: "...",
     isWalkInAllowed: false,
   });
 
@@ -36,7 +38,7 @@ export function useClinicSchedule(clinicId: ClinicId) {
         }
       } catch (error) {
         if (mounted) {
-          setLiveState(prev => ({ ...prev, status: "error", message: "Failed to load schedule." }));
+          setLiveState(prev => ({ ...prev, status: "error", message: "Error" }));
         }
       }
     };
@@ -65,14 +67,14 @@ export function useClinicSchedule(clinicId: ClinicId) {
 
       // 1. Check for Leave / Full Day Closure
       if (!today.isOpen) {
-        const reason = today.override?.reason || "Closed today";
-        const nextDayLabel = tomorrow.isOpen ? "tomorrow" : "later";
+        const reason = today.override?.reason || "";
+        const nextDayLabel = tomorrow.isOpen ? t("banner", "tomorrowAt") : t("banner", "later");
         
         // If it's a planned override (leave)
         if (today.source === "override") {
           setLiveState({
             status: "on_leave",
-            message: `Doctor is on leave: ${reason}. Next available ${nextDayLabel}.`,
+            message: `${t("banner", "doctorOnLeave")} ${reason ? "- " + reason : ""}. ${t("banner", "nextAvailable")} ${nextDayLabel}.`,
             isWalkInAllowed: false,
           });
           return;
@@ -81,8 +83,8 @@ export function useClinicSchedule(clinicId: ClinicId) {
         // Just a regular weekly off or closed day
         setLiveState({
           status: "closed_for_day",
-          message: `Clinic is closed today. Opens ${nextDayLabel}.`,
-          isWalkInAllowed: false,
+          message: `${t("banner", "clinicClosedToday")} ${nextDayLabel}.`,
+          isWalkInAllowed: true, // We allow overtime walk-ins
         });
         return;
       }
@@ -93,8 +95,8 @@ export function useClinicSchedule(clinicId: ClinicId) {
       if (validShifts.length === 0) {
         setLiveState({
           status: "closed_for_day",
-          message: "No active shifts today.",
-          isWalkInAllowed: false,
+          message: t("banner", "noActiveShifts"),
+          isWalkInAllowed: true,
         });
         return;
       }
@@ -102,19 +104,19 @@ export function useClinicSchedule(clinicId: ClinicId) {
       // Find current active shift
       const activeShift = validShifts.find(s => currentTimeStr >= s.startTime && currentTimeStr < s.endTime);
       
+      const formatTime = (time24: string) => {
+        const [h, m] = time24.split(":");
+        const d = new Date();
+        d.setHours(parseInt(h, 10));
+        d.setMinutes(parseInt(m, 10));
+        return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      };
+
       if (activeShift) {
         // We are currently INSIDE a shift
-        const formatTime = (time24: string) => {
-          const [h, m] = time24.split(":");
-          const d = new Date();
-          d.setHours(parseInt(h, 10));
-          d.setMinutes(parseInt(m, 10));
-          return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-        };
-
         setLiveState({
           status: "open",
-          message: `Clinic Open • Doctor available till ${formatTime(activeShift.endTime)}`,
+          message: `${t("banner", "clinicOpen")} ${t("banner", "till")} ${formatTime(activeShift.endTime)}`,
           isWalkInAllowed: true,
           activeShift: {
             start: activeShift.startTime,
@@ -128,19 +130,11 @@ export function useClinicSchedule(clinicId: ClinicId) {
       // Find NEXT shift for today
       const upcomingShift = validShifts.find(s => currentTimeStr < s.startTime);
 
-      const formatTime = (time24: string) => {
-        const [h, m] = time24.split(":");
-        const d = new Date();
-        d.setHours(parseInt(h, 10));
-        d.setMinutes(parseInt(m, 10));
-        return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      };
-
       if (upcomingShift) {
         // Between shifts
         setLiveState({
           status: "break",
-          message: `Doctor is away. Next shift starts at ${formatTime(upcomingShift.startTime)}.`,
+          message: `${t("banner", "doctorAwayNextShift")} ${formatTime(upcomingShift.startTime)}.`,
           isWalkInAllowed: true, // Allow taking token for next shift
           nextAvailableTime: formatTime(upcomingShift.startTime),
         });
@@ -148,18 +142,11 @@ export function useClinicSchedule(clinicId: ClinicId) {
       }
 
       // Day has ended (past all shifts)
-      let nextMessage = "Tomorrow";
-      if (tomorrow.isOpen) {
-        const firstTomorrowShift = tomorrow.shifts.find(s => s.enabled && !s.closed);
-        if (firstTomorrowShift) {
-          nextMessage = `Tomorrow at ${formatTime(firstTomorrowShift.startTime)}`;
-        }
-      }
-
+      // Change to Overtime banner message but DO NOT BLOCK
       setLiveState({
         status: "closed_for_day",
-        message: `Clinic is closed for today. Opens ${nextMessage}.`,
-        isWalkInAllowed: false,
+        message: t("banner", "routineShiftEnded"),
+        isWalkInAllowed: true,
       });
     };
 
@@ -169,7 +156,7 @@ export function useClinicSchedule(clinicId: ClinicId) {
     const interval = setInterval(calculateStatus, 60 * 1000);
     return () => clearInterval(interval);
 
-  }, [scheduleData]);
+  }, [scheduleData, t]);
 
   return liveState;
 }

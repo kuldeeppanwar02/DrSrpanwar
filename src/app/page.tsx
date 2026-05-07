@@ -504,7 +504,7 @@ function FocusedClinicCard({
   const isSurgeryClinic = clinic.id === "surgery";
   const trustPoints = TRUST_POINTS[clinic.id];
   const schedule = useClinicSchedule(clinic.id);
-  const isWalkInDisabled = schedule.status === "on_leave" || schedule.status === "closed_for_day";
+  const isWalkInDisabled = schedule.status === "on_leave";
 
   return (
     <div className="card-elevated overflow-hidden rounded-[2rem] border border-[rgba(255,255,255,0.78)]">
@@ -561,8 +561,8 @@ function FocusedClinicCard({
                       <Ticket className="h-8 w-8" />
                     </div>
                     <div className="flex-1 text-left min-w-0 py-1">
-                      <p className="text-[1.35rem] font-bold leading-tight">Tokens Closed</p>
-                      <p className="mt-0.5 text-sm font-medium truncate">Doctor is unavailable today</p>
+                      <p className="text-[1.35rem] font-bold leading-tight">{t("home", "tokensClosed")}</p>
+                      <p className="mt-0.5 text-sm font-medium truncate">{t("home", "doctorUnavailable")}</p>
                     </div>
                   </div>
                 ) : (

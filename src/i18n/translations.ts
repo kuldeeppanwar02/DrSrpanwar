@@ -50,6 +50,19 @@ export const translations = {
     clinic: { hi: "क्लिनिक", en: "Clinic" },
   },
 
+  banner: {
+    clinicOpen: { hi: "क्लिनिक खुला है • डॉक्टर उपलब्ध हैं", en: "Clinic Open • Doctor available" },
+    till: { hi: "तक", en: "till" },
+    doctorAwayNextShift: { hi: "डॉक्टर अभी बाहर हैं • अगली शिफ्ट", en: "Doctor is away • Next shift starts at" },
+    clinicClosedToday: { hi: "क्लिनिक आज बंद है • खुलेगा", en: "Clinic is closed today. Opens" },
+    noActiveShifts: { hi: "आज कोई शिफ्ट नहीं है", en: "No active shifts today." },
+    doctorOnLeave: { hi: "डॉक्टर छुट्टी पर हैं", en: "Doctor is on leave" },
+    nextAvailable: { hi: "अगले उपलब्ध:", en: "Next available:" },
+    tomorrowAt: { hi: "कल", en: "Tomorrow at" },
+    later: { hi: "बाद में", en: "later" },
+    routineShiftEnded: { hi: "रूटीन शिफ्ट खत्म • अंदर के मरीज़ों की जाँच जारी", en: "Routine shift ended • Consulting waiting patients" }
+  },
+
   home: {
     subtitle: {
       hi: "अपॉइंटमेंट बुक करें या वॉक-इन टोकन लें",
@@ -81,6 +94,8 @@ export const translations = {
     syncing: { hi: "सिंक हो रहा है", en: "Syncing" },
     threeClinicPortal: { hi: "एक पोर्टल, तीन क्लिनिक", en: "One Portal, Three Clinics" },
     otherClinics: { hi: "अन्य क्लिनिक", en: "Other Clinics" },
+    tokensClosed: { hi: "टोकन बंद हैं", en: "Tokens Closed" },
+    doctorUnavailable: { hi: "डॉक्टर आज उपलब्ध नहीं हैं", en: "Doctor is unavailable today" },
   },
 
   booking: {
@@ -156,6 +171,9 @@ export const translations = {
       hi: "दवाई की जरूरत होगी?",
       en: "Need medicine after consultation?",
     },
+    betweenShiftsTitle: { hi: "क्लिनिक अभी शिफ्ट के बीच में है", en: "Clinic is currently between shifts" },
+    validForNextShift: { hi: "आपका टोकन अगली शिफ्ट के लिए मान्य होगा जो शुरू होगी", en: "Your token will be valid for the next shift starting at" },
+    bookInstead: { hi: "इसके बजाय अपॉइंटमेंट बुक करें", en: "Book an Appointment Instead" },
   },
 
   status: {
