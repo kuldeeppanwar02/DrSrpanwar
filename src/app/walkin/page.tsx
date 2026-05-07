@@ -8,6 +8,7 @@ import { buildClinicHref } from "@/features/clinic/catalog";
 import { getEntryPosition, getQueueSummary } from "@/features/clinic/services/queue-engine";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
+import { useClinicSchedule } from "@/features/clinic/hooks/use-clinic-schedule";
 
 type WalkInConfirmation = {
   token: string;
@@ -27,6 +28,7 @@ export default function WalkInPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
   const router = useRouter();
+  const schedule = useClinicSchedule(activeClinicId);
 
   useEffect(() => {
     if (redirectCountdown === null) return;
@@ -100,9 +102,23 @@ export default function WalkInPage() {
           </p>
 
           <div className="mt-8 grid gap-6">
-            {/* Form */}
-            <div className="card p-5">
-              <form className="space-y-4" onSubmit={handleSubmit}>
+            {/* Form or Block Message */}
+            {!confirmation && (schedule.status === "on_leave" || schedule.status === "closed_for_day") ? (
+              <div className="card p-8 text-center flex flex-col items-center">
+                <div className="h-16 w-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center mb-4">
+                  <AlertTriangle className="h-8 w-8" />
+                </div>
+                <h3 className="text-lg font-bold text-[var(--accent-strong)] mb-2">Tokens Closed</h3>
+                <p className="text-sm text-[rgba(19,49,58,0.7)] mb-6">
+                  {schedule.message}
+                </p>
+                <Link href={buildClinicHref("/book", activeClinicId)} className="btn btn-primary w-full justify-center">
+                  Book an Appointment Instead
+                </Link>
+              </div>
+            ) : !confirmation ? (
+              <div className="card p-5">
+                <form className="space-y-4" onSubmit={handleSubmit}>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block">
                     <span className="mb-1.5 block text-xs font-semibold text-[rgba(19,49,58,0.65)]">
@@ -137,6 +153,16 @@ export default function WalkInPage() {
                   </div>
                 )}
 
+                {schedule.status === "break" && (
+                  <div className="flex items-start gap-3 rounded-xl bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.2)] px-4 py-3">
+                    <AlertTriangle className="h-5 w-5 flex-shrink-0 text-[#d97706] mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-[#b45309]">Clinic is currently between shifts</p>
+                      <p className="text-xs font-medium text-[#d97706] mt-0.5">Your token will be valid for the next shift starting at {schedule.nextAvailableTime}.</p>
+                    </div>
+                  </div>
+                )}
+
                 <button type="submit" className="btn btn-warm btn-lg w-full justify-center" disabled={isSubmitting}>
                   {isSubmitting
                     ? <><Loader2 className="h-4 w-4 animate-spin-slow" /> {t("walkin", "generating")}</>
@@ -148,6 +174,7 @@ export default function WalkInPage() {
                 </p>
               </form>
             </div>
+            ) : null}
 
             {/* Token Result */}
             {confirmation ? (

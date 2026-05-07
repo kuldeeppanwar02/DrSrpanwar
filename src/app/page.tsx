@@ -33,6 +33,8 @@ import { useLang } from "@/i18n/lang-provider";
 import { type TranslationKey } from "@/i18n/translations";
 import { getStaffSession } from "@/components/navbar";
 import type { ClinicDefinition, ClinicId } from "@/features/clinic/types";
+import { ClinicLiveStatusBanner } from "@/components/clinic-live-status-banner";
+import { useClinicSchedule } from "@/features/clinic/hooks/use-clinic-schedule";
 
 type TrustPoint = {
   label: string;
@@ -501,6 +503,8 @@ function FocusedClinicCard({
 }) {
   const isSurgeryClinic = clinic.id === "surgery";
   const trustPoints = TRUST_POINTS[clinic.id];
+  const schedule = useClinicSchedule(clinic.id);
+  const isWalkInDisabled = schedule.status === "on_leave" || schedule.status === "closed_for_day";
 
   return (
     <div className="card-elevated overflow-hidden rounded-[2rem] border border-[rgba(255,255,255,0.78)]">
@@ -544,24 +548,37 @@ function FocusedClinicCard({
           </div>
         </div>
 
+        {clinic.hasBooking && <ClinicLiveStatusBanner clinicId={clinic.id} />}
 
         {!isLoggedIn && (
           <div className="mt-6 space-y-3">
             {clinic.hasBooking ? (
               <div className="grid gap-3 sm:grid-cols-1">
                 {/* PRIMARY ACTION: Walk-in Token (For users at the clinic) */}
-                <Link href={buildClinicHref("/walkin", clinic.id)} className="flex items-center gap-4 rounded-[1.8rem] bg-[linear-gradient(145deg,#23c965,#1cb056)] p-3 pr-5 shadow-[0_12px_24px_rgba(35,201,101,0.25)] transition-transform hover:-translate-y-1 active:scale-95 text-white">
-                  <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-[1.4rem] bg-[rgba(255,255,255,0.2)] shadow-inner">
-                    <Ticket className="h-8 w-8" />
+                {isWalkInDisabled ? (
+                  <div className="flex items-center gap-4 rounded-[1.8rem] bg-[#f3f4f6] border border-[#e5e7eb] p-3 pr-5 shadow-none text-[rgba(19,49,58,0.4)] cursor-not-allowed">
+                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-[1.4rem] bg-[rgba(19,49,58,0.04)]">
+                      <Ticket className="h-8 w-8" />
+                    </div>
+                    <div className="flex-1 text-left min-w-0 py-1">
+                      <p className="text-[1.35rem] font-bold leading-tight">Tokens Closed</p>
+                      <p className="mt-0.5 text-sm font-medium truncate">Doctor is unavailable today</p>
+                    </div>
                   </div>
-                  <div className="flex-1 text-left min-w-0 py-1">
-                    <p className="text-[1.35rem] font-bold leading-tight">{t("home", "walkinBtnTitle")}</p>
-                    <p className="mt-0.5 text-sm font-medium text-[rgba(255,255,255,0.9)] truncate">{t("home", "walkinBtnSub")}</p>
-                  </div>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(255,255,255,0.2)]">
-                    <ArrowRight className="h-4 w-4" />
-                  </div>
-                </Link>
+                ) : (
+                  <Link href={buildClinicHref("/walkin", clinic.id)} className="flex items-center gap-4 rounded-[1.8rem] bg-[linear-gradient(145deg,#23c965,#1cb056)] p-3 pr-5 shadow-[0_12px_24px_rgba(35,201,101,0.25)] transition-transform hover:-translate-y-1 active:scale-95 text-white">
+                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-[1.4rem] bg-[rgba(255,255,255,0.2)] shadow-inner">
+                      <Ticket className="h-8 w-8" />
+                    </div>
+                    <div className="flex-1 text-left min-w-0 py-1">
+                      <p className="text-[1.35rem] font-bold leading-tight">{t("home", "walkinBtnTitle")}</p>
+                      <p className="mt-0.5 text-sm font-medium text-[rgba(255,255,255,0.9)] truncate">{t("home", "walkinBtnSub")}</p>
+                    </div>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(255,255,255,0.2)]">
+                      <ArrowRight className="h-4 w-4" />
+                    </div>
+                  </Link>
+                )}
 
                 {/* SECONDARY ACTION: Book Appointment (For future dates) */}
                 <Link href={buildClinicHref("/book", clinic.id)} className="flex items-center gap-4 rounded-[1.8rem] border border-[rgba(12,86,81,0.06)] bg-white p-3 pr-5 shadow-[0_8px_20px_rgba(30,27,19,0.04)] transition-transform hover:-translate-y-1 active:scale-95 text-[#17130f]">
