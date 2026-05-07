@@ -44,7 +44,7 @@ export function ClinicLiveStatusBanner({ clinicId }: { clinicId: ClinicId }) {
 
   return (
     <div className={`mt-5 sm:mt-6 mb-3 flex h-11 sm:h-12 w-full items-center overflow-hidden rounded-[14px] sm:rounded-[18px] text-white ${wrapperClass}`}>
-      <div className="flex h-full items-center justify-center bg-[rgba(0,0,0,0.15)] px-3 sm:px-4 backdrop-blur-sm z-10 border-r border-[rgba(255,255,255,0.1)]">
+      <div className="flex h-full items-center justify-center bg-[rgba(0,0,0,0.15)] px-3 sm:px-4 backdrop-blur-sm z-10 border-r border-[rgba(255,255,255,0.1)] rounded-l-[14px] sm:rounded-l-[18px]">
         <span className="text-sm sm:text-base animate-pulse shadow-sm">{icon}</span>
         <span className="ml-1.5 text-xs sm:text-sm font-bold tracking-wider uppercase text-[rgba(255,255,255,0.95)]">Live</span>
       </div>
