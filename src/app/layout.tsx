@@ -89,14 +89,14 @@ export default function RootLayout({
                   <ClinicProviderFallback>
                     <Navbar />
                     <PwaShell />
-                    <main className="flex-1">{children}</main>
+                    <main className="flex-1 pb-24">{children}</main>
                   </ClinicProviderFallback>
                 }
               >
                 <ClinicProvider>
                   <Navbar />
                   <PwaShell />
-                  <main className="flex-1">{children}</main>
+                  <main className="flex-1 pb-24">{children}</main>
                   <StaffBottomNav />
                   <PatientBottomNav />
                   <InstallBanner />
