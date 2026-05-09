@@ -222,12 +222,14 @@ export function Navbar() {
           </button>
 
           {!session && (
-            <Link
-              href={buildClinicHref("/staff", activeClinicId)}
-              className="btn btn-primary btn-sm hidden sm:inline-flex"
+            <a
+              href="tel:+919636243621"
+              className="flex items-center gap-1.5 rounded-full bg-[rgba(15,107,99,0.1)] px-3 py-1.5 text-xs font-bold text-[var(--accent-strong)] transition-colors hover:bg-[rgba(15,107,99,0.2)] border border-[rgba(15,107,99,0.2)]"
+              aria-label="Call Clinic"
             >
-              {t("nav", "login")}
-            </Link>
+              <Phone className="h-3.5 w-3.5" />
+              <span className="hidden xs:inline">Call Clinic</span>
+            </a>
           )}
 
           {session && (
