@@ -11,10 +11,13 @@ const BLOCK_DURATION_MS = 5 * 60 * 1000;
 
 function getClientIp(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  const real = request.headers.get("x-real-ip");
-  if (real) return real;
-  return "unknown";
+  const realIp = request.headers.get("x-real-ip");
+  const cfConnectingIp = request.headers.get("cf-connecting-ip");
+
+  const ipStr = forwarded?.split(",")[0] || realIp || cfConnectingIp || "unknown";
+  
+  // Basic sanitization
+  return ipStr.trim().split(":")[0]; // Extract IPv4 cleanly
 }
 
 function checkRateLimit(ip: string): { allowed: boolean; retryAfterSec?: number; remaining?: number } {

@@ -12,10 +12,16 @@ export const serverEnv = {
     process.env.STAFF_ALLOWED_EMAILS?.split(",")
       .map((value) => value.trim().toLowerCase())
       .filter(Boolean) ?? [],
-  staffSessionSecret:
-    process.env.STAFF_SESSION_SECRET?.trim() ??
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ??
-    "",
+  staffSessionSecret: (() => {
+    const secret = process.env.STAFF_SESSION_SECRET?.trim() ?? process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+    if (!secret) {
+      throw new Error(
+        "❌ CRITICAL ERROR: STAFF_SESSION_SECRET is missing! " +
+        "Without this, your admin login is completely insecure."
+      );
+    }
+    return secret;
+  })(),
   masterEmail: "panwarkuldeep256@gmail.com",
 
   // Per-clinic doctor config

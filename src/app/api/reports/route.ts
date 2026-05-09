@@ -5,15 +5,27 @@ import type { ClinicId } from "@/features/clinic/types";
 
 export async function GET(request: Request) {
   try {
-    await requireStaffUser(request, { allowRoles: ["doctor", "staff"] });
-    
     const url = new URL(request.url);
-    const clinicId = url.searchParams.get("clinicId") as ClinicId;
+    const rawClinicId = url.searchParams.get("clinicId");
     const startDate = url.searchParams.get("startDate");
     const endDate = url.searchParams.get("endDate");
 
-    if (!clinicId || !startDate || !endDate) {
-      return Response.json({ message: "clinicId, startDate, and endDate are required." }, { status: 400 });
+    if (!rawClinicId || !["surgery", "dental", "pharmacy"].includes(rawClinicId)) {
+      return Response.json({ message: "Invalid clinicId." }, { status: 400 });
+    }
+
+    const clinicId = rawClinicId as ClinicId;
+
+    // Secure cross-clinic access check (prevents IDOR)
+    await requireStaffUser(request, { allowRoles: ["doctor", "staff"], clinicId });
+
+    // Date validation
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!startDate || !dateRegex.test(startDate)) {
+      return Response.json({ message: "Invalid startDate format (YYYY-MM-DD)" }, { status: 400 });
+    }
+    if (!endDate || !dateRegex.test(endDate)) {
+      return Response.json({ message: "Invalid endDate format (YYYY-MM-DD)" }, { status: 400 });
     }
 
     const visits = await getClinicVisitsByDateRange(clinicId, startDate, endDate);
