@@ -12,7 +12,11 @@ import {
   X,
   Download,
   Hospital,
-  CalendarCheck
+  CalendarCheck,
+  Phone,
+  Mail,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { CLINICS, buildClinicHref } from "@/features/clinic/catalog";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
@@ -29,6 +33,7 @@ export function PatientBottomNav() {
   
   const [session, setSession] = useState(getStaffSession());
   const [menuOpen, setMenuOpen] = useState(false);
+  const [developerExpanded, setDeveloperExpanded] = useState(false);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
   useEffect(() => {
@@ -163,6 +168,28 @@ export function PatientBottomNav() {
             >
               <Hospital className="h-4 w-4" /> Staff Login
             </Link>
+
+            {/* Developer Watermark */}
+            <div className="mt-4 pt-4 border-t border-[rgba(19,49,58,0.1)] flex flex-col items-center">
+              <button 
+                onClick={() => setDeveloperExpanded(!developerExpanded)}
+                className="text-[11px] font-medium text-[rgba(19,49,58,0.5)] transition-colors hover:text-[var(--accent)] flex items-center gap-1"
+              >
+                Designed & Developed by <span className="font-bold underline decoration-[rgba(19,49,58,0.2)] underline-offset-2">Kuldeep Panwar</span>
+                {developerExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
+
+              {developerExpanded && (
+                <div className="mt-3 flex w-full flex-col gap-2 animate-in slide-in-from-top-2">
+                  <a href="tel:+919358752147" className="flex items-center justify-center gap-2 rounded-xl bg-[rgba(15,107,99,0.03)] p-2.5 text-xs font-bold text-[var(--accent-strong)] transition-colors hover:bg-[rgba(15,107,99,0.08)]">
+                    <Phone className="h-3.5 w-3.5" /> +91 9358752147
+                  </a>
+                  <a href="mailto:panwarkuldeep256@gmail.com" className="flex items-center justify-center gap-2 rounded-xl bg-[rgba(15,107,99,0.03)] p-2.5 text-xs font-bold text-[var(--accent-strong)] transition-colors hover:bg-[rgba(15,107,99,0.08)]">
+                    <Mail className="h-3.5 w-3.5" /> panwarkuldeep256@gmail.com
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
