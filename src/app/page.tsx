@@ -35,6 +35,7 @@ import { getStaffSession } from "@/components/navbar";
 import type { ClinicDefinition, ClinicId } from "@/features/clinic/types";
 import { ClinicLiveStatusBanner } from "@/components/clinic-live-status-banner";
 import { useClinicSchedule } from "@/features/clinic/hooks/use-clinic-schedule";
+import { supabase } from "@/lib/supabase/client";
 
 type TrustPoint = {
   label: string;

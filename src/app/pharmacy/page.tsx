@@ -305,8 +305,6 @@ export default function PharmacyPage() {
             ))
           )}
         </div>
-
-        </div>
       </section>
 
       {/* Photo Viewer Modal */}
