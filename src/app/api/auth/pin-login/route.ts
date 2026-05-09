@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { jsonError } from "@/app/api/api-helpers";
 import { verifyPin } from "@/lib/firebase/pin-auth";
 import { createSessionCookie, createStaffSessionToken } from "@/lib/staff-session";
-
-const attempts = new Map<string, { count: number; firstAttempt: number; blockedUntil: number }>();
+import { getDb } from "@/lib/supabase/db";
 
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 5 * 60 * 1000;
@@ -20,62 +19,78 @@ function getClientIp(request: Request): string {
   return ipStr.trim().split(":")[0]; // Extract IPv4 cleanly
 }
 
-function checkRateLimit(ip: string): { allowed: boolean; retryAfterSec?: number; remaining?: number } {
-  const now = Date.now();
-  const record = attempts.get(ip);
+async function checkRateLimit(ip: string): Promise<{ allowed: boolean; retryAfterSec?: number; remaining?: number }> {
+  const sql = getDb();
+  const now = new Date();
+
+  // Try to create the table if it doesn't exist (safety fallback)
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS login_attempts (
+        ip_address TEXT PRIMARY KEY,
+        attempts INTEGER DEFAULT 1,
+        first_attempt TIMESTAMPTZ DEFAULT NOW(),
+        blocked_until TIMESTAMPTZ
+      );
+    `;
+  } catch (e) {}
+
+  const records = await sql`SELECT * FROM login_attempts WHERE ip_address = ${ip} LIMIT 1`;
+  const record = records[0];
 
   if (!record) return { allowed: true, remaining: MAX_ATTEMPTS };
 
-  if (record.blockedUntil > now) {
+  const blockedUntil = record.blocked_until ? new Date(record.blocked_until) : new Date(0);
+  const firstAttempt = new Date(record.first_attempt);
+
+  if (blockedUntil > now) {
     return {
       allowed: false,
-      retryAfterSec: Math.ceil((record.blockedUntil - now) / 1000),
+      retryAfterSec: Math.ceil((blockedUntil.getTime() - now.getTime()) / 1000),
     };
   }
 
-  if (now - record.firstAttempt > WINDOW_MS) {
-    attempts.delete(ip);
+  if (now.getTime() - firstAttempt.getTime() > WINDOW_MS) {
+    await sql`DELETE FROM login_attempts WHERE ip_address = ${ip}`;
     return { allowed: true, remaining: MAX_ATTEMPTS };
   }
 
-  if (record.count >= MAX_ATTEMPTS) {
-    record.blockedUntil = now + BLOCK_DURATION_MS;
+  if (record.attempts >= MAX_ATTEMPTS) {
+    const newBlockedUntil = new Date(now.getTime() + BLOCK_DURATION_MS);
+    await sql`UPDATE login_attempts SET blocked_until = ${newBlockedUntil.toISOString()} WHERE ip_address = ${ip}`;
+      
     return {
       allowed: false,
       retryAfterSec: Math.ceil(BLOCK_DURATION_MS / 1000),
     };
   }
 
-  return { allowed: true, remaining: MAX_ATTEMPTS - record.count };
+  return { allowed: true, remaining: MAX_ATTEMPTS - record.attempts };
 }
 
-function recordFailedAttempt(ip: string) {
-  const now = Date.now();
-  const record = attempts.get(ip);
+async function recordFailedAttempt(ip: string) {
+  const sql = getDb();
+  const now = new Date().toISOString();
+  
+  const records = await sql`SELECT attempts FROM login_attempts WHERE ip_address = ${ip} LIMIT 1`;
+  const record = records[0];
+
   if (!record) {
-    attempts.set(ip, { count: 1, firstAttempt: now, blockedUntil: 0 });
+    await sql`INSERT INTO login_attempts (ip_address, attempts, first_attempt) VALUES (${ip}, 1, ${now})`;
   } else {
-    record.count += 1;
+    await sql`UPDATE login_attempts SET attempts = ${record.attempts + 1} WHERE ip_address = ${ip}`;
   }
 }
 
-function clearAttempts(ip: string) {
-  attempts.delete(ip);
+async function clearAttempts(ip: string) {
+  const sql = getDb();
+  await sql`DELETE FROM login_attempts WHERE ip_address = ${ip}`;
 }
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, record] of attempts.entries()) {
-    if (now - record.firstAttempt > WINDOW_MS && record.blockedUntil < now) {
-      attempts.delete(ip);
-    }
-  }
-}, 10 * 60 * 1000);
 
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
-    const rateCheck = checkRateLimit(ip);
+    const rateCheck = await checkRateLimit(ip);
 
     if (!rateCheck.allowed) {
       return NextResponse.json(
@@ -102,7 +117,7 @@ export async function POST(request: Request) {
     const result = await verifyPin(pin);
 
     if (!result) {
-      recordFailedAttempt(ip);
+      await recordFailedAttempt(ip);
       const remaining = Math.max((rateCheck.remaining ?? MAX_ATTEMPTS) - 1, 0);
       return NextResponse.json(
         {
@@ -116,7 +131,7 @@ export async function POST(request: Request) {
       );
     }
 
-    clearAttempts(ip);
+    await clearAttempts(ip);
 
     const sessionToken = createStaffSessionToken({
       id: result.member.id,
