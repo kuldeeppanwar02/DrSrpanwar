@@ -173,7 +173,7 @@ export default function HomePage() {
 
           <div className="relative z-10">
             <div className="mt-1 max-w-4xl">
-              <h1 className="display-type text-[8vw] sm:text-[4rem] leading-[0.9] tracking-tighter bg-clip-text text-transparent bg-[linear-gradient(135deg,#00514b_0%,#0f6b63_50%,#0a4e53_100%)] drop-shadow-sm whitespace-nowrap">
+              <h1 className="display-type py-1 text-[8vw] sm:text-[4rem] leading-tight tracking-tight bg-clip-text text-transparent bg-[linear-gradient(135deg,#00514b_0%,#0f6b63_50%,#0a4e53_100%)] drop-shadow-sm whitespace-nowrap">
                 {heroTitle}
               </h1>
               {isLoggedIn ? (
