@@ -160,7 +160,7 @@ export function Navbar() {
           href="/"
           className="flex items-center gap-2 font-semibold text-[var(--accent-strong)]"
         >
-          <img src="/logo-wide.png" alt="Panwar Health Care" className="h-9 w-auto sm:h-10 object-contain drop-shadow-sm" />
+          <img src="/logo-wide.png" alt="Panwar Health Care" className="h-8 w-auto sm:h-9 object-contain drop-shadow-sm" />
         </Link>
 
         {/* Clinic Switcher — desktop */}
@@ -253,76 +253,45 @@ export function Navbar() {
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] text-sm transition-colors hover:bg-[var(--accent-soft)] lg:hidden"
-            aria-label="Menu"
-          >
-            {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-          </button>
+          {!session && (
+            <button
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] text-sm transition-colors hover:bg-[var(--accent-soft)] lg:hidden"
+              aria-label="Menu"
+            >
+              {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Top Clinic Pill Scroller (Telegram Style) */}
+      <div className="border-t border-[rgba(19,49,58,0.05)] bg-[rgba(247,239,225,0.6)] backdrop-blur-md overflow-x-auto scrollbar-hide md:hidden">
+        <div className="flex gap-2 px-4 py-2 min-w-max">
+          <span className="flex items-center text-[10px] font-bold text-[rgba(19,49,58,0.5)] uppercase tracking-wider pr-1">Clinics</span>
+          {CLINICS.map((clinic) => (
+            <Link
+              key={clinic.id}
+              href={buildClinicHref("/", clinic.id)}
+              className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
+                clinic.id === activeClinicId
+                  ? "bg-[linear-gradient(135deg,var(--accent-deep),var(--accent))] text-white shadow-md shadow-[var(--accent)]/30"
+                  : "bg-white/60 border border-[var(--line)] text-[rgba(19,49,58,0.7)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent-strong)]"
+              }`}
+            >
+              {clinic.shortName}
+            </Link>
+          ))}
         </div>
       </div>
 
       {/* Staff icon tab bar */}
-      {session && (
-        <div className="border-t border-[var(--line)] bg-[rgba(19,49,58,0.025)]">
-          <div className="mx-auto flex max-w-[1180px] items-center px-1">
-            <nav className="flex flex-1 items-center justify-around">
-              {staffQuickNav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={
-                    item.href === "/"
-                      ? `/?clinic=${activeClinicId}`
-                      : buildClinicHref(item.href, activeClinicId)
-                  }
-                  className="group flex flex-1 flex-col items-center justify-start gap-1 py-1.5 min-h-[54px] transition-colors active:bg-[var(--accent-soft)]"
-                >
-                  <div className="flex h-[20px] items-center justify-center">
-                    <item.icon className="h-[18px] w-[18px] text-[rgba(19,49,58,0.5)] transition-colors group-hover:text-[var(--accent-strong)]" />
-                  </div>
-                  <span className="text-[9px] sm:text-[10px] font-semibold text-center leading-[1.1] px-0.5 text-[rgba(19,49,58,0.55)] group-hover:text-[var(--accent-strong)] w-full flex-1 flex items-center justify-center">
-                    {item.label}
-                  </span>
-                </Link>
-              ))}
-            </nav>
 
-            <div className="flex items-center gap-1 border-l border-[var(--line)] pl-2 sm:hidden">
-              <button
-                type="button"
-                onClick={() => {
-                  void handleLogout();
-                }}
-                className="btn btn-danger btn-sm"
-              >
-                <LogOut className="h-3 w-3" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Mobile menu */}
-      {menuOpen && (
+      {/* Mobile menu (For Patients Only) */}
+      {menuOpen && !session && (
         <div className="border-t border-[var(--line)] bg-[rgba(247,239,225,0.98)] px-4 py-3 lg:hidden animate-slide-up">
-          <div className="mb-3 flex flex-wrap gap-2">
-            {CLINICS.map((clinic) => (
-              <Link
-                key={clinic.id}
-                href={buildClinicHref("/", clinic.id)}
-                onClick={() => setMenuOpen(false)}
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
-                  clinic.id === activeClinicId
-                    ? "bg-[var(--accent)] text-white shadow-sm"
-                    : "border border-[var(--line)] text-[rgba(19,49,58,0.62)]"
-                }`}
-              >
-                {clinic.shortName}
-              </Link>
-            ))}
-          </div>
 
           {!session && (
             <div className="flex flex-col gap-0.5 stagger-children">
@@ -363,24 +332,6 @@ export function Navbar() {
             </div>
           )}
 
-          {session ? (
-            <div className="mt-2 card p-3 flex items-center justify-between">
-              <span className="text-xs font-semibold text-[var(--accent-strong)]">
-                {session.role === "doctor" ? "👨‍⚕️" : "👤"} {session.name}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  void handleLogout();
-                  setMenuOpen(false);
-                }}
-                className="btn btn-danger btn-sm"
-              >
-                <LogOut className="h-3 w-3" />
-                {t("nav", "logout")}
-              </button>
-            </div>
-          ) : (
             <Link
               href={buildClinicHref("/staff", activeClinicId)}
               onClick={() => setMenuOpen(false)}
@@ -388,7 +339,6 @@ export function Navbar() {
             >
               {t("nav", "login")}
             </Link>
-          )}
 
           {/* Developer Section (Accordion) */}
           <div className="mt-4 border-t border-[rgba(19,49,58,0.1)] pt-3">
