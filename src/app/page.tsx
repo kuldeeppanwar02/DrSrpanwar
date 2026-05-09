@@ -167,43 +167,16 @@ export default function HomePage() {
       )}
 
       <section className="section-shell pt-6 pb-2">
-        <div className="card relative overflow-hidden px-5 py-6 sm:px-8 sm:py-7 bg-white/40 border border-white/60 shadow-[0_30px_60px_rgba(15,107,99,0.12)]">
-          <div className="pointer-events-none absolute -left-20 top-0 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(15,107,99,0.15),transparent_70%)] blur-2xl animate-pulse-dot" />
-          <div className="pointer-events-none absolute -right-10 -bottom-10 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(234,192,124,0.2),transparent_70%)] blur-2xl" />
-
-          <div className="relative z-10">
-            <div className="mt-1 max-w-4xl">
-              <h1 className="display-type py-1 text-[8vw] sm:text-[4rem] leading-tight tracking-tight bg-clip-text text-transparent bg-[linear-gradient(135deg,#00514b_0%,#0f6b63_50%,#0a4e53_100%)] drop-shadow-sm whitespace-nowrap">
-                {heroTitle}
-              </h1>
-              {isLoggedIn ? (
-                <p className="mt-3 max-w-2xl text-sm font-medium text-[rgba(19,49,58,0.7)] sm:text-base">
-                  {t("staff", "welcomeBack")}, <strong className="text-[#0f6b63]">{session?.name}</strong>.{" "}
-                  {isDoctor ? t("staff", "doctor") : t("staff", "staffRole")} access active for{" "}
-                  <strong>{activeClinic.shortName}</strong>.
-                </p>
-              ) : null}
-            </div>
-
-            <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
-              {CLINICS.map((clinic) => {
-                const active = clinic.id === activeClinicId;
-                return (
-                  <Link
-                    key={clinic.id}
-                    href={buildClinicHref("/", clinic.id)}
-                    className={`focus-ring flex min-h-[3.35rem] items-center justify-center rounded-full border px-3 py-2 text-base font-semibold transition-all sm:min-h-[3.6rem] sm:text-lg ${
-                      active
-                        ? "border-transparent bg-[linear-gradient(135deg,var(--accent-deep),var(--accent))] text-white shadow-[0_18px_38px_rgba(15,107,99,0.26)]"
-                        : "border-[rgba(12,86,81,0.55)] bg-[rgba(255,252,246,0.84)] text-[var(--accent-strong)] shadow-[0_8px_24px_rgba(30,27,19,0.04)] hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(15,107,99,0.12)]"
-                    }`}
-                  >
-                    {clinic.shortName}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
+        <div className="relative z-10 px-2 sm:px-4">
+          <h1 className="display-type py-1 text-[9vw] sm:text-[4.5rem] leading-tight tracking-tight bg-clip-text text-transparent bg-[linear-gradient(135deg,#00514b_0%,#0f6b63_50%,#0a4e53_100%)] drop-shadow-sm whitespace-nowrap">
+            {heroTitle}
+          </h1>
+          {isLoggedIn ? (
+            <p className="mt-1 max-w-2xl text-sm font-medium text-[rgba(19,49,58,0.7)] sm:text-base">
+              {t("staff", "welcomeBack")}, <strong className="text-[#0f6b63]">{session?.name}</strong>.{" "}
+              {isDoctor ? "Doctor" : "Staff"} access active for <strong className="text-[#0f6b63]">{activeClinic.shortName}</strong>.
+            </p>
+          ) : null}
         </div>
       </section>
 
