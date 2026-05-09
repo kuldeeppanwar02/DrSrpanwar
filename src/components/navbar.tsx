@@ -81,10 +81,6 @@ export function Navbar() {
   const router = useRouter();
   const { activeClinicId, activeClinic, isOnline } = useClinic();
   const { lang, toggleLang, t } = useLang();
-  const { isInstallable, install, isIOS } = usePWAInstall();
-  const [showIOSInstructions, setShowIOSInstructions] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [developerExpanded, setDeveloperExpanded] = useState(false);
   const [session, setSession] = useState<StaffSession>(() => getStaffSession());
 
   useEffect(() => {
@@ -106,7 +102,6 @@ export function Navbar() {
       clearStaffSession();
       setSession(null);
       window.dispatchEvent(new Event("staff-session-change"));
-      setMenuOpen(false);
       router.replace(buildClinicHref("/", activeClinicId));
     }
   };
@@ -252,17 +247,6 @@ export function Navbar() {
               </button>
             </div>
           )}
-
-          {!session && (
-            <button
-              type="button"
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] text-sm transition-colors hover:bg-[var(--accent-soft)] lg:hidden"
-              aria-label="Menu"
-            >
-              {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-            </button>
-          )}
         </div>
       </div>
 
@@ -285,125 +269,6 @@ export function Navbar() {
           ))}
         </div>
       </div>
-
-      {/* Staff icon tab bar */}
-
-
-      {/* Mobile menu (For Patients Only) */}
-      {menuOpen && !session && (
-        <div className="border-t border-[var(--line)] bg-[rgba(247,239,225,0.98)] px-4 py-3 lg:hidden animate-slide-up">
-
-          {!session && (
-            <div className="flex flex-col gap-0.5 stagger-children">
-              {patientLinks.map((item) => (
-                <Link
-                  key={item.href}
-                  href={
-                    item.href === "/"
-                      ? `/?clinic=${activeClinicId}`
-                      : buildClinicHref(item.href, activeClinicId)
-                  }
-                  onClick={() => setMenuOpen(false)}
-                  className="fade-up flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[rgba(19,49,58,0.75)] transition-colors hover:bg-[var(--accent-soft)]"
-                >
-                  <item.icon className="h-4 w-4 text-[var(--accent)]" />
-                  {item.label}
-                </Link>
-              ))}
-              
-              {/* Manual Install Trigger */}
-              {(isInstallable || isIOS) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    if (isIOS) {
-                      setShowIOSInstructions(true);
-                    } else {
-                      install();
-                    }
-                  }}
-                  className="fade-up flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--accent-strong)] bg-[rgba(103,237,170,0.1)] transition-colors hover:bg-[rgba(103,237,170,0.2)] mt-1 border border-[rgba(103,237,170,0.2)]"
-                >
-                  <Download className="h-4 w-4 text-[var(--accent)]" />
-                  ऐप इंस्टॉल करें (Install App)
-                </button>
-              )}
-            </div>
-          )}
-
-            <Link
-              href={buildClinicHref("/staff", activeClinicId)}
-              onClick={() => setMenuOpen(false)}
-              className="btn btn-primary btn-lg mt-3 w-full justify-center"
-            >
-              {t("nav", "login")}
-            </Link>
-
-          {/* Developer Section (Accordion) */}
-          <div className="mt-4 border-t border-[rgba(19,49,58,0.1)] pt-3">
-            <button
-              onClick={() => setDeveloperExpanded(!developerExpanded)}
-              className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold text-[rgba(19,49,58,0.7)] transition-colors hover:bg-[rgba(19,49,58,0.05)]"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-strong)]">
-                  <Code className="h-4 w-4" />
-                </div>
-                <span>👨‍💻 App Developer Contact</span>
-              </div>
-              {developerExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
-
-            {developerExpanded && (
-              <div className="mt-2 flex flex-col gap-2 pl-3 pr-2 pb-2 animate-slide-up">
-                <a
-                  href="tel:+919358752147"
-                  className="flex items-center gap-3 rounded-xl bg-white px-3 py-2.5 text-sm font-medium text-[rgba(19,49,58,0.85)] shadow-sm border border-[rgba(19,49,58,0.05)] hover:bg-green-50 transition-colors"
-                >
-                  <Phone className="h-4 w-4 text-green-600" />
-                  <span>Call: 9358752147</span>
-                </a>
-                <a
-                  href="mailto:panwarkuldeep256@gmail.com?subject=Enquiry for Smart Clinic App"
-                  className="flex items-center gap-3 rounded-xl bg-white px-3 py-2.5 text-sm font-medium text-[rgba(19,49,58,0.85)] shadow-sm border border-[rgba(19,49,58,0.05)] hover:bg-blue-50 transition-colors"
-                >
-                  <Mail className="h-4 w-4 text-blue-600" />
-                  <span className="truncate">panwarkuldeep256@gmail.com</span>
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* iOS Instructions Modal (Same as Banner but scoped to Navbar for manual clicks) */}
-      {showIOSInstructions && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm p-4 sm:items-center">
-          <div className="w-full max-w-sm rounded-[24px] bg-white p-6 shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-xl font-bold text-gray-900">ऐप इंस्टॉल करें</h3>
-              <button onClick={() => setShowIOSInstructions(false)} className="rounded-full bg-gray-100 p-2 text-gray-500 hover:bg-gray-200">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="space-y-4 text-gray-700 font-medium">
-              <p>अपने iPhone में आसानी से ऐप डालने के लिए:</p>
-              <ol className="list-decimal pl-5 space-y-3">
-                <li>स्क्रीन के नीचे दिए गए <strong>Share</strong> बटन (चौकोर बॉक्स से ऊपर जाता हुआ तीर) को दबाएं।</li>
-                <li>थोड़ा नीचे स्क्रॉल करें और <strong>"Add to Home Screen"</strong> चुनें।</li>
-                <li>सबसे ऊपर दाईं ओर <strong>"Add"</strong> पर टैप करें।</li>
-              </ol>
-            </div>
-            <button 
-              onClick={() => setShowIOSInstructions(false)}
-              className="mt-6 w-full rounded-2xl bg-[var(--accent)] py-3.5 font-bold text-white transition-transform active:scale-95 shadow-lg shadow-[var(--accent)]/30"
-            >
-              समझ गया
-            </button>
-          </div>
-        </div>
-      )}
     </header>
   );
 }

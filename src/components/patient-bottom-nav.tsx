@@ -12,11 +12,6 @@ import {
   X,
   Download,
   Hospital,
-  Code,
-  Phone,
-  Mail,
-  ChevronDown,
-  ChevronUp,
   CalendarCheck
 } from "lucide-react";
 import { CLINICS, buildClinicHref } from "@/features/clinic/catalog";
@@ -34,7 +29,6 @@ export function PatientBottomNav() {
   
   const [session, setSession] = useState(getStaffSession());
   const [menuOpen, setMenuOpen] = useState(false);
-  const [developerExpanded, setDeveloperExpanded] = useState(false);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
   useEffect(() => {
@@ -160,32 +154,7 @@ export function PatientBottomNav() {
               </button>
             </div>
 
-            {/* Developer Section */}
-            <div className="mb-4 rounded-2xl bg-white border border-[rgba(19,49,58,0.05)] overflow-hidden">
-              <button
-                onClick={() => setDeveloperExpanded(!developerExpanded)}
-                className="flex w-full items-center justify-between p-4 transition-colors hover:bg-[rgba(19,49,58,0.02)]"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent-strong)]">
-                    <Code className="h-4 w-4" />
-                  </div>
-                  <span className="text-sm font-bold text-[rgba(19,49,58,0.8)]">Help & Contact</span>
-                </div>
-                {developerExpanded ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
-              </button>
 
-              {developerExpanded && (
-                <div className="flex flex-col gap-2 px-4 pb-4 animate-in slide-in-from-top-2">
-                  <a href="tel:+919358752147" className="flex items-center gap-3 rounded-xl bg-green-50 p-3 text-sm font-bold text-green-700">
-                    <Phone className="h-4 w-4" /> 9358752147
-                  </a>
-                  <a href="mailto:panwarkuldeep256@gmail.com" className="flex items-center gap-3 rounded-xl bg-blue-50 p-3 text-sm font-bold text-blue-700">
-                    <Mail className="h-4 w-4" /> panwarkuldeep256@gmail.com
-                  </a>
-                </div>
-              )}
-            </div>
 
             <Link
               href={buildClinicHref("/staff", activeClinicId)}
