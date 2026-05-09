@@ -474,8 +474,12 @@ function QueueSnapshotCard({
         <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[rgba(255,255,255,0.58)]">
           Queue Snapshot
         </p>
-        <p className="display-type mt-3 text-5xl tracking-tight">{currentToken}</p>
-        <p className="mt-2 text-sm text-[rgba(255,255,255,0.76)]">{currentName}</p>
+        <p className="display-type mt-3 text-5xl tracking-tight" key={currentToken}>
+          <span className="inline-block animate-flip-down">{currentToken}</span>
+        </p>
+        <p className="mt-2 text-sm text-[rgba(255,255,255,0.76)]" key={currentName}>
+          <span className="inline-block animate-fade-up">{currentName}</span>
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 p-4">
