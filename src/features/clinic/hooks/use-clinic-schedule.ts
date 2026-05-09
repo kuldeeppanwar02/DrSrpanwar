@@ -17,7 +17,19 @@ export type ClinicLiveState = {
 
 export function useClinicSchedule(clinicId: ClinicId) {
   const { t } = useLang();
-  const [scheduleData, setScheduleData] = useState<{ today: ResolvedDaySchedule; tomorrow: ResolvedDaySchedule } | null>(null);
+  
+  // Try to load initial data from local storage (if in browser) for instant loading
+  const getInitialData = () => {
+    if (typeof window === "undefined") return null;
+    try {
+      const cached = localStorage.getItem(`schedule_cache_${clinicId}`);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const [scheduleData, setScheduleData] = useState<{ today: ResolvedDaySchedule; tomorrow: ResolvedDaySchedule } | null>(getInitialData);
   const [liveState, setLiveState] = useState<ClinicLiveState>({
     status: "loading",
     message: "...",
@@ -35,6 +47,8 @@ export function useClinicSchedule(clinicId: ClinicId) {
         const data = await res.json();
         if (mounted) {
           setScheduleData(data);
+          // Cache the fresh data so the next page load is instant
+          localStorage.setItem(`schedule_cache_${clinicId}`, JSON.stringify(data));
         }
       } catch (error) {
         if (mounted) {
