@@ -172,16 +172,6 @@ export default function HomePage() {
           <div className="pointer-events-none absolute -right-10 -bottom-10 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(234,192,124,0.2),transparent_70%)] blur-2xl" />
 
           <div className="relative z-10">
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-              </div>
-              <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#0f6b63]">
-                {isOnline ? "Live Hospital System" : "Offline Mode"}
-              </span>
-            </div>
-            
             <div className="mt-1 max-w-4xl">
               <h1 className="display-type text-[8vw] sm:text-[4rem] leading-[0.9] tracking-tighter bg-clip-text text-transparent bg-[linear-gradient(135deg,#00514b_0%,#0f6b63_50%,#0a4e53_100%)] drop-shadow-sm whitespace-nowrap">
                 {heroTitle}
