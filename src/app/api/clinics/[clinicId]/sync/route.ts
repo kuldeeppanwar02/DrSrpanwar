@@ -1,5 +1,5 @@
 import { readClinicId, ApiRouteError, jsonError } from "@/app/api/api-helpers";
-import { syncRemotePendingEntries } from "@/lib/firebase/queue-store";
+import { syncRemotePendingEntries } from "@/lib/db/queue-store";
 
 export const runtime = "nodejs";
 

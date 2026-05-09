@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { ClinicId } from "@/features/clinic/types";
-import type { ResolvedDaySchedule } from "@/lib/firebase/schedule-store";
+import type { ResolvedDaySchedule } from "@/lib/db/schedule-store";
 import { useLang } from "@/i18n/lang-provider";
 import { supabase } from "@/lib/supabase/client";
 

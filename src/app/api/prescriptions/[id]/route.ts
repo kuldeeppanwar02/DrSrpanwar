@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPrescriptionById } from "@/lib/firebase/prescription-store";
-import { requireStaffUser, StaffAuthError } from "@/lib/firebase/staff-auth";
+import { getPrescriptionById } from "@/lib/db/prescription-store";
+import { requireStaffUser, StaffAuthError } from "@/lib/db/staff-auth";
 
 export async function GET(
   req: NextRequest,

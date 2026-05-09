@@ -5,8 +5,8 @@ import {
   listStaffMembers,
   updateStaffMember,
   deleteStaffMember,
-} from "@/lib/firebase/pin-auth";
-import { requireStaffUser, StaffAuthError } from "@/lib/firebase/staff-auth";
+} from "@/lib/db/pin-auth";
+import { requireStaffUser, StaffAuthError } from "@/lib/db/staff-auth";
 
 export async function PATCH(
   request: Request,

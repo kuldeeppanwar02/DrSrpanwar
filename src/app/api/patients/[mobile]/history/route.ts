@@ -1,6 +1,6 @@
 import { jsonError } from "@/app/api/api-helpers";
-import { getPatientHistory, getPatientVisitSummary } from "@/lib/firebase/patient-history";
-import { requireStaffUser } from "@/lib/firebase/staff-auth";
+import { getPatientHistory, getPatientVisitSummary } from "@/lib/db/patient-history";
+import { requireStaffUser } from "@/lib/db/staff-auth";
 
 export async function GET(
   request: Request,

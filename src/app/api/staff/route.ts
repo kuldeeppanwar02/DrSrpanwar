@@ -1,7 +1,7 @@
 import { jsonError } from "@/app/api/api-helpers";
 import { isClinicId } from "@/features/clinic/catalog";
-import { listStaffMembers, createStaffMember } from "@/lib/firebase/pin-auth";
-import { requireStaffUser, StaffAuthError } from "@/lib/firebase/staff-auth";
+import { listStaffMembers, createStaffMember } from "@/lib/db/pin-auth";
+import { requireStaffUser, StaffAuthError } from "@/lib/db/staff-auth";
 import type { ClinicId } from "@/features/clinic/types";
 
 export async function GET(request: Request) {

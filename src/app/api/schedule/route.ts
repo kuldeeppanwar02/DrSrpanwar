@@ -1,7 +1,7 @@
 import { jsonError } from "@/app/api/api-helpers";
 import { isClinicId } from "@/features/clinic/catalog";
 import type { ClinicId } from "@/features/clinic/types";
-import { requireStaffUser } from "@/lib/firebase/staff-auth";
+import { requireStaffUser } from "@/lib/db/staff-auth";
 import {
   getWeekSchedule,
   saveWeekSchedule,
@@ -10,7 +10,7 @@ import {
   tomorrowDateStr,
   generateSlots,
   type DaySchedule,
-} from "@/lib/firebase/schedule-store";
+} from "@/lib/db/schedule-store";
 import { unstable_noStore as noStore } from "next/cache";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

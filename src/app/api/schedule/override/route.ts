@@ -1,12 +1,12 @@
 import { jsonError } from "@/app/api/api-helpers";
 import { isClinicId } from "@/features/clinic/catalog";
 import type { ClinicId } from "@/features/clinic/types";
-import { requireStaffUser } from "@/lib/firebase/staff-auth";
+import { requireStaffUser } from "@/lib/db/staff-auth";
 import {
   getDayOverride,
   saveDayOverride,
   deleteDayOverride,
-} from "@/lib/firebase/schedule-store";
+} from "@/lib/db/schedule-store";
 import { unstable_noStore as noStore } from "next/cache";
 
 export const dynamic = "force-dynamic";

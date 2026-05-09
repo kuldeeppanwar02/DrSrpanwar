@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { CalendarDays, Search, Users, Activity, FileText } from "lucide-react";
-import type { PatientVisit } from "@/lib/firebase/patient-history";
+import type { PatientVisit } from "@/lib/db/patient-history";
 import { getStaffSession } from "@/components/navbar";
 import { useRouter } from "next/navigation";
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { jsonError } from "@/app/api/api-helpers";
-import { verifyPin } from "@/lib/firebase/pin-auth";
+import { verifyPin } from "@/lib/db/pin-auth";
 import { createSessionCookie, createStaffSessionToken } from "@/lib/staff-session";
 import { getDb } from "@/lib/supabase/db";
 

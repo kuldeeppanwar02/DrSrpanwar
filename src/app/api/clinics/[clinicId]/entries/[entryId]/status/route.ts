@@ -4,8 +4,8 @@ import {
   ApiRouteError,
   jsonError,
 } from "@/app/api/api-helpers";
-import { updateRemoteQueueEntryStatus } from "@/lib/firebase/queue-store";
-import { requireStaffUser } from "@/lib/firebase/staff-auth";
+import { updateRemoteQueueEntryStatus } from "@/lib/db/queue-store";
+import { requireStaffUser } from "@/lib/db/staff-auth";
 
 export const runtime = "nodejs";
 

@@ -1,6 +1,6 @@
 import { readClinicEntryParams, jsonError } from "@/app/api/api-helpers";
-import { rescheduleRemoteQueueEntry } from "@/lib/firebase/queue-store";
-import { requireStaffUser } from "@/lib/firebase/staff-auth";
+import { rescheduleRemoteQueueEntry } from "@/lib/db/queue-store";
+import { requireStaffUser } from "@/lib/db/staff-auth";
 
 export const runtime = "nodejs";
 

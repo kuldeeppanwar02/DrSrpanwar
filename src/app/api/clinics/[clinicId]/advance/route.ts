@@ -1,6 +1,6 @@
 import { readClinicId, jsonError } from "@/app/api/api-helpers";
-import { advanceRemoteQueue } from "@/lib/firebase/queue-store";
-import { requireStaffUser } from "@/lib/firebase/staff-auth";
+import { advanceRemoteQueue } from "@/lib/db/queue-store";
+import { requireStaffUser } from "@/lib/db/staff-auth";
 
 export const runtime = "nodejs";
 

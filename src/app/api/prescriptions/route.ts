@@ -5,8 +5,8 @@ import {
   getStoredPrescriptionById,
   updatePrescriptionStatus,
   type PrescriptionStatus,
-} from "@/lib/firebase/prescription-store";
-import { requireStaffUser, StaffAuthError } from "@/lib/firebase/staff-auth";
+} from "@/lib/db/prescription-store";
+import { requireStaffUser, StaffAuthError } from "@/lib/db/staff-auth";
 import { isClinicId } from "@/features/clinic/catalog";
 import type { ClinicId } from "@/features/clinic/types";
 

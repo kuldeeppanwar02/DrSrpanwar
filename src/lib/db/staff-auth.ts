@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { ClinicId } from "@/features/clinic/types";
-import type { StaffRole } from "@/lib/firebase/pin-auth";
+import type { StaffRole } from "@/lib/db/pin-auth";
 import {
   readSessionCookie,
   verifyStaffSessionToken,

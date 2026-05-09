@@ -1,5 +1,5 @@
 import { readClinicId, ApiRouteError, jsonError } from "@/app/api/api-helpers";
-import { createRemoteBooking } from "@/lib/firebase/queue-store";
+import { createRemoteBooking } from "@/lib/db/queue-store";
 
 export const runtime = "nodejs";
 

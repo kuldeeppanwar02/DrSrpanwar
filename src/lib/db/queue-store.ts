@@ -13,7 +13,7 @@ import type {
   QueueStatus,
 } from "@/features/clinic/types";
 import { getDb, toIsoString } from "@/lib/supabase/db";
-import { saveVisitRecord } from "@/lib/firebase/patient-history";
+import { saveVisitRecord } from "@/lib/db/patient-history";
 
 type QueryableDb = {
   <T = unknown>(strings: TemplateStringsArray, ...values: unknown[]): T;
@@ -342,7 +342,7 @@ export async function getRemoteClinicState(clinicId: ClinicId): Promise<ClinicSt
   const normalizedState = normalizeClinicState(clinicId, clinicDocument, queue);
 
   try {
-    const { getClinicSettings } = await import("@/lib/firebase/clinic-settings");
+    const { getClinicSettings } = await import("@/lib/db/clinic-settings");
     const settings = await getClinicSettings(clinicId);
     if (settings) {
       normalizedState.settings = {

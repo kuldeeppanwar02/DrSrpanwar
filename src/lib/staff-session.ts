@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHmac, timingSafeEqual } from "crypto";
 import type { ClinicId } from "@/features/clinic/types";
-import type { StaffRole } from "@/lib/firebase/pin-auth";
+import type { StaffRole } from "@/lib/db/pin-auth";
 import { serverEnv } from "@/config/server-env";
 
 export const STAFF_SESSION_COOKIE = "panwar_staff_session";

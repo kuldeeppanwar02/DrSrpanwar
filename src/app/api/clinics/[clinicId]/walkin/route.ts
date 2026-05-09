@@ -1,5 +1,5 @@
 import { readClinicId, ApiRouteError, jsonError } from "@/app/api/api-helpers";
-import { createRemoteWalkIn } from "@/lib/firebase/queue-store";
+import { createRemoteWalkIn } from "@/lib/db/queue-store";
 
 export const runtime = "nodejs";
 

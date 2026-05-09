@@ -1,6 +1,6 @@
 import { jsonError } from "@/app/api/api-helpers";
-import { getClinicVisitsByDateRange } from "@/lib/firebase/patient-history";
-import { requireStaffUser } from "@/lib/firebase/staff-auth";
+import { getClinicVisitsByDateRange } from "@/lib/db/patient-history";
+import { requireStaffUser } from "@/lib/db/staff-auth";
 import type { ClinicId } from "@/features/clinic/types";
 
 export async function GET(request: Request) {

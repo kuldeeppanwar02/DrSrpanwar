@@ -1,6 +1,6 @@
 import { isClinicId } from "@/features/clinic/catalog";
 import type { ClinicId, QueueStatus } from "@/features/clinic/types";
-import { StaffAuthError } from "@/lib/firebase/staff-auth";
+import { StaffAuthError } from "@/lib/db/staff-auth";
 
 const queueStatuses: QueueStatus[] = [
   "waiting",

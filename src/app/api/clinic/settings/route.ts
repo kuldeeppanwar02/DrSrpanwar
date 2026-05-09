@@ -1,8 +1,8 @@
 import { jsonError } from "@/app/api/api-helpers";
 import { isClinicId } from "@/features/clinic/catalog";
 import type { ClinicId } from "@/features/clinic/types";
-import { requireStaffUser } from "@/lib/firebase/staff-auth";
-import { getClinicSettings, saveClinicSettings } from "@/lib/firebase/clinic-settings";
+import { requireStaffUser } from "@/lib/db/staff-auth";
+import { getClinicSettings, saveClinicSettings } from "@/lib/db/clinic-settings";
 import { unstable_noStore as noStore } from "next/cache";
 
 export const dynamic = "force-dynamic";
