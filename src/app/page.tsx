@@ -132,10 +132,21 @@ export default function HomePage() {
     };
 
     void fetchPharmacyRx();
-    const interval = setInterval(fetchPharmacyRx, 10000);
+    
+    const channel = supabase
+      .channel("rx_changes_home")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "prescriptions" },
+        () => {
+          void fetchPharmacyRx();
+        }
+      )
+      .subscribe();
+
     return () => {
       mounted = false;
-      clearInterval(interval);
+      void supabase.removeChannel(channel);
     };
   }, [activeClinicId]);
 

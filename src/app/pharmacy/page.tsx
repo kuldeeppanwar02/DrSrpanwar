@@ -15,6 +15,7 @@ import {
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
 import { getStaffSession } from "@/components/navbar";
+import { supabase } from "@/lib/supabase/client";
 
 type PrescriptionItem = {
   id: string;
@@ -39,7 +40,6 @@ export default function PharmacyPage() {
   const [loading, setLoading] = useState(true);
   const [viewing, setViewing] = useState<PrescriptionDetail | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(true);
 
   useEffect(() => {
     const sync = () => setSession(getStaffSession());
@@ -67,22 +67,27 @@ export default function PharmacyPage() {
     }
   }, []);
 
-  // Initial + auto-refresh every 10s
+  // Initial fetch + WebSocket listener
   useEffect(() => {
     if (!isAuthorized) return;
-    const initialLoad = window.setTimeout(() => {
-      void fetchPrescriptions();
-    }, 0);
+    
+    void fetchPrescriptions();
 
-    if (autoRefresh) {
-      const interval = setInterval(() => void fetchPrescriptions(), 10000);
-      return () => {
-        window.clearTimeout(initialLoad);
-        clearInterval(interval);
-      };
-    }
-    return () => window.clearTimeout(initialLoad);
-  }, [isAuthorized, autoRefresh, fetchPrescriptions]);
+    const channel = supabase
+      .channel("pharmacy_rx_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "prescriptions" },
+        () => {
+          void fetchPrescriptions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [isAuthorized, fetchPrescriptions]);
 
   const viewPhotos = async (rx: PrescriptionItem) => {
     setViewLoading(true);
@@ -301,17 +306,6 @@ export default function PharmacyPage() {
           )}
         </div>
 
-        {/* Auto-refresh indicator */}
-        <div className="mt-4 card p-3 text-center text-xs text-[rgba(19,49,58,0.4)]">
-          <label className="flex items-center justify-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="rounded"
-            />
-            {t("prescription", "autoRefresh") || "ऑटो रिफ्रेश (हर 10 सेकंड)"}
-          </label>
         </div>
       </section>
 

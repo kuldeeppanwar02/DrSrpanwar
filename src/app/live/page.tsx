@@ -17,6 +17,7 @@ import { useLiveQueuePolling } from "@/features/clinic/hooks/use-live-queue-poll
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
 import { getStaffSession } from "@/components/navbar";
+import { supabase } from "@/lib/supabase/client";
 
 export default function LivePage() {
   const {
@@ -98,10 +99,21 @@ export default function LivePage() {
     };
 
     void fetchPharmacyRx();
-    const interval = setInterval(fetchPharmacyRx, 5000); // 5s for live TV
+    
+    const channel = supabase
+      .channel("pharmacy_live_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "prescriptions" },
+        () => {
+          void fetchPharmacyRx();
+        }
+      )
+      .subscribe();
+
     return () => {
       mounted = false;
-      clearInterval(interval);
+      void supabase.removeChannel(channel);
     };
   }, [activeClinicId]);
 

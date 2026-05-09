@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import type { ClinicId } from "@/features/clinic/types";
 import type { ResolvedDaySchedule } from "@/lib/firebase/schedule-store";
 import { useLang } from "@/i18n/lang-provider";
+import { supabase } from "@/lib/supabase/client";
 
 export type ClinicScheduleStatus = "open" | "break" | "closed_for_day" | "on_leave" | "loading" | "error";
 
@@ -59,11 +60,22 @@ export function useClinicSchedule(clinicId: ClinicId) {
 
     void fetchSchedule();
 
-    // Refresh data every 5 minutes in case admin changes settings
-    const interval = setInterval(fetchSchedule, 5 * 60 * 1000);
+    // Listen for Realtime updates on day_overrides
+    const channel = supabase
+      .channel("schedule_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "day_overrides", filter: `clinic_id=eq.${clinicId}` },
+        () => {
+          // Immediately fetch the newly resolved schedule from our API when DB changes
+          void fetchSchedule();
+        }
+      )
+      .subscribe();
+
     return () => {
       mounted = false;
-      clearInterval(interval);
+      void supabase.removeChannel(channel);
     };
   }, [clinicId]);
 

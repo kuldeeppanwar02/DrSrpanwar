@@ -15,6 +15,7 @@ import { findEntriesByMobile, getEntryPosition, getQueueSummary } from "@/featur
 import { useClinic } from "@/features/clinic/state/clinic-provider";
 import { useLang } from "@/i18n/lang-provider";
 import type { QueueEntry } from "@/features/clinic/types";
+import { supabase } from "@/lib/supabase/client";
 
 function pickBestEntry(matches: QueueEntry[]) {
   return (
@@ -64,10 +65,21 @@ export default function StatusPage() {
     };
     
     fetchPharmacyStatus();
-    const interval = setInterval(fetchPharmacyStatus, 5000);
+    
+    const channel = supabase
+      .channel("pharmacy_status_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "prescriptions" },
+        () => {
+          fetchPharmacyStatus();
+        }
+      )
+      .subscribe();
+
     return () => {
       mounted = false;
-      clearInterval(interval);
+      void supabase.removeChannel(channel);
     };
   }, [selectedEntry]);
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useEffectEvent } from "react";
 import { useClinic } from "@/features/clinic/state/clinic-provider";
+import { supabase } from "@/lib/supabase/client";
 
 export function useLiveQueuePolling(intervalMs = 5000) {
   const { refresh } = useClinic();
@@ -12,8 +13,21 @@ export function useLiveQueuePolling(intervalMs = 5000) {
 
   useEffect(() => {
     pollEvent();
-    const timer = window.setInterval(() => pollEvent(), intervalMs);
+    
+    // Listen for Realtime updates on clinic_stats (Queue Updates)
+    const channel = supabase
+      .channel("queue_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "clinic_stats" },
+        () => {
+          pollEvent(); // Refresh instantly when DB changes
+        }
+      )
+      .subscribe();
 
-    return () => window.clearInterval(timer);
-  }, [intervalMs]);
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, []);
 }
