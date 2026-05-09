@@ -12,6 +12,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { ToastProvider } from "@/components/toast";
 import { InstallBanner } from "@/components/install-banner";
 import { StaffBottomNav } from "@/components/staff-bottom-nav";
+import { PatientBottomNav } from "@/components/patient-bottom-nav";
 import "./globals.css";
 
 const bodyFont = Plus_Jakarta_Sans({
@@ -97,6 +98,7 @@ export default function RootLayout({
                   <PwaShell />
                   <main className="flex-1">{children}</main>
                   <StaffBottomNav />
+                  <PatientBottomNav />
                   <InstallBanner />
                 </ClinicProvider>
               </Suspense>
