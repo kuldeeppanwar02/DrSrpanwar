@@ -10,7 +10,6 @@ import { Navbar } from "@/components/navbar";
 import { PwaShell } from "@/components/pwa-shell";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ToastProvider } from "@/components/toast";
-import { InstallBanner } from "@/components/install-banner";
 import { StaffBottomNav } from "@/components/staff-bottom-nav";
 import { PatientBottomNav } from "@/components/patient-bottom-nav";
 import "./globals.css";
@@ -99,7 +98,6 @@ export default function RootLayout({
                   <main className="flex-1 pb-24">{children}</main>
                   <StaffBottomNav />
                   <PatientBottomNav />
-                  <InstallBanner />
                 </ClinicProvider>
               </Suspense>
             </ErrorBoundary>
