@@ -16,7 +16,7 @@ export function useLiveQueuePolling(intervalMs = 5000) {
     
     // Listen for Realtime updates on clinic_stats (Queue Updates)
     const channel = supabase
-      .channel("queue_changes")
+      .channel(`queue_changes_${Math.random()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "clinic_stats" },

@@ -67,7 +67,7 @@ export default function StatusPage() {
     fetchPharmacyStatus();
     
     const channel = supabase
-      .channel("pharmacy_status_changes")
+      .channel(`pharmacy_status_changes_${Math.random()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "prescriptions" },

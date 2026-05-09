@@ -62,7 +62,7 @@ export function useClinicSchedule(clinicId: ClinicId) {
 
     // Listen for Realtime updates on day_overrides
     const channel = supabase
-      .channel("schedule_changes")
+      .channel(`schedule_changes_${Math.random()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "day_overrides", filter: `clinic_id=eq.${clinicId}` },

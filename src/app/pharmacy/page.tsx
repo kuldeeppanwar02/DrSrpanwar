@@ -74,7 +74,7 @@ export default function PharmacyPage() {
     void fetchPrescriptions();
 
     const channel = supabase
-      .channel("pharmacy_rx_changes")
+      .channel(`pharmacy_rx_changes_${Math.random()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "prescriptions" },

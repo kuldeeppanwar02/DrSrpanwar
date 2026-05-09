@@ -25,7 +25,7 @@ export function useRealtimeQueue(clinicId: ClinicId, onUpdate: () => void) {
     const supabase = createClient(env.supabaseUrl, env.supabaseAnonKey);
 
     const channel = supabase
-      .channel(`public:clinic_data:${clinicId}`)
+      .channel(`public:clinic_data:${clinicId}_${Math.random()}`)
       .on(
         "postgres_changes",
         {

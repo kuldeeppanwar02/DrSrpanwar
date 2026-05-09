@@ -135,7 +135,7 @@ export default function HomePage() {
     void fetchPharmacyRx();
     
     const channel = supabase
-      .channel("rx_changes_home")
+      .channel(`rx_changes_home_${Math.random()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "prescriptions" },

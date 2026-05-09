@@ -101,7 +101,7 @@ export default function LivePage() {
     void fetchPharmacyRx();
     
     const channel = supabase
-      .channel("pharmacy_live_changes")
+      .channel(`pharmacy_live_changes_${Math.random()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "prescriptions" },
