@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Noto_Sans_Devanagari, Playfair_Display, Manrope } from "next/font/google";
+import { Noto_Sans_Devanagari, Outfit, Plus_Jakarta_Sans } from "next/font/google";
 import {
   ClinicProvider,
   ClinicProviderFallback,
@@ -13,16 +13,16 @@ import { ToastProvider } from "@/components/toast";
 import { InstallBanner } from "@/components/install-banner";
 import "./globals.css";
 
-const bodyFont = Manrope({
+const bodyFont = Plus_Jakarta_Sans({
   variable: "--font-body",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 
-const displayFont = Playfair_Display({
+const displayFont = Outfit({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 const hindiFont = Noto_Sans_Devanagari({

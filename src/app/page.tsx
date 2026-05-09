@@ -166,20 +166,29 @@ export default function HomePage() {
         </div>
       )}
 
-      <section className="section-shell pt-5 pb-1">
-        <div className="relative overflow-hidden rounded-[2rem] border border-[rgba(255,255,255,0.85)] bg-[linear-gradient(180deg,rgba(255,252,246,0.98),rgba(248,239,223,0.95))] px-4 py-4 shadow-[0_20px_46px_rgba(30,27,19,0.07)] sm:px-6 sm:py-5">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-[linear-gradient(180deg,rgba(15,107,99,0.06),transparent)]" />
-          <div className="pointer-events-none absolute -left-10 top-18 h-32 w-32 rounded-full bg-[radial-gradient(circle,rgba(234,192,124,0.24),transparent_70%)] blur-xl" />
-          <div className="pointer-events-none absolute -right-12 -top-10 h-36 w-36 rounded-full bg-[radial-gradient(circle,rgba(15,107,99,0.12),transparent_72%)] blur-xl" />
+      <section className="section-shell pt-6 pb-2">
+        <div className="card relative overflow-hidden px-5 py-6 sm:px-8 sm:py-7 bg-white/40 border border-white/60 shadow-[0_30px_60px_rgba(15,107,99,0.12)]">
+          <div className="pointer-events-none absolute -left-20 top-0 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(15,107,99,0.15),transparent_70%)] blur-2xl animate-pulse-dot" />
+          <div className="pointer-events-none absolute -right-10 -bottom-10 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(234,192,124,0.2),transparent_70%)] blur-2xl" />
 
           <div className="relative z-10">
-            <div className="mt-2 max-w-4xl">
-              <h1 className="display-type text-[7.5vw] leading-[0.92] tracking-tighter text-[#1c1913] whitespace-nowrap sm:text-[3.6rem]">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </div>
+              <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#0f6b63]">
+                {isOnline ? "Live Hospital System" : "Offline Mode"}
+              </span>
+            </div>
+            
+            <div className="mt-1 max-w-4xl">
+              <h1 className="display-type text-[8vw] sm:text-[4rem] leading-[0.9] tracking-tighter bg-clip-text text-transparent bg-[linear-gradient(135deg,#00514b_0%,#0f6b63_50%,#0a4e53_100%)] drop-shadow-sm whitespace-nowrap">
                 {heroTitle}
               </h1>
               {isLoggedIn ? (
-                <p className="mt-2 max-w-2xl text-sm text-[rgba(19,49,58,0.68)] sm:text-base">
-                  {t("staff", "welcomeBack")}, <strong>{session?.name}</strong>.{" "}
+                <p className="mt-3 max-w-2xl text-sm font-medium text-[rgba(19,49,58,0.7)] sm:text-base">
+                  {t("staff", "welcomeBack")}, <strong className="text-[#0f6b63]">{session?.name}</strong>.{" "}
                   {isDoctor ? t("staff", "doctor") : t("staff", "staffRole")} access active for{" "}
                   <strong>{activeClinic.shortName}</strong>.
                 </p>
