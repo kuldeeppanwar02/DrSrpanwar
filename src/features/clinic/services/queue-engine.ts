@@ -413,30 +413,35 @@ export function setEmergencyStateState(
 }
 
 export function getQueueSummary(state: ClinicState): QueueSummary {
+  // Only include today's entries (exclude tomorrow's "Kal" bookings from live queue)
+  const isToday = (entry: QueueEntry) => entry.dayLabel !== "Kal";
+
   const current =
-    state.queue.find((entry) => entry.status === "in-progress") ??
-    state.queue.find((entry) => entry.status === "waiting") ??
+    state.queue.find((entry) => entry.status === "in-progress" && isToday(entry)) ??
+    state.queue.find((entry) => entry.status === "waiting" && isToday(entry)) ??
     null;
 
-  const waiting = state.queue.filter((entry) => entry.status === "waiting");
+  const waiting = state.queue.filter((entry) => entry.status === "waiting" && isToday(entry));
   const next = current?.status === "in-progress" ? waiting[0] ?? null : waiting[1] ?? null;
 
   return {
     current,
     next,
     waiting,
-    holdCount: state.queue.filter((entry) => entry.status === "hold").length,
+    holdCount: state.queue.filter((entry) => entry.status === "hold" && isToday(entry)).length,
     walkIns: state.queue.filter((entry) => entry.source === "walk-in").length,
     bookings: state.queue.filter((entry) => entry.source === "booking").length,
   };
 }
 
 export function getEntryPosition(state: ClinicState, entryId: string) {
+  // Exclude tomorrow's bookings from position count (they don't affect today's wait)
   const activeQueue = state.queue.filter(
     (entry) =>
-      entry.status === "in-progress" ||
-      entry.status === "waiting" ||
-      entry.status === "hold",
+      entry.dayLabel !== "Kal" &&
+      (entry.status === "in-progress" ||
+        entry.status === "waiting" ||
+        entry.status === "hold"),
   );
 
   const index = activeQueue.findIndex((entry) => entry.id === entryId);
