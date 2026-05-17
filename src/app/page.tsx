@@ -168,7 +168,7 @@ export default function HomePage() {
 
       <section className="section-shell pt-6 pb-2">
         <div className="relative z-10 px-2 sm:px-4">
-          <h1 className="display-type py-1 text-[9vw] sm:text-[4.5rem] leading-tight tracking-tight bg-clip-text text-transparent bg-[linear-gradient(135deg,#00514b_0%,#0f6b63_50%,#0a4e53_100%)] drop-shadow-sm whitespace-nowrap">
+          <h1 className="display-type py-1 text-[8.5vw] sm:text-[4.5rem] leading-tight tracking-tight bg-clip-text text-transparent bg-[linear-gradient(135deg,#00514b_0%,#0f6b63_50%,#0a4e53_100%)] drop-shadow-sm overflow-hidden">
             {heroTitle}
           </h1>
           {isLoggedIn ? (
