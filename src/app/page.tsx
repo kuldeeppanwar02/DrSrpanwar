@@ -512,7 +512,7 @@ function FocusedClinicCard({
           )}
 
           <div className="min-w-0 flex-1">
-            <h2 className="display-type text-[1.35rem] leading-[1] tracking-tighter whitespace-nowrap text-[#17130f] sm:mt-1 sm:text-[3.25rem]">
+            <h2 className="display-type text-[1.35rem] leading-[1.1] tracking-tighter text-[#17130f] sm:mt-1 sm:text-[2.5rem] break-words">
               {settings?.doctorName || clinic.title}
             </h2>
 
