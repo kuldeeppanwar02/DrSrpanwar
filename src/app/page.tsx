@@ -323,8 +323,11 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Subtle Developer Footer */}
-      <div className="mt-6 mb-8 text-center px-4">
+      {/* Footer & Copyright */}
+      <div className="mt-6 mb-8 flex flex-col items-center gap-2 px-4 text-center">
+        <p className="text-[0.7rem] font-medium text-[rgba(19,49,58,0.45)]">
+          &copy; 2026 Dr. Sattaram Panwar. All Rights Reserved.
+        </p>
         <button 
           onClick={() => setShowDeveloperModal(true)}
           className="inline-flex items-center gap-1.5 text-[0.7rem] font-medium text-[rgba(19,49,58,0.35)] hover:text-[rgba(19,49,58,0.7)] transition-colors"
