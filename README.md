@@ -1,4 +1,4 @@
-# Panwar SmartCare Hub
+# Panwar Health Care 
 
 Hindi-first multi-clinic Next.js PWA for:
 
